@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, memo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { getRandomImages } from "@/lib/client-utils";
+import Image from "next/image";
 
 interface PhotosProps {
   images: string[];
@@ -143,9 +144,13 @@ function Photos({ images }: PhotosProps) {
             }}
           >
             <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-48 md:h-48 lg:w-52 lg:h-52 xl:w-64 xl:h-64 overflow-hidden relative bg-gray-200">
-              <img
+              <Image
                 src={`/img/${image}`}
                 alt={`MIT CSC ${image}`}
+                width={256}
+                height={256}
+                quality={50}
+                sizes="33vw"
                 className="w-full h-full object-cover"
                 loading="eager"
               />
