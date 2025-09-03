@@ -10,11 +10,11 @@ interface PhotosProps {
 }
 
 const positions = [
-  { x: 4, y: 4 },
-  { x: 3, y: 55 },
-  { x: 12, y: 25 },
+  { x: 1, y: 6 },
+  { x: 2, y: 55 },
+  { x: 12, y: 12 },
   { x: 38.5, y: 10 },
-  { x: 22.5, y: 52 },
+  { x: 18.5, y: 52 },
   { x: 48, y: 49 },
   { x: 62.5, y: 12 },
   { x: 73, y: 50 },
@@ -22,7 +22,7 @@ const positions = [
   { x: 85, y: 54 },
   { x: 75, y: 5 },
   { x: 50, y: 6 },
-  { x: 37, y: 55 },
+  { x: 31, y: 52 },
   { x: 60, y: 53 },
   { x: 85, y: 5 },
 ];
@@ -110,22 +110,13 @@ function Photos({ images }: PhotosProps) {
   const imagesToDisplay = useMemo(() => {
     if (!isClient) return [];
 
-    const requiredPhotos =
-      currentBreakpoint === "sm"
-        ? 8
-        : currentBreakpoint === "md"
-        ? 10
-        : currentBreakpoint === "lg"
-        ? 12
-        : currentBreakpoint === "xl"
-        ? 14
-        : 15;
+    const requiredPhotos = currentBreakpoint === "sm" ? 8 : 15;
 
     return selectedImages.slice(0, requiredPhotos);
   }, [selectedImages, currentBreakpoint, isClient]);
 
   return (
-    <section className="relative w-full h-full flex-1 overflow-hidden">
+    <section className="relative w-full h-full flex-1 overflow-hidden max-h-[65vh] sm:max-h-none">
       <div className="relative w-full h-full">
         {imagesToDisplay.map((image, index) => (
           <motion.div

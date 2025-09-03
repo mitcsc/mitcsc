@@ -2,14 +2,14 @@ import Tooltip from "./Tooltip";
 
 export default function About() {
   return (
-    <section className="w-full relative h-screen pt-48 flex flex-col justify-center items-center text-center">
+    <section className="w-full relative h-screen flex flex-col justify-center items-center text-center">
       <div className="w-full xl:max-w-[85vw] px-8 flex flex-col gap-4">
         <h2 className="text-[30vw] leading-[0.8] font-primary font-bold">
           WHO WE ARE
         </h2>
         <p className="text-lg md:text-xl lg:text-2xl font-secondary font-normal text-secondary text-balance">
           <Tooltip content="MIT CSC was founded in 1916 and has been serving the MIT community for over a century!">
-            Chinese Student's Club
+            Chinese Students Club
           </Tooltip>{" "}
           is the oldest cultural club at MIT. Throughout the years we've
           continued to be a hub for people who like Chinese-American culture,

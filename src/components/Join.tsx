@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
 export default function Join() {
-  const text = "JOIN CHINESE STUDENT'S CLUB ";
+  const text = "JOIN CHINESE STUDENTS CLUB ";
   const characters = text.split("");
   const [isHovered, setIsHovered] = useState(false);
   const [radius, setRadius] = useState(200); // Start with fallback value
@@ -30,7 +30,7 @@ export default function Join() {
           href={membership}
           target="_blank"
           rel="noopener noreferrer"
-          className="relative w-96 h-96 md:w-[500px] md:h-[500px] lg:w-[600px] lg:h-[600px]"
+          className="relative w-96 h-96 flex items-center justify-center md:w-[500px] md:h-[500px] lg:w-[600px] lg:h-[600px]"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
@@ -48,6 +48,21 @@ export default function Join() {
           onHoverStart={() => setIsHovered(true)}
           onHoverEnd={() => setIsHovered(false)}
         >
+          <motion.img
+            src="/panda.png"
+            alt="Join"
+            className={`absolute w-48 h-auto aspect-square object-cover transition-all duration-300`}
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: 1,
+            }}
+            transition={{
+              opacity: {
+                duration: 0.5,
+                delay: 1.6,
+              },
+            }}
+          />
           <motion.div
             className="absolute inset-0 flex items-center justify-center"
             animate={{ rotate: -360 }}
