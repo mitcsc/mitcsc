@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+:root {
+  background: #1e1e1e;
+  color: #fff;
+}
+
+@font-face {
+  font-family: "Charlottenburg";
+  src: url("/font/charlottenburg/Charlottenburg_W-Choices.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Charlottenburg";
+  src: url("/font/charlottenburg/Charlottenburg_W-Circles.woff2")
+    format("woff2");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Charlottenburg";
+  src: url("/font/charlottenburg/Charlottenburg_W-Classic.woff2")
+    format("woff2");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Charlottenburg";
+  src: url("/font/charlottenburg/Charlottenburg_W-Compressed.woff2")
+    format("woff2");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-Thin-Trial.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-ThinItalic-Trial.otf") format("opentype");
+  font-weight: 100;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-Light-Trial.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-LightItalic-Trial.otf") format("opentype");
+  font-weight: 300;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-Regular-Trial.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-RegularItalic-Trial.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-Medium-Trial.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-MediumItalic-Trial.otf") format("opentype");
+  font-weight: 500;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-Bold-Trial.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-BoldItalic-Trial.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-Black-Trial.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/font/canela/Canela-BlackItalic-Trial.otf") format("opentype");
+  font-weight: 900;
+  font-style: italic;
+}
+
+@theme {
+  --font-primary: "Charlottenburg", sans-serif;
+  --font-secondary: "Canela", sans-serif;
+  --color-primary: #c5393a;
+  --color-secondary: #b4b4b4;
+}
