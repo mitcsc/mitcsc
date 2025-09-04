@@ -1,6 +1,6 @@
-import Hero from "@/components/Hero";
-import About from "@/components/About";
-import Join from "@/components/Join";
+import Hero from "@/components/home/Hero";
+import About from "@/components/home/About";
+import Join from "@/components/home/Join";
 
 export default function Home() {
   return (

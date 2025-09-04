@@ -15,7 +15,7 @@ export function getRandomImages(
   while (selected.length < maxCount) {
     const randomIndex = Math.floor(Math.random() * availableImages.length);
     const randomImage = availableImages[randomIndex];
-    
+
     if (!used.has(randomImage)) {
       selected.push(randomImage);
       used.add(randomImage);

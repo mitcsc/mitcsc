@@ -71,7 +71,7 @@ export default function Tooltip({
       <AnimatePresence>
         {isVisible && (
           <motion.span
-            className={`absolute z-50 p-2 text-sm sm:text-base text-white font-secondary font-normal text-center text-balance bg-primary rounded-lg shadow-lg pointer-events-none min-w-[200px] max-w-[320px] w-max block ${
+            className={`absolute z-50 p-2 text-sm sm:text-base text-white font-secondary font-normal text-center text-balance bg-primary rounded-lg shadow-lg pointer-events-none min-w-[100px] max-w-[250px] w-max block ${
               position === "top"
                 ? "bottom-full left-1/2 -translate-x-1/2 mb-1"
                 : position === "bottom"
