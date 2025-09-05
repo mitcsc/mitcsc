@@ -1,3 +1,5 @@
+"use client";
+
 import Header from "@/components/Header";
 import PeopleGallery from "@/components/PeopleGallery";
 import Join from "@/components/home/Join";
