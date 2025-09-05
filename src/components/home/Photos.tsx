@@ -37,7 +37,6 @@ function Photos({ images }: PhotosProps) {
     setIsClient(true);
   }, []);
 
-  // Helper function to get breakpoint from width
   const getBreakpoint = useCallback((width: number) => {
     if (width < 640) return "sm";
     if (width < 768) return "md";
@@ -46,7 +45,6 @@ function Photos({ images }: PhotosProps) {
     return "2xl";
   }, []);
 
-  // Only rerender when breakpoint changes
   useEffect(() => {
     if (!isClient) return;
 
@@ -57,69 +55,67 @@ function Photos({ images }: PhotosProps) {
       }
     };
 
-    // Set initial breakpoint
     setCurrentBreakpoint(getBreakpoint(window.innerWidth));
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [isClient, currentBreakpoint, getBreakpoint]);
 
-  // Update selected images only when we need MORE images
   useEffect(() => {
     if (!isClient) return;
 
-    const requiredPhotos =
-      currentBreakpoint === "sm"
-        ? 8
-        : currentBreakpoint === "md"
-        ? 10
-        : currentBreakpoint === "lg"
-        ? 12
-        : currentBreakpoint === "xl"
-        ? 14
-        : 15;
+    const requiredPhotos = currentBreakpoint === "sm" ? 10 : 15;
 
-    // Only fetch new images if we need more than we currently have
     if (requiredPhotos > selectedImages.length) {
       const newImages = getRandomImages(images, requiredPhotos);
       setSelectedImages(newImages);
     }
   }, [currentBreakpoint, selectedImages.length, isClient, images]);
 
-  // Generate random rotations once when selectedImages change
   useEffect(() => {
     if (isClient && selectedImages.length > 0) {
       const rotations = selectedImages.map(() => {
-        // Generate truly random rotation between -20 and +20 degrees
         return (Math.random() - 0.5) * 40;
       });
       setImageRotations(rotations);
     }
   }, [selectedImages, isClient]);
 
-  // Calculate how many images to actually display
   const imagesToDisplay = useMemo(() => {
     if (!isClient) return [];
 
-    const requiredPhotos = currentBreakpoint === "sm" ? 8 : 15;
+    if (currentBreakpoint === "sm") {
+      const evenSpreadIndices = [0, 1, 2, 3, 4, 5, 7, 8, 11, 12, 13, 14];
+      return selectedImages
+        .map((image, index) => ({ image, originalIndex: index }))
+        .filter(({ originalIndex }) =>
+          evenSpreadIndices.includes(originalIndex)
+        );
+    }
 
-    return selectedImages.slice(0, requiredPhotos);
+    return selectedImages
+      .slice(0, 15)
+      .map((image, index) => ({ image, originalIndex: index }));
   }, [selectedImages, currentBreakpoint, isClient]);
 
   return (
     <section className="relative w-full h-full flex-1 flex items-center justify-center overflow-hidden max-h-[min(65vh,800px)] sm:max-h-none">
       <div className="relative w-full h-full max-w-[1920px]">
-        {imagesToDisplay.map((image, index) => (
+        {imagesToDisplay.map(({ image, originalIndex }) => (
           <motion.div
             key={image}
             style={{
-              top: `${positions[index].y}%`,
-              left: `${positions[index].x}%`,
+              top: `${positions[originalIndex].y}%`,
+              left: `${positions[originalIndex].x}%`,
               transformOrigin: "center center",
             }}
             className="absolute bg-white p-2 pb-8 drop-shadow-lg transition-transform duration-300 hover:scale-105"
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1, rotate: imageRotations[index] }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              rotate: imageRotations[originalIndex],
+            }}
             transition={{
               duration: 0.1,
               ease: "linear",
