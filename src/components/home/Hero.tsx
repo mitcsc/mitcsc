@@ -5,7 +5,7 @@ export default async function Hero() {
   const images = await getImageFiles();
 
   return (
-    <section className="w-full flex flex-col h-screen sm:h-[130vh] items-center">
+    <section className="w-full flex flex-col h-screen sm:h-[min(130vh,1300px)] items-center">
       <div className="flex flex-col w-full xl:max-w-7xl pt-24 sm:pt-28 md:pt-40 lg:pt-44 xl:pt-48">
         <div className="flex flex-col px-8 justify-center">
           <h1 className="text-6xl md:text-8xl lg:text-8xl xl:text-[min(10vw,250px)] leading-[0.8]">
