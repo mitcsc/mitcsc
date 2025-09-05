@@ -6,7 +6,7 @@ export default function Footer() {
           href="https://stanleyzhao.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-2xl md:text-2xl lg:text-3xl hover:text-secondary transition-colors ease-out duration-300"
+          className="text-2xl md:text-3xl lg:text-4xl hover:text-secondary transition-colors ease-out duration-300"
         >
           Crafted by SZ
         </a>
@@ -14,7 +14,7 @@ export default function Footer() {
           href="https://accessibility.mit.edu/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs md:text-sm lg:text-base uppercase underline text-secondary hover:text-primary transition-colors ease-out duration-300 font-secondary"
+          className="text-xs md:text-sm lg:text-base uppercase underline text-secondary hover:text-primary transition-colors ease-out duration-300 font-extralight"
         >
           Accessibility
         </a>
