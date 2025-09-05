@@ -149,8 +149,8 @@ export default function Nav() {
             >
               <div className="flex items-center justify-center w-full gap-4">
                 <div className="w-[40px] md:w-[48px] lg:w-[56px]" />
-                <div className="group relative flex justify-center">
-                  <div className="absolute -left-16 top-1/2 -translate-y-1/2 opacity-0 group-hover:translate-x-4 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+                <div className="group relative flex items-center">
+                  <div className="absolute -left-16 opacity-0 group-hover:translate-x-4 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
                     <img
                       src="/img/logo/panda.png"
                       alt="MIT CSC"
