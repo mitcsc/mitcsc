@@ -1,4 +1,13 @@
+export const directory = "img/exec/alumni";
+
 export const alumni = [
+  {
+    name: "Katie Liu",
+    position: "President",
+    classYear: "2025",
+    hometown: "San Francisco, CA",
+    image: "katieliu.jpg",
+  },
   {
     name: "Felix Huang",
     position: "Social Chair",
@@ -7,10 +16,17 @@ export const alumni = [
     image: "felixhuang.jpg",
   },
   {
+    name: "Eric Hong",
+    position: "Cultural Chair",
+    classYear: "2025",
+    hometown: "San Francisco, CA",
+    image: "erichong.jpg",
+  },
+  {
     name: "Alex Lee",
     position: "Social Chair",
     classYear: "2025",
     hometown: "Denver, CO",
-    image: "felixhuang.jpg",
+    image: "alexlee.jpeg",
   },
 ];

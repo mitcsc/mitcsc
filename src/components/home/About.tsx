@@ -1,6 +1,7 @@
 "use client";
 
 import Tooltip from "@/components/Tooltip";
+import Header from "@/components/Header";
 
 export default function About() {
   return (
@@ -8,10 +9,8 @@ export default function About() {
       id="about"
       className="w-full relative h-screen flex flex-col justify-center items-center text-center"
     >
-      <div className="w-full xl:max-w-[85vw] px-8 flex flex-col gap-4">
-        <h2 className="text-[30vw] leading-[0.8] font-primary font-bold">
-          what is CSC
-        </h2>
+      <div className="w-full xl:max-w-7xl px-8 flex flex-col gap-4">
+        <Header title="what is CSC" />
         <p className="text-lg md:text-xl lg:text-2xl font-secondary font-normal text-secondary text-balance">
           <Tooltip content="CSC was founded in 1916 and has been serving the MIT community for over a century!">
             Chinese Students Club

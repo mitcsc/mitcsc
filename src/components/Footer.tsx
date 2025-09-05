@@ -1,7 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="w-full h-24 flex items-center justify-center gap-8 xl:max-w-[85vw] px-8 py-16">
-      
+    <footer className="w-full h-24 flex items-center justify-center gap-8 xl:max-w-7xl px-8 py-16">
       <div className="flex flex-col items-center justify-center">
         <a
           href="https://stanleyzhao.com/"

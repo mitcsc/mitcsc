@@ -1,3 +1,5 @@
+export const directory = "img/exec/current";
+
 export const current = [
   {
     name: "Thomas Wu",

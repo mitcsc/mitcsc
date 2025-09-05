@@ -99,7 +99,7 @@ export default function Nav() {
     <>
       <nav
         ref={navRef}
-        className={`fixed z-[11] top-4 w-full xl:max-w-[85vw] pl-3 pr-8 flex items-center justify-between transition-all duration-1000 ease-in-out`}
+        className={`fixed z-[11] top-4 w-full xl:max-w-7xl pl-3 pr-8 flex items-center justify-between transition-all duration-1000 ease-in-out`}
       >
         <Link
           href={"/"}

@@ -25,7 +25,7 @@ export default function Join() {
 
   return (
     <section className="w-full h-screen flex flex-col items-center justify-center overflow-hidden">
-      <div className="flex flex-col w-full xl:max-w-[85vw] items-center justify-center">
+      <div className="flex flex-col w-full xl:max-w-7xl items-center justify-center">
         <motion.a
           href={membership}
           target="_blank"
@@ -87,7 +87,7 @@ export default function Join() {
                 return (
                   <motion.span
                     key={index}
-                    className={`absolute text-[7vw] font-primary font-normal transition-colors duration-300 ${
+                    className={`absolute text-[min(7vw,120px)] font-primary font-normal transition-colors duration-300 ${
                       isHovered ? "text-primary" : "text-white"
                     }`}
                     style={{

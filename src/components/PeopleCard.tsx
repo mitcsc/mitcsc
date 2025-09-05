@@ -3,7 +3,8 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 
-interface ExecCardProps {
+export interface PeopleCardProps {
+  directory: string;
   name: string;
   position: string;
   classYear: string;
@@ -11,10 +12,10 @@ interface ExecCardProps {
   image: string;
   rotation?: number;
   className?: string;
-  variants?: any;
 }
 
-export default function ExecCard({
+export default function PeopleCard({
+  directory,
   name,
   position,
   classYear,
@@ -22,18 +23,17 @@ export default function ExecCard({
   image,
   rotation = 0,
   className = "",
-  variants,
-}: ExecCardProps) {
+}: PeopleCardProps) {
+  const isAlumni = directory.includes("alumni");
   return (
     <motion.div
       className={`relative bg-white p-3 pb-6 group drop-shadow-lg transition-transform duration-300 hover:scale-105 ${className}`}
-      variants={variants}
       style={{ rotate: rotation }}
       whileHover={{ scale: 1.01 }}
     >
       <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 overflow-hidden relative bg-black mb-3">
         <Image
-          src={`/img/exec/current/${image}`}
+          src={`/${directory}/${image}`}
           alt={`${name} - ${position}`}
           width={256}
           height={256}
@@ -43,10 +43,14 @@ export default function ExecCard({
           loading="lazy"
         />
         <img
-          src={`/img/logo/panda.png`}
+          src={`/img/logo/${isAlumni ? "alumni-" : ""}panda.png`}
           alt={`MIT CSC`}
           draggable={false}
-          className="w-20 rotate-45 h-auto group-hover:scale-110 group-hover:translate-x-1 group-hover:-translate-y-1 drop-shadow-lg aspect-square absolute -bottom-6 -left-6 ease-out duration-300 object-cover"
+          className={
+            isAlumni
+              ? "w-20 -rotate-30 -bottom-6 -right-5.5 group-hover:-translate-x-1 group-hover:-translate-y-1 h-auto group-hover:scale-110 drop-shadow-lg aspect-square absolute ease-out duration-300 object-cover"
+              : "w-20 rotate-45 group-hover:translate-x-1 group-hover:-translate-y-1 -bottom-6 -left-6 h-auto group-hover:scale-110 drop-shadow-lg aspect-square absolute ease-out duration-300 object-cover"
+          }
         />
       </div>
       <div className="flex flex-col gap-8 w-full">
