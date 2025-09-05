@@ -4,7 +4,7 @@ import { Link } from "@/components/home/Link";
 import { motion, Variants } from "framer-motion";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { nav } from "@/config/links";
+import { nav, email } from "@/config/links";
 
 const springTransition = {
   type: "spring" as const,
@@ -164,9 +164,16 @@ export default function Nav() {
                     />
                   </div>
                   <motion.div
-                    className="cursor-pointer text-white text-5xl md:text-7xl lg:text-8xl duration-300 transition-colors"
+                    className="cursor-pointer text-white text-5xl md:text-7xl lg:text-8xl duration-300 transition-colors group"
                     onClick={() => {
-                      router.push(`/${item.href}`);
+                      if (
+                        item.href.startsWith("http") ||
+                        item.href.startsWith("mailto:")
+                      ) {
+                        window.open(item.href, "_blank");
+                      } else {
+                        router.push(`/${item.href}`);
+                      }
                       toggleMenu();
                     }}
                     whileHover={{ x: 10 }}
@@ -174,7 +181,16 @@ export default function Nav() {
                     transition={springTransition}
                     onMouseEnter={() => generateNewRotation(item.name)}
                   >
-                    {item.name}
+                    {item.name === "Contact" ? (
+                      <>
+                        <span className="group-hover:hidden">{item.name}</span>
+                        <span className="hidden group-hover:inline">
+                          {email}
+                        </span>
+                      </>
+                    ) : (
+                      item.name
+                    )}
                   </motion.div>
                 </div>
                 <div className="w-[40px] md:w-[48px] lg:w-[56px]" />

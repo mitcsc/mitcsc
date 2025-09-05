@@ -4,7 +4,7 @@ import Join from "@/components/home/Join";
 
 export default function Home() {
   return (
-    <section className="w-full min-h-screen flex flex-col h-auto">
+    <section className="w-full min-h-screen flex flex-col items-center h-auto">
       <Hero />
       <About />
       <Join />
