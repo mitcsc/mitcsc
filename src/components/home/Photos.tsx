@@ -107,7 +107,7 @@ function Photos({ images }: PhotosProps) {
   }, [selectedImages, currentBreakpoint, isClient]);
 
   return (
-    <section className="relative w-full h-full flex-1 flex items-center justify-center overflow-hidden max-h-[65vh] sm:max-h-none">
+    <section className="relative w-full h-full flex-1 flex items-center justify-center overflow-hidden max-h-[min(65vh,800px)] sm:max-h-none">
       <div className="relative w-full h-full max-w-[1920px]">
         {imagesToDisplay.map((image, index) => (
           <motion.div
