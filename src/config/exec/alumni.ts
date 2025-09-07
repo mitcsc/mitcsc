@@ -47,7 +47,7 @@ export const alumni = [
     name: "Brianna Yao",
     position: "Publicity Designer",
     classYear: "2024",
-    hometown: "",
+    hometown: "Marlboro, NJ",
     image: "briannayao.jpg",
   },
   {
