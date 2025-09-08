@@ -6,7 +6,7 @@ export const metadata = {
   title: "Chinese Students Club",
   description:
     "Chinese Students Club is the oldest cultural club at MIT. Throughout the years we've continued to be a hub for people who like Chinese-American culture, good food, and good company. We're here to help the people of MIT and Boston create memories and friends at our events (inspired by Chinese-American culture). Whether you need a study break, free boba, or a boat to party on, CSC is here for you!",
-  metadataBase: new URL("https://mitcsc.mit.edu"),
+  metadataBase: new URL("https://csc.mit.edu"),
   twitter: {
     card: "summary_large_image",
     title: "Chinese Students Club",
@@ -18,7 +18,7 @@ export const metadata = {
     title: "Chinese Students Club",
     description:
       "Chinese Students Club is the oldest cultural club at MIT. Throughout the years we've continued to be a hub for people who like Chinese-American culture, good food, and good company. We're here to help the people of MIT and Boston create memories and friends at our events (inspired by Chinese-American culture). Whether you need a study break, free boba, or a boat to party on, CSC is here for you!",
-    url: "https://mitcsc.mit.edu",
+    url: "https://csc.mit.edu",
     images: [
       {
         url: "/img/preview.png",
