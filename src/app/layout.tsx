@@ -12,7 +12,7 @@ export const metadata = {
     title: "Chinese Students Club",
     description:
       "Chinese Students Club is the oldest cultural club at MIT. Throughout the years we've continued to be a hub for people who like Chinese-American culture, good food, and good company. We're here to help the people of MIT and Boston create memories and friends at our events (inspired by Chinese-American culture). Whether you need a study break, free boba, or a boat to party on, CSC is here for you!",
-    images: ["/img/logo/logo.png"],
+    images: ["/img/preview.png"],
   },
   openGraph: {
     title: "Chinese Students Club",
@@ -21,7 +21,7 @@ export const metadata = {
     url: "https://mitcsc.mit.edu",
     images: [
       {
-        url: "/img/logo/logo.png",
+        url: "/img/preview.png",
       },
     ],
     locale: "en_US",
