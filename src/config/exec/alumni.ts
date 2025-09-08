@@ -44,13 +44,6 @@ export const alumni = [
     image: "felixhuang.jpg",
   },
   {
-    name: "Brianna Yao",
-    position: "Publicity Designer",
-    classYear: "2024",
-    hometown: "Marlboro, NJ",
-    image: "briannayao.jpg",
-  },
-  {
     name: "Celina Zhao",
     position: "President",
     classYear: "2024",
@@ -77,6 +70,13 @@ export const alumni = [
     classYear: "2024",
     hometown: "Cupertino, CA",
     image: "eileenli.jpg",
+  },
+  {
+    name: "Brianna Yao",
+    position: "Publicity Designer",
+    classYear: "2024",
+    hometown: "Marlboro, NJ",
+    image: "briannayao.jpg",
   },
   {
     name: "Haoran Wen",
