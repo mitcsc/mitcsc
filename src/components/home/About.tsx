@@ -15,9 +15,9 @@ export default function About() {
           <Tooltip content="CSC was founded in 1916 and has been serving the MIT community for over a century!">
             Chinese Students Club
           </Tooltip>{" "}
-          is the oldest cultural club at MIT. Throughout the years we've
+          is the oldest cultural club at MIT. Throughout the years we&apos;ve
           continued to be a hub for people who like Chinese-American culture,
-          good food, and good company. We're here to help the people of MIT and
+          good food, and good company. We&apos;re here to help the people of MIT and
           Boston create memories and friends at our{" "}
           <Tooltip content="Study breaks, formals, Chinatown food runs, and so much more">
             events
