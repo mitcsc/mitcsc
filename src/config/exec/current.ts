@@ -20,7 +20,7 @@ export const current = [
     position: "Historian",
     classYear: "2027",
     hometown: "Phoenix, AZ",
-    image: "adamsun.png",
+    image: "adamsun.jpg",
   },
   {
     name: "Charis Ching",
@@ -69,7 +69,7 @@ export const current = [
     position: "Community Chair",
     classYear: "2026",
     hometown: "Cary, NC",
-    image: "jonathansong.png",
+    image: "jonathansong.jpg",
   },
   {
     name: "Rebecca Wang",
@@ -119,7 +119,7 @@ export const current = [
     position: "Outreach Chair",
     classYear: "2026",
     hometown: "Charlotte, NC",
-    image: "elaineliu.png",
+    image: "elaineliu.jpg",
   },
   {
     name: "Hilal Hussain",
@@ -147,13 +147,34 @@ export const current = [
     position: "Food Coordinator",
     classYear: "2026",
     hometown: "Plano, TX",
-    image: "theochen.jpeg",
+    image: "theochen.jpg",
   },
   {
     name: "Matthew Zhou",
     position: "Food Coordinator",
     classYear: "2028",
     hometown: "Bellevue, WA",
-    image: "matthewzhou.png",
+    image: "matthewzhou.jpg",
+  },
+  {
+    name: "Lily Zhou",
+    position: "Freshman Representative",
+    classYear: "2029",
+    hometown: "Seattle, WA",
+    image: "lilyzhou.png",
+  },
+  {
+    name: "Ashlyn Gao",
+    position: "Freshman Representative",
+    classYear: "2029",
+    hometown: "Fort Lauderdale, FL",
+    image: "ashlyngao.jpg",
+  },
+  {
+    name: "Kathy Nie",
+    position: "Freshman Representative",
+    classYear: "2029",
+    hometown: "Boise, ID",
+    image: "kathynie.jpg",
   },
 ];
