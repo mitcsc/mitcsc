@@ -177,4 +177,11 @@ export const current = [
     hometown: "Boise, ID",
     image: "kathynie.jpg",
   },
+  {
+    name: "Ian Sun",
+    position: "Freshman Representative",
+    classYear: "2029",
+    hometown: "Irvine, CA",
+    image: "iansun.jpg",
+  },
 ];
