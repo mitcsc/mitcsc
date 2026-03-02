@@ -39,7 +39,7 @@ export default function Nav() {
   }>({});
 
   useEffect(() => {
-    const randomNum = Math.floor(Math.random() * 5);
+    const randomNum = Math.floor(Math.random() * 4);
     if (randomNum === 0) setLogo("/img/logo/logo-with-panda.png");
   }, []);
 

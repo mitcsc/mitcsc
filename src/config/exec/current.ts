@@ -184,4 +184,32 @@ export const current = [
     hometown: "Irvine, CA",
     image: "iansun.jpg",
   },
+  {
+    name: "Dalton Chi",
+    position: "Freshman Representative",
+    classYear: "2029",
+    hometown: "Los Angeles, CA",
+    image: "daltonchi.jpeg",
+  },
+  {
+    name: "Ethan Fang",
+    position: "Freshman Representative",
+    classYear: "2029",
+    hometown: "Cincinnati, OH",
+    image: "ethanfang.jpg",
+  },
+  {
+    name: "Kevin Zhang",
+    position: "Sophomore Representative",
+    classYear: "2028",
+    hometown: "Los Angeles, CA",
+    image: "kevinzhang.png",
+  },
+  {
+    name: "Trish Zheng",
+    position: "Freshman Representative",
+    classYear: "2029",
+    hometown: "Sarasota, FL",
+    image: "trishzheng.jpeg",
+  },
 ];

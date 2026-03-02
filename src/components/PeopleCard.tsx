@@ -58,7 +58,7 @@ export default function PeopleCard({
           <h3 className="text-3xl text-black leading-tightest tracking-wide">
             {name}
           </h3>
-          <p className="text-xl text-primary leading-tightest tracking-wide">
+          <p className="text-xl text-primary leading-tightest tracking-wider">
             {position}
           </p>
         </div>
