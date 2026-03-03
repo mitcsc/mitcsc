@@ -116,7 +116,7 @@ export default function LinkList({
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative w-full py-4 px-6 border border-white/20 rounded-lg text-center font-secondary font-normal text-lg md:text-xl hover:bg-primary hover:border-primary active:bg-primary active:border-primary transition-all duration-300 ease-out overflow-hidden text-balance"
+            className="group relative w-full py-4 px-6 border border-white/20 rounded-lg text-center font-secondary font-normal text-lg md:text-xl hover:bg-primary hover:border-primary focus:bg-primary focus:border-primary focus:outline-none transition-all duration-300 ease-out overflow-hidden text-balance block"
             onMouseEnter={() => handleMouseEnter(link.url)}
             onMouseLeave={() => setHovered(null)}
           >
