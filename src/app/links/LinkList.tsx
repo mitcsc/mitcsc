@@ -46,8 +46,9 @@ function useIsMobile() {
   return isMobile;
 }
 
-function getRandomCorner() {
-  return Math.floor(Math.random() * corners.length);
+function getRandomCorner(exclude?: number) {
+  const options = [0, 1, 2, 3].filter((c) => c !== exclude);
+  return options[Math.floor(Math.random() * options.length)];
 }
 
 export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] }) {
@@ -61,7 +62,12 @@ export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] })
   useEffect(() => {
     if (isMobile && links.length > 0) {
       const initial: Record<string, number> = {};
-      links.forEach((link) => { initial[link.url] = getRandomCorner(); });
+      let prev: number | undefined;
+      links.forEach((link) => {
+        const c = getRandomCorner(prev);
+        initial[link.url] = c;
+        prev = c;
+      });
       setPandaCorners(initial);
     }
   }, [isMobile, links]);
@@ -83,7 +89,7 @@ export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] })
   }, []);
 
   const show = useCallback((url: string) => {
-    const newCorner = getRandomCorner();
+    const newCorner = getRandomCorner(pandaCorners[url]);
     setTransitioning((prev) => ({ ...prev, [url]: true }));
     setPandaCorners((prev) => ({ ...prev, [url]: newCorner }));
 
