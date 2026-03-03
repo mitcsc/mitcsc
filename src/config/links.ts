@@ -10,9 +10,6 @@ export const nav = [
   { name: "About", href: "#about" },
   { name: "Exec", href: "exec" },
   { name: "Alumni", href: "alumni" },
-  {
-    name: "Calendar",
-    href: calendarLink,
-  },
+  { name: "Links", href: "links" },
   { name: "Contact", href: emailLink },
 ];
