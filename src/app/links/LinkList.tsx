@@ -34,12 +34,37 @@ const corners = [
   },
 ];
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
+function getRandomCorner() {
+  return Math.floor(Math.random() * corners.length);
+}
+
 export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] }) {
   const [links, setLinks] = useState(initialLinks);
   const [pandaCorners, setPandaCorners] = useState<Record<string, number>>({});
   const [hovered, setHovered] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState<Record<string, boolean>>({});
   const rafRef = useRef<Record<string, number>>({});
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (isMobile && links.length > 0) {
+      const initial: Record<string, number> = {};
+      links.forEach((link) => { initial[link.url] = getRandomCorner(); });
+      setPandaCorners(initial);
+    }
+  }, [isMobile, links]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -58,7 +83,7 @@ export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] })
   }, []);
 
   const show = useCallback((url: string) => {
-    const newCorner = Math.floor(Math.random() * corners.length);
+    const newCorner = getRandomCorner();
     setTransitioning((prev) => ({ ...prev, [url]: true }));
     setPandaCorners((prev) => ({ ...prev, [url]: newCorner }));
 
@@ -84,17 +109,21 @@ export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] })
       )}
       {links.map((link) => {
         const corner = corners[pandaCorners[link.url] ?? 0];
-        const isHovered = hovered === link.url;
-        const isSnapping = transitioning[link.url];
+        const isHovered = isMobile || hovered === link.url;
+        const isSnapping = !isMobile && transitioning[link.url];
         return (
           <a
             key={link.url}
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative w-full py-4 px-6 border border-white/20 rounded-lg text-center font-secondary font-normal text-lg md:text-xl hover:bg-primary hover:border-primary active:bg-primary active:border-primary transition-all duration-300 ease-out overflow-hidden text-balance block select-none"
-            onPointerEnter={() => show(link.url)}
-            onPointerLeave={() => hide(link.url)}
+            className={`group relative w-full py-4 px-6 border rounded-lg text-center font-secondary font-normal text-lg md:text-xl transition-all duration-300 ease-out overflow-hidden text-balance block select-none ${
+              isMobile
+                ? "bg-primary border-primary"
+                : "border-white/20 hover:bg-primary hover:border-primary"
+            }`}
+            onPointerEnter={isMobile ? undefined : () => show(link.url)}
+            onPointerLeave={isMobile ? undefined : () => hide(link.url)}
           >
             <img
               src="/img/logo/panda.png"
@@ -108,11 +137,13 @@ export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] })
                 pointerEvents: "none",
                 ...corner.style,
                 transform: isHovered && !isSnapping ? corner.visible : corner.hidden,
-                transition: isSnapping
+                transition: isMobile
                   ? "none"
-                  : isHovered
-                    ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
-                    : "transform 0.25s cubic-bezier(0.55, 0, 1, 0.45)",
+                  : isSnapping
+                    ? "none"
+                    : isHovered
+                      ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
+                      : "transform 0.25s cubic-bezier(0.55, 0, 1, 0.45)",
               }}
             />
             {link.title}
