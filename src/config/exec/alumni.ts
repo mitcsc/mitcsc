@@ -94,3 +94,175 @@ export const alumni = [
     image: "juliaxia.jpg",
   },
 ];
+
+export const pastAlumni = [
+  {
+    year: "2023",
+    names: [
+      "Albert Luo",
+      "Brigette Wang",
+      "Helen Liu",
+      "Jianna Liu",
+      "Nina Wang",
+      "Raina Thomas",
+      "Sarah Chieng",
+      "Vincent Wang",
+    ],
+  },
+  {
+    year: "2022",
+    names: [
+      "Andrew Shao",
+      "Helen Lu",
+      "Jenny Zhu",
+      "Rachel Cheng",
+      "Yujing Chen",
+    ],
+  },
+  {
+    year: "2021",
+    names: [
+      "Alex Guo",
+      "Branden Morioka",
+      "Kevin Fang",
+      "Lillian Bu",
+      "Xiqing Wang",
+    ],
+  },
+  {
+    year: "2020",
+    names: ["Albert Go", "Hannah Chen", "Allen Lee"],
+  },
+  {
+    year: "2019",
+    names: ["Christie Hong", "Sarah Wu", "Alexandr Wang"],
+  },
+  {
+    year: "2018",
+    names: ["Dora Tzeng", "Selam Gano", "Sabrina", "Timothy Lu", "Amber Guo"],
+  },
+  {
+    year: "2017",
+    names: [
+      "Katie Ho",
+      "Tara Lee",
+      "Jennifer Yu",
+      "Karl Baranov",
+      "Stephen Guo",
+      "Tyson Chen",
+      "Victor Zhang",
+      "Mario Ho",
+    ],
+  },
+  {
+    year: "2016",
+    names: [
+      "Annie Kuan",
+      "Brendan Chang",
+      "Jessica Wang",
+      "Kevin Tu",
+      "Vicky Gong",
+      "Kelly Liu",
+    ],
+  },
+  {
+    year: "2015",
+    names: [
+      "Anji Ren",
+      "Brandon Le",
+      "Nathalie Huynh",
+      "Pat Capulong",
+      "Sam Darryanto",
+      "Frank (Xiao) Zhu",
+      "Samantha Darryanto",
+      "Thuan Doan",
+    ],
+  },
+  {
+    year: "2014",
+    names: [
+      "Angela Zhu",
+      "Evan Wang",
+      "Jennifer Kao",
+      "Kristin Au",
+      "Ruisi Shang",
+      "Sherwin Wu",
+      "Yi Wu",
+      "Joseph Kim",
+      "JJ Zhao / Jie Zhao",
+    ],
+  },
+  {
+    year: "2013",
+    names: [
+      "Liza Xu",
+      "Thomas Schultz",
+      "Christina Qi",
+      "Terence Hsu",
+      "David Tse",
+    ],
+  },
+  {
+    year: "2012",
+    names: [
+      "Rena Kuai",
+      "Carter Chang",
+      "Albert Kao",
+      "Celena Chan",
+      "Lisa Foo",
+      "Michelle Lu",
+      "Maggie Liu",
+      "Eric Lau",
+    ],
+  },
+  {
+    year: "2011",
+    names: [
+      "Jacky Lau",
+      "Nathan Li",
+      "Charlie Huang",
+      "Danielle Wang",
+      "Danyi Wu",
+      "Jeffrey Mo",
+      "Kevin Pang",
+    ],
+  },
+  {
+    year: "2010",
+    names: [
+      "Stephanie Au",
+      "Austin Tzou",
+      "Qian Qian Tang",
+      "Brandon Pung",
+      "Glara Ahn",
+      "Matt Huang",
+    ],
+  },
+  {
+    year: "2009",
+    names: [
+      "Gabe Chan",
+      "Christine Yen",
+      "Arjun Naskar",
+      "Dan Hung",
+      "Ting Ting Luo",
+      "Albert Ni",
+    ],
+  },
+  {
+    year: "2008",
+    names: [
+      "Spencer Sugimoto",
+      "Nick Nguyen",
+      "Tara Chang Pettus",
+      "Chris Wong",
+      "Qin Liu",
+      "Serena Lin",
+      "Chen Liu",
+    ],
+  },
+  {
+    year: "2007",
+    names: ["Weiyang Sun", "Michelle Law", "Grace Lo"],
+  },
+];
