@@ -8,63 +8,37 @@ interface LinkItem {
 }
 
 const PANDA_SIZE = 48;
-const PEEK = 14;
+const PEEK = 16;
 const POLL_INTERVAL = 60_000;
 
 const corners = [
   {
-    style: {
-      top: -PEEK,
-      left: -PEEK,
-      bottom: "auto" as const,
-      right: "auto" as const,
-    },
+    style: { top: -PEEK, left: -PEEK, bottom: "auto" as const, right: "auto" as const },
     hidden: `translate(-${PANDA_SIZE}px, -${PANDA_SIZE}px) rotate(135deg)`,
     visible: `translate(0, 0) rotate(135deg)`,
   },
   {
-    style: {
-      top: -PEEK,
-      right: -PEEK,
-      bottom: "auto" as const,
-      left: "auto" as const,
-    },
+    style: { top: -PEEK, right: -PEEK, bottom: "auto" as const, left: "auto" as const },
     hidden: `translate(${PANDA_SIZE}px, -${PANDA_SIZE}px) rotate(-135deg)`,
     visible: `translate(0, 0) rotate(-135deg)`,
   },
   {
-    style: {
-      bottom: -PEEK,
-      left: -PEEK,
-      top: "auto" as const,
-      right: "auto" as const,
-    },
+    style: { bottom: -PEEK, left: -PEEK, top: "auto" as const, right: "auto" as const },
     hidden: `translate(-${PANDA_SIZE}px, ${PANDA_SIZE}px) rotate(45deg)`,
     visible: `translate(0, 0) rotate(45deg)`,
   },
   {
-    style: {
-      bottom: -PEEK,
-      right: -PEEK,
-      top: "auto" as const,
-      left: "auto" as const,
-    },
+    style: { bottom: -PEEK, right: -PEEK, top: "auto" as const, left: "auto" as const },
     hidden: `translate(${PANDA_SIZE}px, ${PANDA_SIZE}px) rotate(-45deg)`,
     visible: `translate(0, 0) rotate(-45deg)`,
   },
 ];
 
-export default function LinkList({
-  initialLinks,
-}: {
-  initialLinks: LinkItem[];
-}) {
+export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] }) {
   const [links, setLinks] = useState(initialLinks);
   const [pandaCorners, setPandaCorners] = useState<Record<string, number>>({});
   const [hovered, setHovered] = useState<string | null>(null);
-  const [transitioning, setTransitioning] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [transitioning, setTransitioning] = useState<Record<string, boolean>>({});
   const rafRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
@@ -83,20 +57,22 @@ export default function LinkList({
     return () => clearInterval(interval);
   }, []);
 
-  const handleMouseEnter = useCallback((url: string) => {
+  const show = useCallback((url: string) => {
     const newCorner = Math.floor(Math.random() * corners.length);
-
     setTransitioning((prev) => ({ ...prev, [url]: true }));
     setPandaCorners((prev) => ({ ...prev, [url]: newCorner }));
 
     if (rafRef.current[url]) cancelAnimationFrame(rafRef.current[url]);
-
     rafRef.current[url] = requestAnimationFrame(() => {
       rafRef.current[url] = requestAnimationFrame(() => {
         setTransitioning((prev) => ({ ...prev, [url]: false }));
         setHovered(url);
       });
     });
+  }, []);
+
+  const hide = useCallback((url: string) => {
+    setHovered((prev) => (prev === url ? null : prev));
   }, []);
 
   return (
@@ -116,13 +92,14 @@ export default function LinkList({
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative w-full py-4 px-6 border border-white/20 rounded-lg text-center font-secondary font-normal text-lg md:text-xl hover:bg-primary hover:border-primary focus:bg-primary focus:border-primary focus:outline-none transition-all duration-300 ease-out overflow-hidden text-balance block"
-            onMouseEnter={() => handleMouseEnter(link.url)}
-            onMouseLeave={() => setHovered(null)}
+            className="group relative w-full py-4 px-6 border border-white/20 rounded-lg text-center font-secondary font-normal text-lg md:text-xl hover:bg-primary hover:border-primary active:bg-primary active:border-primary transition-all duration-300 ease-out overflow-hidden text-balance block select-none"
+            onPointerEnter={() => show(link.url)}
+            onPointerLeave={() => hide(link.url)}
           >
             <img
               src="/img/logo/panda.png"
               alt=""
+              draggable={false}
               style={{
                 position: "absolute",
                 width: PANDA_SIZE,
@@ -130,8 +107,7 @@ export default function LinkList({
                 objectFit: "contain",
                 pointerEvents: "none",
                 ...corner.style,
-                transform:
-                  isHovered && !isSnapping ? corner.visible : corner.hidden,
+                transform: isHovered && !isSnapping ? corner.visible : corner.hidden,
                 transition: isSnapping
                   ? "none"
                   : isHovered
