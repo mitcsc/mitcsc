@@ -44,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`antialiased font-primary font-bold flex flex-col items-center w-full min-h-screen`}
+        className={`antialiased font-primary font-bold flex flex-col items-center w-full min-h-screen bg-[#0c0c0c]`}
       >
         <Nav />
         {children}
