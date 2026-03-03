@@ -13,22 +13,42 @@ const POLL_INTERVAL = 60_000;
 
 const corners = [
   {
-    style: { top: -PEEK, left: -PEEK, bottom: "auto" as const, right: "auto" as const },
+    style: {
+      top: -PEEK,
+      left: -PEEK,
+      bottom: "auto" as const,
+      right: "auto" as const,
+    },
     hidden: `translate(-${PANDA_SIZE}px, -${PANDA_SIZE}px) rotate(135deg)`,
     visible: `translate(0, 0) rotate(135deg)`,
   },
   {
-    style: { top: -PEEK, right: -PEEK, bottom: "auto" as const, left: "auto" as const },
+    style: {
+      top: -PEEK,
+      right: -PEEK,
+      bottom: "auto" as const,
+      left: "auto" as const,
+    },
     hidden: `translate(${PANDA_SIZE}px, -${PANDA_SIZE}px) rotate(-135deg)`,
     visible: `translate(0, 0) rotate(-135deg)`,
   },
   {
-    style: { bottom: -PEEK, left: -PEEK, top: "auto" as const, right: "auto" as const },
+    style: {
+      bottom: -PEEK,
+      left: -PEEK,
+      top: "auto" as const,
+      right: "auto" as const,
+    },
     hidden: `translate(-${PANDA_SIZE}px, ${PANDA_SIZE}px) rotate(45deg)`,
     visible: `translate(0, 0) rotate(45deg)`,
   },
   {
-    style: { bottom: -PEEK, right: -PEEK, top: "auto" as const, left: "auto" as const },
+    style: {
+      bottom: -PEEK,
+      right: -PEEK,
+      top: "auto" as const,
+      left: "auto" as const,
+    },
     hidden: `translate(${PANDA_SIZE}px, ${PANDA_SIZE}px) rotate(-45deg)`,
     visible: `translate(0, 0) rotate(-45deg)`,
   },
@@ -51,11 +71,17 @@ function getRandomCorner(exclude?: number) {
   return options[Math.floor(Math.random() * options.length)];
 }
 
-export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] }) {
+export default function LinkList({
+  initialLinks,
+}: {
+  initialLinks: LinkItem[];
+}) {
   const [links, setLinks] = useState(initialLinks);
   const [pandaCorners, setPandaCorners] = useState<Record<string, number>>({});
   const [hovered, setHovered] = useState<string | null>(null);
-  const [transitioning, setTransitioning] = useState<Record<string, boolean>>({});
+  const [transitioning, setTransitioning] = useState<Record<string, boolean>>(
+    {},
+  );
   const rafRef = useRef<Record<string, number>>({});
   const isMobile = useIsMobile();
 
@@ -142,7 +168,8 @@ export default function LinkList({ initialLinks }: { initialLinks: LinkItem[] })
                 objectFit: "contain",
                 pointerEvents: "none",
                 ...corner.style,
-                transform: isHovered && !isSnapping ? corner.visible : corner.hidden,
+                transform:
+                  isHovered && !isSnapping ? corner.visible : corner.hidden,
                 transition: isMobile
                   ? "none"
                   : isSnapping
