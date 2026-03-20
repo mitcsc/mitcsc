@@ -1,6 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import { resolveShortlink } from "@/lib/links";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export default async function ShortlinkPage({
   params,
 }: {
