@@ -356,3 +356,6 @@
 .voting-root .voting-admin .voting-pane-heading .voting-paste-panel{margin-top:12px}
 .voting-root .voting-admin .voting-criteria-heading{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:14px}
 .voting-root .voting-admin .voting-admin-scale .voting-admin-check{justify-self:start;margin-left:8px}
+
+.voting-root .voting-setup-toolbar .voting-joined-count{margin-right:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:#a2a2a6;font-weight:400}
+.voting-joined-count>span{width:6px;height:6px;border-radius:50%;background:#77777c}

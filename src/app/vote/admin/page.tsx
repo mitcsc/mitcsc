@@ -152,7 +152,7 @@ export default function DeliberationsAdminPage() {
             </>}
           </section>
         </div>
-        <div hidden={showPreview} className="voting-setup-tab">{editable ? <AdminSetup key={`${state.sessionId}-${setupRevision}`} candidates={candidates} criteria={state.criteria} busy={busy} onContinue={() => setTab("live")} onSave={async (nextCandidates, criteria) => {
+        <div hidden={showPreview} className="voting-setup-tab">{editable ? <AdminSetup key={`${state.sessionId}-${setupRevision}`} candidates={candidates} criteria={state.criteria} busy={busy} joinedCount={state.participants?.length || 0} onContinue={() => setTab("live")} onSave={async (nextCandidates, criteria) => {
           const originalOrder = new Map((serverState?.candidates || []).map(c => [c.id, c.order]));
           const canonical = [...nextCandidates].sort((a, b) => (originalOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (originalOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER)).map((c, order) => ({...c, order}));
           if (!await act({action: "saveSetup", candidates: canonical, criteria})) return false;

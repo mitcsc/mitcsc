@@ -7,11 +7,12 @@ interface Props {
   candidates: Candidate[];
   criteria: Criterion[];
   busy: boolean;
+  joinedCount: number;
   onContinue: () => void;
   onSave: (candidates: Candidate[], criteria: Criterion[]) => Promise<boolean>;
 }
 
-export default function AdminSetup({ candidates: initialCandidates, criteria: initialCriteria, busy, onSave, onContinue }: Props) {
+export default function AdminSetup({ candidates: initialCandidates, criteria: initialCriteria, busy, joinedCount, onSave, onContinue }: Props) {
   const listRef = useRef<HTMLUListElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const [split, setSplit] = useState(38);
@@ -46,7 +47,7 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
     if (await onSave(candidates, criteria)) { setMessage(""); onContinue(); }
   };
   return <section ref={panelRef} style={{"--candidate-width": `${split}%`} as CSSProperties} aria-label="Ballot setup" className="voting-admin-card voting-setup-editor">
-    <div className="voting-setup-toolbar"><button className="voting-admin-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Start"}</button></div>
+    <div className="voting-setup-toolbar"><span className="voting-joined-count" role="status"><span aria-hidden="true"/>{joinedCount} {joinedCount === 1 ? "voter" : "voters"} joined</span><button className="voting-admin-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Start"}</button></div>
 
 
       <fieldset disabled={busy} className="voting-admin-editor"><legend className="voting-sr-only">Candidates</legend><div className="voting-pane-heading"><h3>Candidates <span>{candidates.length}</span></h3>        <div className="voting-candidate-add"><button onClick={() => addNames([""])}>+ Add candidate</button><button aria-expanded={pasteOpen} aria-controls="paste-candidates" onClick={() => setPasteOpen(!pasteOpen)}>Paste names</button><button aria-label="Shuffle order" disabled={candidates.length < 2} onClick={shuffle}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg>Shuffle</button></div>

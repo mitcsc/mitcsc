@@ -66,6 +66,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await button('Join').click();
     await button('Set up election').click();
     await page.getByRole('region', { name: 'Ballot setup' }).waitFor();
+    await page.getByRole('status').filter({hasText:'2 voters joined'}).waitFor();
     await button('Paste names').click();
     await page.getByLabel('Names, one per line').fill('Alex Chen\nJordan Lee\nMorgan Wu');
     await button('Add names').click();
