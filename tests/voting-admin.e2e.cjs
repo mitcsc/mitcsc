@@ -86,40 +86,39 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.getByRole('radio', { name: '3', exact: true }).check();
     assert.equal(await page.getByRole('radio', { name: '3', exact: true }).isChecked(), true);
     await button('Edit setup').click();
-    await button('Shuffle remaining candidates').click();
+    await button('Shuffle order').click();
     await page.getByRole('status').filter({ hasText: 'Remaining candidate order shuffled' }).waitFor();
     assert.equal(state.candidates[0].name, 'Morgan Wu');
     assert.equal(await page.getByLabel('Name', { exact: true }).first().inputValue(), 'Morgan Wu');
-    await button('Select').first().click();
+    await page.getByRole('button', {name: /^Choose /}).first().click();
     await waitFor(() => state.currentCandidate?.name === 'Morgan Wu', 'Candidate selection did not persist');
-    for (const [name, phase] of [['Initial ratings', 'initial'], ['Deliberate', 'deliberation'], ['Allow revisions', 'revision'], ['Final submission', 'final']]) {
+    for (const [name, phase] of [['Start initial ratings', 'initial'], ['Start discussion', 'deliberation'], ['Open revisions', 'revision'], ['Open final submissions', 'final']]) {
       await page.getByRole('button', { name: name }).click();
       await waitFor(() => state.phase === phase, `Phase ${phase} did not persist`);
       if (phase === 'initial') {
         await page.getByRole('heading', { name: 'Build your ballot' }).waitFor({ state: 'detached' });
         assert.equal(await page.getByRole('heading', { name: 'Build your ballot' }).count(), 0, 'Setup must lock after starting');
-        assert.equal(await button('Select').first().isDisabled(), true, 'Cannot abandon an active candidate');
+        assert.equal(await page.getByRole('button', {name: /^Choose /}).first().isDisabled(), true, 'Cannot abandon an active candidate');
       }
     }
+    await page.screenshot({path: '/private/tmp/voting-controls.png'});
     const originalVersion = state.ballotVersion;
-    await page.getByRole('button', { name: 'Close candidate' }).click();
+    await page.getByRole('button', { name: 'Close voting for this candidate' }).click();
     await waitFor(() => state.phase === 'locked', 'Candidate did not lock');
-    await button('Select').first().click();
+    await page.getByRole('heading', {name: 'Voting closed', exact: true}).waitFor();
+    await page.getByRole('button', {name: /^Choose /}).first().click();
     await waitFor(() => state.phase === 'waiting' && !state.ballotVersion, 'Next candidate selection should reset active version');
     assert.equal(await page.getByRole('heading', { name: 'Build your ballot' }).count(), 0, 'Completed history must keep setup locked even in waiting');
-    await button('Reopen submissions').click();
+    await page.getByRole('button', {name: /^Reopen submissions for /}).click();
     await waitFor(() => state.phase === 'final', 'Completed candidate did not reopen');
     assert.equal(state.ballotVersion, originalVersion, 'Reopening must preserve ballot version');
     assert.equal(actions.at(-1).candidateId, state.candidates[0].id);
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'Mobile page should not horizontally overflow');
-    await button('Sign out').click();
-    await page.getByLabel('Session password').waitFor();
-    assert.equal(await page.getByLabel('Session password').inputValue(), '');
+    assert.equal(await button('Sign out').count(), 0);
+    assert.equal(await page.getByRole('link', {name: /Election sheet/}).count(), 0);
     state.isAdmin = false;
-    await page.getByLabel('Your name').fill('Test President');
-    await page.getByLabel('Session password').fill('test-admin');
-    await button('Join session').click();
+    await page.reload();
     await page.getByRole('heading', { name: 'Admin already assigned' }).waitFor();
     assert.equal(await page.getByRole('link', { name: 'Go to voting →' }).count(), 1);
     assert.equal(await button('Join session').count(), 0, 'Later voters should not get trapped in a admin login loop');

@@ -120,3 +120,31 @@
 .voting-admin-alert,.voting-admin-notice{background:#191314;color:#f2c4c4;border:1px solid #573032;border-radius:4px;font-size:13px;padding:12px 16px}
 .voting-admin input:not([type=checkbox]):not([type=radio]),.voting-admin textarea{background:#141414;border-color:#333}
 @media(max-width:760px){.voting-admin{padding:16px 0 32px}.voting-admin-header{display:flex}.voting-admin-header-links{margin:0}.voting-admin-grid{gap:0}.voting-admin-card{padding:24px 0}.voting-admin-login{margin:32px auto}.voting-admin h1{font-size:34px}}
+.voting-admin-controls{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,2fr);gap:48px;margin-bottom:48px}
+.voting-admin-candidates{min-width:0}
+.voting-admin-candidates .voting-admin-heading h2{font:18px/1.4 Arial,sans-serif;letter-spacing:0}
+.voting-admin-candidates .voting-admin-heading>button{padding:4px 0;border:0;color:#999}
+.voting-candidate-list{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:8px}
+.voting-candidate-list button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:16px;border-color:transparent;border-radius:8px;min-height:74px}
+.voting-candidate-list button:disabled{opacity:1;cursor:default}
+.voting-candidate-list button.is-selected{background:#211213;border-color:#c5393a}
+.voting-candidate-list strong{display:block;font-size:15px;font-weight:500;overflow-wrap:anywhere}
+.voting-candidate-list small{display:block;font-size:12px;color:#888;margin-top:3px}
+.voting-candidate-list .is-selected small{color:#eb9393}
+.voting-candidate-index{color:#888;font-size:13px;width:18px;flex-shrink:0}
+.voting-candidate-marker{margin-left:auto;font-size:8px;color:#ef7777}
+.voting-round-controls{padding:32px;border:1px solid #292929;border-radius:12px;min-width:0;align-self:start}
+.voting-admin h2.voting-current-name{font-size:36px;margin-bottom:28px;overflow-wrap:anywhere}
+.voting-round-steps{list-style:none;padding:0;margin:0 0 36px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.voting-round-steps li{display:flex;flex-direction:column;gap:9px;color:#777;font-size:12px;line-height:1.4;border-top:2px solid #333;padding-top:12px}
+.voting-round-steps li>span{font-size:12px;color:#777}
+.voting-round-steps .is-current{border-color:#c5393a;color:white}
+.voting-round-steps .is-current>span{color:#ef7777}
+.voting-round-steps .is-complete{border-color:#777;color:#aaa}
+.voting-admin .voting-round-status h3{font:500 21px/1.4 Arial,sans-serif;letter-spacing:0;margin:0 0 10px}
+.voting-round-status p,.voting-round-empty p{color:#999;font-size:14px;max-width:450px}
+.voting-admin button.voting-round-next{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;margin-top:28px;padding:16px 18px;font-size:14px;border-radius:7px;text-align:left}
+.voting-submission-count{color:#aaa;font-size:14px;margin-top:24px!important}
+.voting-submission-count strong{font-size:24px;color:white;margin-right:6px;font-weight:400}
+.voting-round-empty{padding:40px 0}
+@media(max-width:760px){.voting-admin-controls{grid-template-columns:1fr;gap:24px}.voting-round-controls{padding:24px 20px}.voting-round-steps{gap:8px}.voting-admin h2.voting-current-name{font-size:30px}.voting-round-empty{padding:16px 0}}
