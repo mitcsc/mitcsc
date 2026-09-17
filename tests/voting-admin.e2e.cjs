@@ -107,7 +107,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.keyboard.press('Home');
     for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight');
     assert.equal(await divider.getAttribute('aria-valuenow'), '50');
-    await button('+ Add criterion').click();
+    await button('+ Add criteria').click();
     await page.getByLabel('Criterion', { exact: true }).fill('Reliability');
     await page.getByLabel('Description', { exact: true }).fill('Follow-through and preparation');
     const pollingBefore = polls;
