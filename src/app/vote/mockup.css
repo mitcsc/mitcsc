@@ -330,7 +330,7 @@
 .voting-root .voting-admin .voting-admin-save{border:0;padding:12px 0 0;margin:0}
 /* Anchor the primary action to the setup header rather than the bottom of the page. */
 .voting-root .voting-setup-editor{grid-template-rows:auto minmax(0,1fr) auto}
-.voting-setup-toolbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0 16px;border-bottom:1px solid #ffffff14}
+.voting-setup-toolbar{grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 0 16px;border-bottom:1px solid #ffffff14}
 .voting-setup-toolbar>span{font-size:14px;color:#ffffffb3}
 .voting-root .voting-admin .voting-setup-toolbar>button{padding:9px 24px;border-radius:7px}
 @media(max-width:760px){.voting-root .voting-setup-editor{grid-template-rows:auto minmax(140px,1fr) minmax(180px,1.3fr) auto}}
