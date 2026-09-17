@@ -359,3 +359,23 @@
 
 .voting-root .voting-setup-toolbar .voting-joined-count{margin-right:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:#a2a2a6;font-weight:400}
 .voting-joined-count>span{width:6px;height:6px;border-radius:50%;background:#77777c}
+
+/* Edge-to-edge workspace chrome; padding belongs to pane content. */
+.voting-root:has(.voting-console){padding:0}
+.voting-root .voting-admin.voting-console{max-width:none;margin:0;border-radius:0}
+.voting-root .voting-setup-toolbar{padding:8px 24px;min-height:50px}
+.voting-root .voting-admin .voting-setup-toolbar>button{padding:7px 22px;min-height:34px}
+.voting-root .voting-setup-editor>.voting-admin-editor:first-of-type,
+.voting-root .voting-setup-editor>.voting-admin-editor:nth-of-type(2){padding:0;scrollbar-gutter:auto}
+.voting-root .voting-admin .voting-pane-heading{padding:12px 24px;margin:0;min-height:0}
+.voting-root .voting-admin .voting-pane-heading .voting-candidate-add{margin-top:8px}
+.voting-root .voting-admin .voting-criteria-heading{gap:8px;min-height:0}
+.voting-root .voting-candidate-editor-list{margin:8px 24px 24px}
+.voting-root .voting-admin .voting-admin-criterion{margin:0 24px 12px;padding:16px 0 20px}
+.voting-root .voting-admin .voting-setup-editor>p[role=status]{padding:12px 24px;margin:0}
+@media(max-width:760px){
+ .voting-root .voting-setup-toolbar{padding-inline:16px}
+ .voting-root .voting-admin .voting-pane-heading{padding-inline:16px}
+ .voting-root .voting-candidate-editor-list{margin-inline:16px}
+ .voting-root .voting-admin .voting-admin-criterion{margin-inline:16px}
+}
