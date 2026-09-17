@@ -117,7 +117,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await button('Start').click();
     await page.locator('.voting-current-name').filter({hasText:'Alex Chen'}).waitFor();
     assert.equal(actions.filter(a => a.action === 'setPhase').length, 0, 'Start should not write a candidate selection');
-    await button('← Edit setup').click();
+    await button('Back to setup').click();
     await page.getByRole('region', {name:'Ballot setup'}).waitFor();
     assert.equal(state.candidates.length, 3);
     assert.equal(new Set(state.candidates.map(candidate => candidate.id)).size, 3);
@@ -146,7 +146,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
         await button('Start discussion').waitFor();
         await page.getByRole('region', { name: 'Ballot setup' }).waitFor({ state: 'detached' });
         assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0, 'Setup must lock after starting');
-        assert.equal(await button('← Edit setup').count(),0,'Setup navigation must disappear during voting');
+        assert.equal(await button('Back to setup').count(),0,'Setup navigation must disappear during voting');
         assert.equal(await page.getByRole('tab').count(),0);
         assert.equal(await page.getByRole('button', {name: /^Choose /}).first().isDisabled(), true, 'Cannot abandon an active candidate');
       }

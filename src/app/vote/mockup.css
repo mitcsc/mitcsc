@@ -391,3 +391,7 @@
 .voting-root .voting-admin .voting-pane-heading button:hover:not(:disabled):not(.voting-start){background:#ffffff08;border-color:#ffffff33;color:#fff}
 .voting-root .voting-admin .voting-pane-heading button[aria-expanded=true]{background:#ffffff0d;border-color:#ffffff40}
 @media(max-width:760px){.voting-root .voting-setup-editor{grid-template-rows:minmax(140px,1fr) minmax(180px,1.3fr) auto}}
+.voting-root .voting-admin .voting-preview-back{padding:0 0 16px}
+.voting-root .voting-admin .voting-preview-back button{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid transparent;border-radius:6px;min-height:36px;color:#a2a2a6;font-size:12px;transition:background-color .15s,color .15s}
+.voting-root .voting-admin .voting-preview-back button:hover{background:#ffffff08;color:#f4f3f1}
+.voting-preview-back svg{flex:none}
