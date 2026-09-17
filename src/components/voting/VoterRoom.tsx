@@ -1,6 +1,7 @@
 "use client";
 
 import AdminRoom from "./AdminRoom";
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FinalBallot, Ratings, VotingPhase, VotingState } from "@/lib/voting/types";
 
@@ -131,6 +132,7 @@ export default function VoterRoom() {
     {checking && <div className="voter-panel voter-wait" role="status">Connecting to the voting room…</div>}
     {error && <div className="voter-alert" role="alert">{error} {!joining && !checking && <button className="voter-text-button" onClick={() => void refresh()}>Reconnect</button>}</div>}
     {!checking && needsJoin && <section className="voter-panel voter-join">
+      <Image className="voter-join-logo" src="/img/logo/logo.png" alt="MIT CSC" width={144} height={144} priority/>
 
       <form onSubmit={join}>
         <label htmlFor="voter-name"><span className="voting-sr-only">Your name</span><input placeholder="Your name" id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} /></label>

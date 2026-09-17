@@ -431,3 +431,5 @@
 
 @supports(background-clip:text){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer{color:transparent}}
 @media(prefers-reduced-motion:reduce){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer{color:#a2a2a6}}
+
+.voter-join-logo{display:block;width:144px;height:144px;object-fit:contain;margin:0 auto 16px}
