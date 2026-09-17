@@ -120,7 +120,7 @@ export default function VoterRoom() {
     finally { setJoining(false); }
   }
   return <main className="voter-room">
-    <header className="voter-masthead"><Link href="/" className="voter-wordmark">MIT Chinese Students Club</Link><Link href="/deliberations/admin" className="voter-admin-link">Facilitator ↗</Link></header>
+    <header className="voter-masthead"><Link href="/" className="voter-wordmark">MIT Chinese Students Club</Link>{state?.isAdmin && <Link href="/deliberations/admin" className="voter-admin-link">Facilitator controls ↗</Link>}</header>
     <div className="voter-intro"><p className="voter-eyebrow">A considered choice</p><h1>Deliberations</h1><p>First impressions. Open discussion. Your final say.</p></div>
     {checking && <div className="voter-panel voter-wait" role="status">Connecting to the voting room…</div>}
     {error && <div className="voter-alert" role="alert">{error} {!joining && !checking && <button className="voter-text-button" onClick={() => void refresh()}>Reconnect</button>}</div>}
@@ -134,10 +134,9 @@ export default function VoterRoom() {
     </section>}
     {!checking && state && <>
       <div className="voter-session-bar"><span className={`voter-connection ${connected ? "voter-connected" : ""}`}><i />{connected ? "Connected · updates every few seconds" : "Connection interrupted"}</span><span>{state.voter?.name || "Facilitator account"}</span></div>
-      {state.isAdmin ? <div className="voter-panel"><h2>You’re signed in as facilitator.</h2><p><Link href="/deliberations/admin">Open facilitator controls →</Link></p><p className="voter-footnote">Use a separate browser profile to join as a voter while keeping facilitator controls open.</p></div> : <>
+      {state.isAdmin && <div className="voter-context" role="status">You started this session and have facilitator controls. <Link href="/deliberations/admin">Open controls →</Link> You can also vote below.</div>}
         {pendingCount > 0 && <div className="voter-alert" role="status">{pendingCount} earlier {pendingCount === 1 ? "ballot remains" : "ballots remain"} unsubmitted on this browser. Tell your facilitator before leaving; advancing did not submit those ratings.</div>}
         {!state.active ? <div className="voter-panel voter-wait"><p className="voter-eyebrow">Session closed</p><h2>Voting is paused.</h2><p>Your saved drafts remain on this browser. This page will update when the facilitator reopens the session.</p></div> : !state.currentCandidate || state.phase === "waiting" ? <div className="voter-panel voter-wait"><div className="voter-wait-symbol" aria-hidden="true">↗</div><p className="voter-eyebrow">You’re in</p><h2>Waiting for the next candidate.</h2><p>{phases.waiting.description}</p></div> : <VoterBallot key={draftKey(state)} state={state} connected={connected} onSubmitted={() => { countPending(); void refresh(); }} />}
-      </>}
     </>}
     {!checking && !needsJoin && !state && !error && <div className="voter-panel">The voting room is not available yet.</div>}
     <footer className="voter-footer">Your ratings are private to you and the election organizers.</footer>
