@@ -212,3 +212,17 @@
 .voting-root .voting-admin-save{gap:12px;align-items:center;flex-wrap:wrap}
 .voting-root .voting-admin-save>button{border-radius:7px}
 @media(max-width:760px){.voting-root .voting-admin .voting-admin-edit-row{flex-wrap:nowrap;gap:6px;padding:10px 0}.voting-root .voting-admin .voting-admin-row-actions{margin-left:0;gap:0}.voting-root .voting-admin .voting-admin-row-actions button{width:26px}.voting-root .voting-admin-save{flex-direction:row}.voting-root .voting-admin-save>.voting-admin-muted{flex-basis:100%}}
+.voting-root .voting-console-header [role=tablist]{gap:20px}
+.voting-root .voting-console-header button[role=tab]{padding:8px 0 12px;transition:color .15s}
+.voting-root .voting-admin .voting-console-header button[role=tab]:hover{background:transparent;border-color:transparent;color:#fff}
+.voting-root .voting-console-header>span{padding:0;font-size:12px}
+.voting-root .voting-setup-editor{grid-template-columns:minmax(0,var(--candidate-width,50%)) 1px minmax(0,1fr)}
+.voting-root .voting-admin-editor:first-of-type{border-right:0;padding-right:24px}
+.voting-root .voting-admin-editor:nth-of-type(2){padding-left:24px}
+.voting-column-resizer{position:relative;align-self:stretch;background:#ffffff14;cursor:col-resize;touch-action:none;outline-offset:4px;z-index:3}
+.voting-column-resizer::before{content:"";position:absolute;inset:0 -7px}
+.voting-column-resizer::after{content:"";position:absolute;width:3px;height:28px;left:-1px;top:50%;transform:translateY(-50%);border-radius:3px;background:#ffffff33;transition:background .15s}
+.voting-column-resizer:hover,.voting-column-resizer.is-resizing{background:#ffffff40}
+.voting-column-resizer:hover::after,.voting-column-resizer.is-resizing::after{background:#ffffffb3}
+.voting-candidate-editor-list{position:relative}
+@media(max-width:760px){.voting-root .voting-setup-editor{grid-template-columns:minmax(0,1fr)}.voting-column-resizer{display:none}.voting-root .voting-admin-editor:first-of-type,.voting-root .voting-admin-editor:nth-of-type(2){padding-left:0;padding-right:0}}

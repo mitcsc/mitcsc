@@ -83,6 +83,27 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.keyboard.press('ArrowUp');
     assert.equal(await page.getByLabel('Name', {exact:true}).first().inputValue(), 'Alex Chen', 'Keyboard reorder should restore order');
 
+    const list = page.getByRole('list', {name:'Candidate order'});
+    await waitFor(async () => await firstHandle.locator('..').evaluate(el => getComputedStyle(el).transform === 'none'), 'Row reorder animation did not settle');
+    const listBox = await list.boundingBox();
+    const grip = await firstHandle.boundingBox();
+    await page.mouse.move(grip.x + 8, grip.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(grip.x + 8, listBox.y - 150, {steps:10});
+    const draggedBox = await firstHandle.locator('..').boundingBox();
+    assert.ok(draggedBox.y >= listBox.y - 2, 'Dragging must stay inside the list');
+    await page.mouse.up();
+    const divider = page.getByRole('separator', {name:'Resize candidates and criteria'});
+    const dividerBox = await divider.boundingBox();
+    await page.mouse.move(dividerBox.x, dividerBox.y + 50);
+    await page.mouse.down();
+    await page.mouse.move(dividerBox.x + 80, dividerBox.y + 50, {steps:8});
+    await page.mouse.up();
+    assert.ok(Number(await divider.getAttribute('aria-valuenow')) > 50, 'Divider drag should resize columns');
+    await divider.focus();
+    await page.keyboard.press('Home');
+    for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight');
+    assert.equal(await divider.getAttribute('aria-valuenow'), '50');
     await button('+ Add criterion').click();
     await page.getByLabel('Criterion', { exact: true }).fill('Reliability');
     await page.getByLabel('Description', { exact: true }).fill('Follow-through and preparation');
@@ -101,7 +122,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.getByRole('radio', { name: '3', exact: true }).check();
     assert.equal(await page.getByRole('radio', { name: '3', exact: true }).isChecked(), true);
     await button('Edit setup').click();
-    await page.getByRole('tab', {name:'Live', exact:true}).click();
+    await page.getByRole('tab', {name:'Preview', exact:true}).click();
     await button('Shuffle order').click();
     await page.getByRole('status').filter({ hasText: 'Remaining candidate order shuffled' }).waitFor();
     assert.equal(state.candidates[0].name, 'Morgan Wu');

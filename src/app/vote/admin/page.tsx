@@ -106,7 +106,7 @@ export default function DeliberationsAdminPage() {
   const canChoose = state?.phase === "waiting" || state?.phase === "locked";
   const nextCandidate = candidates.find(c => !c.completed && c.id !== state?.currentCandidate?.id);
   return <div className={`voting-admin ${state?.isAdmin && state.initialized ? "voting-console" : ""}`}>
-    {state?.isAdmin && state.initialized && <div className="voting-console-header"><div role="tablist" aria-label="Admin views"><button role="tab" aria-selected={tab === "setup"} onClick={() => setTab("setup")}>Setup</button><button role="tab" aria-selected={tab === "live"} onClick={() => setTab("live")}>Live</button></div><span>{state.active ? "Session open" : "Session closed"}</span></div>}
+    {state?.isAdmin && state.initialized && <div className="voting-console-header"><div role="tablist" aria-label="Admin views"><button role="tab" aria-selected={tab === "setup"} onClick={() => setTab("setup")}>Setup</button><button role="tab" aria-selected={tab === "live"} onClick={() => setTab("live")}>Preview</button></div><span>{state.active ? "Session open" : "Session closed"}</span></div>}
     {error && <div className="voting-admin-alert" role="alert">{error}</div>}
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
     {notice && <div className="voting-admin-notice" role="status">{notice}</div>}
@@ -136,7 +136,7 @@ export default function DeliberationsAdminPage() {
             </>}
           </section>
         </div>
-        <div hidden={tab !== "setup"} className="voting-setup-tab">{editable ? <AdminSetup key={`${state.sessionId}-${setupRevision}`} candidates={candidates} criteria={state.criteria} busy={busy} onSave={(nextCandidates, criteria) => act({action: "saveSetup", candidates: nextCandidates, criteria})}/> : <section className="voting-admin-card"><h2>Rating criteria</h2><p className="voting-admin-muted">Setup is locked once voting begins.</p><div className="voting-admin-read-criteria">{state.criteria.map(c => <div key={c.id}><strong>{c.label}</strong><span>{c.min}–{c.max} · {c.required ? "Required" : "Optional"}</span><p>{c.description}</p></div>)}</div></section>}</div>
+        <div hidden={tab !== "setup"} className="voting-setup-tab">{editable ? <AdminSetup key={`${state.sessionId}-${setupRevision}`} candidates={candidates} criteria={state.criteria} busy={busy} onSave={(nextCandidates, criteria) => act({action: "saveSetup", candidates: nextCandidates, criteria})}/> : <section className="voting-admin-card"><h2>Criteria</h2><p className="voting-admin-muted">Setup is locked once voting begins.</p><div className="voting-admin-read-criteria">{state.criteria.map(c => <div key={c.id}><strong>{c.label}</strong><span>{c.min}–{c.max} · {c.required ? "Required" : "Optional"}</span><p>{c.description}</p></div>)}</div></section>}</div>
       </>}
     </>}
   </div>;
