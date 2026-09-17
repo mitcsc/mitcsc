@@ -41,7 +41,8 @@ Column C can contain instructions.
 
 The session password is checked by the server and never returned in the voter state.
 There is no separate admin password.
-The first person who joins claims admin access and can also vote.
+The first person who joins claims admin access.
+Admins run the session and cannot submit ballots.
 Google Sheets appends an admin claim, and the earliest claim wins even if people join simultaneously.
 The hidden, protected `Session History` tab stores these records; do not edit it during voting.
 Unhiding it does not grant website admin access.
@@ -55,10 +56,10 @@ Copying it creates a new ID.
 
 1. Create a blank private spreadsheet and share it as Editor with the service account.
 2. Enter its URL, a new session ID, and the shared password in the permanent settings spreadsheet.
-3. Open `/deliberations/admin` and enter your name and the shared password before distributing it to exec.
+3. Open `/vote/admin` and enter your name and the shared password before distributing it to exec.
 4. Select **Set up election** to create the required tabs without deleting existing data.
 5. Add candidates and criteria, save, and choose a candidate order.
-6. Share `/deliberations` and the voter password with exec.
+6. Share `/vote` and the voter password with exec.
 7. Open initial ratings, lead deliberation, open revisions, then open final submissions.
 8. Wait for confirmed submissions, lock the candidate, and move to the next one.
 9. Clear `session_password` when voting is finished.

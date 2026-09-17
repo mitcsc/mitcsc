@@ -1,4 +1,5 @@
 import "./globals.css";
+import SiteChrome from "@/components/SiteChrome";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 
@@ -46,9 +47,9 @@ export default function RootLayout({
       <body
         className={`antialiased font-primary font-bold flex flex-col items-center w-full min-h-screen bg-[#0c0c0c]`}
       >
-        <Nav />
+        <SiteChrome><Nav /></SiteChrome>
         {children}
-        <Footer />
+        <SiteChrome><Footer /></SiteChrome>
       </body>
     </html>
   );

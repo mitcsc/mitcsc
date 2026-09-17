@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FinalBallot, Ratings, VotingPhase, VotingState } from "@/lib/voting/types";
 
@@ -14,7 +14,7 @@ type Draft = {
 const phases: Record<VotingPhase, { label: string; description: string }> = {
   waiting: { label: "Waiting to begin", description: "Your admin will open the next ballot. This page updates automatically." },
   initial: { label: "Initial ratings", description: "Record your own first impression before the discussion begins." },
-  deliberation: { label: "Discussion", description: "Listen, share context, and consider your initial ratings. Revisions will open when the admin is ready." },
+  deliberation: { label: "Discussion", description: "Discuss the candidate. Ratings are paused." },
   revision: { label: "Revisions open", description: "You may revise your ratings after the discussion, or keep your original choices." },
   final: { label: "Submit your ballot", description: "Review your ratings and send your initial and final responses together." },
   locked: { label: "Voting closed", description: "The admin has closed this ballot. Wait here for the next candidate." },
@@ -45,6 +45,7 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 }
 
 export default function VoterRoom() {
+  const router = useRouter();
   const [state, setState] = useState<VotingState | null>(null);
   const [checking, setChecking] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
@@ -60,6 +61,7 @@ export default function VoterRoom() {
     inFlight.current = true;
     try {
       const next = await api<VotingState>("state");
+      if (next.isAdmin) { router.replace("/vote/admin"); return; }
       setState(next);
       setNeedsJoin(false);
       setConnected(true);
@@ -76,7 +78,7 @@ export default function VoterRoom() {
       setChecking(false);
       inFlight.current = false;
     }
-  }, []);
+  }, [router]);
   useEffect(() => {
     void refresh();
     const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 4000);
@@ -120,16 +122,16 @@ export default function VoterRoom() {
     finally { setJoining(false); }
   }
   return <div className="voter-room">
-    <header className="voter-intro"><h1>Deliberations</h1>{state?.isAdmin && <Link href="/deliberations/admin" className="voter-admin-link">Admin ↗</Link>}</header>
+
     {checking && <div className="voter-panel voter-wait" role="status">Connecting to the voting room…</div>}
     {error && <div className="voter-alert" role="alert">{error} {!joining && !checking && <button className="voter-text-button" onClick={() => void refresh()}>Reconnect</button>}</div>}
     {!checking && needsJoin && <section className="voter-panel voter-join">
-      <h2>Join session</h2>
+
       <form onSubmit={join}>
         <label htmlFor="voter-name">Your name<input id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} /></label>
         <label htmlFor="voter-password">Session password<input id="voter-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
         <button className="voter-primary" disabled={joining || !name.trim() || !password}>{joining ? "Joining…" : "Join session →"}</button>
-      </form><p className="voter-footnote">Use the same browser until you submit your final ballot.</p>
+      </form>
     </section>}
     {!checking && state && <>
       <div className="voter-session-bar"><span>{state.voter?.name}</span>{!connected && <span>Connection interrupted</span>}</div>
@@ -205,7 +207,6 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     <h2>{state.currentCandidate!.name}</h2><p className="voter-phase-description">{phase.description}</p>
 
     {storageError && <div className="voter-alert" role="alert">Browser storage is unavailable or unreadable. Ratings currently exist only in this open page; do not refresh or close it before submitting.</div>}
-    {state.contextVisible && state.currentCandidate!.context && <aside className="voter-context"><p>{state.currentCandidate!.context}</p></aside>}
     {draft.submitted ? <div className="voter-success" role="status"><h3>Ballot received.</h3><p>Your ratings have been submitted.</p></div> : <>
       {!draft.initial && state.phase !== "initial" && <div className="voter-alert" role="status">No saved initial ratings were found for this ballot on this browser. You cannot submit a final ballot yet. Tell your admin; if you voted in another browser, return to that browser.</div>}
       {draft.submissionId && <div className="voter-alert" role="status">A final submission was attempted but has not been confirmed on this browser. These ratings are preserved for retry when final submission is open.</div>}

@@ -172,6 +172,7 @@ export async function adminAction(config: Settings, identity: Identity, input: R
   });
 }
 export async function submit(config: Settings, identity: Identity, input: Record<string, unknown>) {
+  if (identity.role === "admin") throw new VotingError("Admins do not vote.", 403);
   return serialize(async () => {
     const id = text(input.submissionId, "submission ID", 100);
     if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new VotingError("Invalid submission ID.");

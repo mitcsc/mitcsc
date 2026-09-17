@@ -105,6 +105,7 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   assert.ok(!JSON.stringify(privateState).includes('secret'));
   await assert.rejects(service.adminAction(config, admin, {action:'saveSetup',candidates,criteria}), {status:409});
   const ballot = {submissionId:'ballot-001',sessionId:config.sessionId,candidateId:'alex',ballotVersion:version,initialRatings:{reliability:2},finalRatings:{reliability:4}};
+  await assert.rejects(service.submit(config, admin, ballot), {status:403});
   await assert.rejects(service.submit(config, voter, ballot), {status:409});
   await service.adminAction(config, admin, {action:'setPhase',phase:'deliberation'});
   await service.adminAction(config, admin, {action:'setContext',visible:true});

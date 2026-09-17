@@ -8,7 +8,7 @@ import "./admin.css";
 
 const phases: { phase: VotingPhase; label: string; description: string }[] = [
   {phase: "initial", label: "Initial ratings", description: "Voters save their first impressions in their browser."},
-  {phase: "deliberation", label: "Deliberate", description: "Pause for discussion. Reveal candidate context when ready."},
+  {phase: "deliberation", label: "Deliberate", description: "Pause for discussion."},
   {phase: "revision", label: "Allow revisions", description: "Voters can revise their ratings locally before final submissions open."},
   {phase: "final", label: "Final submission", description: "Voters submit initial and final ratings together to Sheets."},
   {phase: "locked", label: "Close candidate", description: "Stop submissions and mark this candidate complete."},
@@ -117,11 +117,11 @@ export default function DeliberationsAdminPage() {
     return !state.ballotVersion || !permitted[state.phase]?.includes(phase);
   };
   return <div className="voting-admin">
-    <header className="voting-admin-header"><div><h1>Deliberations</h1></div><div className="voting-admin-header-links"><Link href="/deliberations">Vote ↗</Link>{state?.isAdmin && <button disabled={busy} onClick={logout}>Sign out</button>}</div></header>
+    {state?.isAdmin && <div className="voting-admin-header-links"><button disabled={busy} onClick={logout}>Sign out</button></div>}
     {error && <div className="voting-admin-alert" role="alert">{error}</div>}
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
     {notice && <div className="voting-admin-notice" role="status">{notice}</div>}
-    {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? <section className="voting-admin-card voting-admin-login"><h2>{state ? "Admin already assigned" : "Admin sign in"}</h2>{state ? <><p>Someone else has already joined as admin. You’re signed in and can participate on the voting page.</p><Link href="/deliberations">Go to voting →</Link><p className="voting-admin-muted">The admin should keep using the same browser for this session.</p><button disabled={busy} onClick={logout}>Sign out</button></> : <><p>The first person to join becomes admin.</p><form onSubmit={join}><label>Your name<input value={name} onChange={e => setName(e.target.value)} maxLength={100} autoComplete="name" required/></label><label>Session password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required/></label><button className="voting-admin-primary" disabled={busy || !password || !name.trim()}>{busy ? "Checking…" : "Join session"}</button></form></>}</section> : <>
+    {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? <section className="voting-admin-card voting-admin-login">{state && <h2>Admin already assigned</h2>}{state ? <><p>Someone else has already joined as admin. You’re signed in and can participate on the voting page.</p><Link href="/vote">Go to voting →</Link><p className="voting-admin-muted">The admin should keep using the same browser for this session.</p><button disabled={busy} onClick={logout}>Sign out</button></> : <><form onSubmit={join}><label>Your name<input value={name} onChange={e => setName(e.target.value)} maxLength={100} autoComplete="name" required/></label><label>Session password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required/></label><button className="voting-admin-primary" disabled={busy || !password || !name.trim()}>{busy ? "Checking…" : "Join session"}</button></form></>}</section> : <>
       {state.spreadsheetUrl && <div className="voting-admin-session"><a href={state.spreadsheetUrl} target="_blank" rel="noopener noreferrer">Election sheet ↗</a></div>}
       {!state.active && <div className="voting-admin-notice">Voting is closed. Set a password in Settings to open the session.</div>}
       {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Create the voting tabs in your election spreadsheet.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
@@ -130,8 +130,6 @@ export default function DeliberationsAdminPage() {
             <h2>{state.currentCandidate?.name || "Choose a candidate"}</h2>
             <p className="voting-admin-muted">{state.submittedCount} final ballots saved</p>
             <div className="voting-admin-phase-list">{phases.map(p => <button key={p.phase} disabled={phaseDisabled(p.phase)} className={state.phase === p.phase ? "is-current" : ""} onClick={() => changePhase(p.phase)}>{p.label}</button>)}</div>
-            <label className="voting-admin-check voting-admin-context"><input type="checkbox" checked={state.contextVisible} disabled={busy || !state.currentCandidate} onChange={e => void act({action: "setContext", visible: e.target.checked})}/> Reveal candidate context to voters</label>
-            {state.currentCandidate?.context && <blockquote>{state.currentCandidate.context}</blockquote>}
           </section>
           <section className="voting-admin-card">
             <div className="voting-admin-heading"><h2>Candidates</h2><button disabled={busy || candidates.filter(c => !c.completed && c.id !== state.currentCandidate?.id).length < 2} onClick={() => {if (window.confirm("Shuffle the remaining candidates? Save any setup edits first.")) void act({action: "shuffle"});}}>Shuffle remaining candidates</button></div>

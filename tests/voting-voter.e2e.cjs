@@ -55,7 +55,7 @@ async function main() {
     await page.locator('.voter-phase').filter({ hasText: ({ initial: 'Initial ratings', deliberation: 'Discussion', revision: 'Revisions open', final: 'Submit your ballot', locked: 'Voting closed' })[phase] }).waitFor();
   };
   try {
-    await page.goto(`${baseURL}/deliberations`);
+    await page.goto(`${baseURL}/vote`);
     await page.getByLabel('Your name').fill('Test Voter');
     await page.getByLabel('Session password').fill('private-test-password');
     await page.getByRole('button', { name: 'Join session' }).click();
@@ -77,7 +77,7 @@ async function main() {
     await refreshPhase('deliberation');
     state.contextVisible = true; state.currentCandidate.context = 'Discussion notes released by admin.';
     await refreshPhase('revision');
-    await waitText('Discussion notes released by admin.');
+    assert.equal(await page.getByText('Discussion notes released by admin.').count(), 0);
     await rate('Reliability', 5);
     await page.reload();
     await page.locator('.voter-phase').filter({ hasText: 'Revisions open' }).waitFor();
@@ -124,19 +124,14 @@ async function main() {
     await refreshPhase('final');
     await page.getByRole('status').filter({ hasText: 'No saved initial ratings were found' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Submit final ballot' }).count(), 0);
-    // A first-join admin uses the same cookie and voting flow.
-    state.isAdmin = true; state.currentCandidate = { id: 'candidate-admin', name: 'Admin Ballot', context: '', order: 3, completed: false }; state.ballotVersion = 'v4';
-    await refreshPhase('initial');
-    await page.getByRole('link', { name: 'Admin ↗' }).waitFor();
-    await rate('Reliability', 2);
-    await page.getByRole('button', { name: 'Save initial ratings' }).click();
-    await refreshPhase('final');
-    await page.getByRole('button', { name: 'Submit final ballot' }).click();
-    await page.getByRole('heading', { name: 'Ballot received.' }).waitFor();
-    assert.equal(submissions.length, 3);
-    assert.equal(submissions[2].candidateId, 'candidate-admin');
+    // Presidents are routed to controls and never receive a ballot.
+    state.isAdmin = true;
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await page.waitForURL('**/vote/admin');
+    assert.equal(await page.getByRole('button', {name: 'Submit final ballot'}).count(), 0);
+    assert.equal(submissions.length, 2);
     assert.deepEqual(errors, [], 'No uncaught browser errors');
-    console.log('PASS: join, polling, required/optional validation, local refresh persistence, original/revised separation, retry identity/payload, confirmed submission persistence, pending-ballot advance, and admin voting.');
+    console.log('PASS: join, polling, required/optional validation, local refresh persistence, original/revised separation, retry identity/payload, confirmed submission persistence, pending-ballot advance, and admin redirect.');
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

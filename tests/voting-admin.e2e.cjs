@@ -57,7 +57,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     throw new Error(message);
   };
   try {
-    await page.goto(`${process.env.VOTING_TEST_URL || 'http://127.0.0.1:3113'}/deliberations/admin`);
+    await page.goto(`${process.env.VOTING_TEST_URL || 'http://127.0.0.1:3113'}/vote/admin`);
     await page.getByLabel('Your name').fill('Test President');
     await page.getByLabel('Session password').fill('wrong');
     await button('Join session').click();
@@ -102,8 +102,6 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
       }
     }
     const originalVersion = state.ballotVersion;
-    await page.getByLabel('Reveal candidate context to voters').click();
-    await waitFor(() => state.contextVisible, 'Context toggle did not persist');
     await page.getByRole('button', { name: 'Close candidate' }).click();
     await waitFor(() => state.phase === 'locked', 'Candidate did not lock');
     await button('Select').first().click();

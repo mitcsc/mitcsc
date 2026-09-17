@@ -23,3 +23,12 @@
 .voting-root input[type="number"] { font-variant-numeric: tabular-nums; }
 @media (min-width: 768px) { .voting-root { padding-top: 10rem; padding-inline: 2rem; } }
 @media (prefers-reduced-motion: reduce) { .voting-root *, .voting-root *::before, .voting-root *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+.voting-root { padding: 3rem 1.25rem; min-height: 100svh; }
+.voting-root:has(.voting-admin-login), .voting-root:has(.voter-join) { display: grid; place-items: center; }
+.voting-root .voting-admin-login, .voting-root .voter-join { width: 100%; max-width: 340px; margin: 0 auto; padding: 0; border: 0; }
+.voting-root:has(.voting-admin-login) .voting-admin, .voting-root:has(.voter-join) .voter-room { width: 100%; padding: 0; }
+.voting-root .voting-admin-login form, .voting-root .voter-join form { margin: 0; gap: 24px; }
+.voting-root .voting-admin-login input, .voting-root .voter-join input { min-height: 52px; border-radius: 8px; padding: 14px 16px; font-size: 16px; transition: border-color .15s; }
+.voting-root .voting-admin-login label, .voting-root .voter-join label { font-size: 13px; color: #aaa; font-weight: 400; gap: 8px; }
+.voting-root .voting-admin-login button, .voting-root .voter-join button { min-height: 50px; border-radius: 8px; margin-top: 8px; }
+.voting-admin > .voting-admin-header-links { justify-content: flex-end; margin-bottom: 24px; }
