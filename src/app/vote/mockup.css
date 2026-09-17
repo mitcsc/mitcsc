@@ -379,3 +379,15 @@
  .voting-root .voting-candidate-editor-list{margin-inline:16px}
  .voting-root .voting-admin .voting-admin-criterion{margin-inline:16px}
 }
+
+/* Integrate session controls into the pane headers, without a separate top bar. */
+.voting-root .voting-setup-editor{grid-template-rows:minmax(0,1fr) auto}
+.voting-root .voting-admin .voting-pane-heading{padding-top:16px;padding-bottom:14px}
+.voting-pane-title{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px;width:100%}
+.voting-root .voting-pane-title .voting-joined-count{font-size:12px;color:#8d8d92;white-space:nowrap}
+.voting-root .voting-admin .voting-pane-title .voting-start{display:inline-flex;align-items:center;gap:18px;padding:7px 16px;min-height:34px;border-radius:6px}
+.voting-root .voting-admin .voting-pane-heading .voting-candidate-add{gap:8px}
+.voting-root .voting-admin .voting-pane-heading button:not(.voting-start){background:transparent;border-color:#ffffff1a}
+.voting-root .voting-admin .voting-pane-heading button:hover:not(:disabled):not(.voting-start){background:#ffffff08;border-color:#ffffff33;color:#fff}
+.voting-root .voting-admin .voting-pane-heading button[aria-expanded=true]{background:#ffffff0d;border-color:#ffffff40}
+@media(max-width:760px){.voting-root .voting-setup-editor{grid-template-rows:minmax(140px,1fr) minmax(180px,1.3fr) auto}}
