@@ -82,6 +82,18 @@ test('first concurrent join is sole admin; later joins vote and refresh preserve
     const before = rows.length;
     assert.equal((await claimIdentity(config, 'First', owner)).id, owner.id);
     assert.equal(rows.length, before, 'same browser rejoin does not append');
+    const device = signIdentity(owner, { purpose: 'device', ttlMs: 365 * 24 * 3600_000 });
+    assert.equal(readIdentity(device), null, 'device token cannot authorize a session route');
+    assert.equal(readIdentity(signIdentity(owner), 'device'), null, 'cookie purposes are not interchangeable');
+    const restoredDevice = readIdentity(device, 'device');
+    const afterLogout = await claimIdentity(config, owner.name, restoredDevice);
+    assert.equal(afterLogout.id, owner.id);
+    assert.equal(afterLogout.role, 'admin');
+    assert.equal(rows.length, before, 'signing back in after logout does not orphan the original admin claim');
+    const voterDevice = readIdentity(signIdentity(voter, { purpose: 'device' }), 'device');
+    assert.equal((await claimIdentity(config, voter.name, voterDevice)).role, 'voter');
+    const nextSession = await claimIdentity({ ...config, sessionId: 'next-election' }, owner.name, restoredDevice);
+    assert.notEqual(nextSession.id, owner.id, 'new session gets its own voter identity');
   } finally {
     GoogleAuth.prototype.getClient = originalClient;
     global.fetch = originalFetch;

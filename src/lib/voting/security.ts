@@ -4,6 +4,7 @@ export class VotingError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 export const COOKIE = "csc_voting";
+export const DEVICE_COOKIE = "csc_voting_device";
 export interface Identity { id: string; name: string; role: "admin" | "voter"; sessionId: string; sheetId: string; exp: number; claimId?: string }
 function secret() {
   const value = process.env.VOTING_COOKIE_SECRET;
@@ -19,19 +20,20 @@ export function equal(a: string, b: string) {
   const key = secret();
   return timingSafeEqual(createHmac("sha256", key).update(a).digest(), createHmac("sha256", key).update(b).digest());
 }
-export function signIdentity(data: Omit<Identity, "id" | "exp"> & { id?: string }) {
-  const identity = { ...data, id: data.id || randomUUID(), exp: Date.now() + 24 * 3600_000 };
+export function signIdentity(data: Omit<Identity, "id" | "exp"> & { id?: string }, options: { purpose?: "session" | "device"; ttlMs?: number } = {}) {
+  const identity = { ...data, id: data.id || randomUUID(), purpose: options.purpose || "session", exp: Date.now() + (options.ttlMs ?? 24 * 3600_000) };
   const payload = Buffer.from(JSON.stringify(identity)).toString("base64url");
   return `${payload}.${createHmac("sha256", secret()).update(payload).digest("base64url")}`;
 }
-export function readIdentity(value?: string): Identity | null {
+export function readIdentity(value?: string, purpose: "session" | "device" = "session"): Identity | null {
   if (!value || value.length > 4096) return null;
   const [payload, signature, extra] = value.split(".");
   if (!payload || !signature || extra) return null;
   const expected = createHmac("sha256", secret()).update(payload).digest("base64url");
   if (!equal(signature, expected)) return null;
   try {
-    const data = JSON.parse(Buffer.from(payload, "base64url").toString()) as Identity;
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString()) as Identity & { purpose: string };
+    if (data.purpose !== purpose) return null;
     if (data.exp <= Date.now() || !Number.isFinite(data.exp) || !data.id || !data.sessionId || !data.sheetId || !["admin", "voter"].includes(data.role)) return null;
     return data;
   } catch { return null; }

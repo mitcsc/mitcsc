@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { cookieOptions, failure, json } from "@/lib/voting/http";
-import { body, COOKIE, equal, limitJoin, readIdentity, requireOrigin, signIdentity, text, VotingError } from "@/lib/voting/security";
+import { body, COOKIE, DEVICE_COOKIE, equal, limitJoin, readIdentity, requireOrigin, signIdentity, text, VotingError } from "@/lib/voting/security";
 import { settings } from "@/lib/voting/service";
 import { claimIdentity } from "@/lib/voting/facilitator";
 export const runtime = "nodejs";
@@ -13,9 +13,13 @@ export async function POST(request: Request) {
     const config = await settings();
     if (!config.password || !equal(password, config.password)) { limitJoin(request, true); throw new VotingError("Incorrect password, or this voting session is closed.", 401); }
     const jar = await cookies();
-    const identity = await claimIdentity(config, name, readIdentity(jar.get(COOKIE)?.value));
+    // Device identity is consulted only after password verification; it cannot authorize API access.
+    const existing = readIdentity(jar.get(COOKIE)?.value) || readIdentity(jar.get(DEVICE_COOKIE)?.value, "device");
+    const identity = await claimIdentity(config, name, existing);
     const response = json({ ok: true });
     response.cookies.set(COOKIE, signIdentity(identity), cookieOptions);
+    const deviceSeconds = 365 * 24 * 3600;
+    response.cookies.set(DEVICE_COOKIE, signIdentity(identity, { purpose: "device", ttlMs: deviceSeconds * 1000 }), { ...cookieOptions, maxAge: deviceSeconds });
     return response;
   } catch (error) { return failure(error); }
 }
