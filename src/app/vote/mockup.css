@@ -416,3 +416,13 @@
 .voting-root .voter-room .voter-criteria,.voting-root .voter-room .voter-ballot>.voter-alert{width:100%;max-width:680px;padding-inline:24px;margin-inline:auto}
 .voting-root .voter-room .voter-ballot-actions>*{max-width:632px!important}
 .voting-root .voter-room .voter-wait,.voting-root .voter-room .voter-submitted,.voting-root .voter-room .voter-discussion{min-height:100%;padding:24px}
+
+/* Joining is a centered form, independent of the full-screen ballot layout. */
+.voting-root .voter-room:has(.voter-join){display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px;overflow-y:auto}
+.voting-root .voter-room .voter-join{flex:none;margin:0 auto;padding:0}
+.voting-root .voter-room:has(.voter-join)>.voter-alert{width:100%;max-width:340px;margin:0 auto}
+.voting-root .voter-join form,.voting-root .voting-admin-login form{margin:0}
+@media(max-height:360px){.voting-root .voter-room:has(.voter-join){justify-content:flex-start}}
+.voting-pane-title{min-height:24px}
+.voting-criteria-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
+.voting-root .voting-admin .voting-criteria-actions .voting-start{display:inline-flex;align-items:center;gap:18px;padding:7px 16px;min-height:34px;border-radius:6px}
