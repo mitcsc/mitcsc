@@ -434,3 +434,7 @@
 
 
 .voting-root .voter-room img.voter-waiting-panda{display:block;width:64px;height:64px;object-fit:contain;flex:none;margin:0 auto 8px}
+
+@keyframes voting-panda-spin{0%,30%{transform:rotate(0deg)}75%,100%{transform:rotate(360deg)}}
+.voting-root .voter-room img.voter-waiting-panda{animation:voting-panda-spin 4.5s cubic-bezier(.65,0,.35,1) infinite}
+@media(prefers-reduced-motion:reduce){.voting-root .voter-room img.voter-waiting-panda{animation:none}}
