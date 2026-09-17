@@ -226,3 +226,21 @@
 .voting-column-resizer:hover::after,.voting-column-resizer.is-resizing::after{background:#ffffffb3}
 .voting-candidate-editor-list{position:relative}
 @media(max-width:760px){.voting-root .voting-setup-editor{grid-template-columns:minmax(0,1fr)}.voting-column-resizer{display:none}.voting-root .voting-admin-editor:first-of-type,.voting-root .voting-admin-editor:nth-of-type(2){padding-left:0;padding-right:0}}
+.voting-root:has(.voting-console){padding-top:8px}
+.voting-root .voting-console-header button[role=tab]{padding-top:8px;padding-bottom:12px}
+.voting-root .voting-admin-candidates .voting-candidate-toolbar{display:flex;justify-content:flex-end;margin:0 0 8px}
+.voting-root .voting-admin .voting-candidate-toolbar>button{display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:6px;color:#ffffff80}
+.voting-root .voting-admin .voting-candidate-toolbar>button:hover:not(:disabled){background:#ffffff0a;color:#fff}
+.voting-root .voting-round-steps{gap:12px}
+.voting-root .voting-round-steps li{display:grid;grid-template-columns:20px minmax(0,1fr);align-items:center;gap:8px;border-top:2px solid #ffffff12;padding-top:12px;color:#ffffff40}
+.voting-root .voting-round-steps li .voting-stage-marker{display:grid;place-items:center;width:20px;height:20px;border:1px solid #ffffff26;border-radius:50%;font-size:10px;color:#ffffff59}
+.voting-root .voting-round-steps li .voting-stage-label{font-size:12px;color:inherit;line-height:1.4}
+.voting-root .voting-round-steps li.is-complete{border-color:#ffffff80;color:#ffffffb3}
+.voting-root .voting-round-steps li.is-complete .voting-stage-marker{border-color:transparent;background:#ffffff14;color:#ffffffd9}
+.voting-root .voting-round-steps li.is-current{border-color:oklch(.58 .22 25);color:#fff}
+.voting-root .voting-round-steps li.is-current .voting-stage-marker{border-color:transparent;background:oklch(.58 .22 25);color:#fff}
+@media(max-width:760px){.voting-root .voting-round-steps{gap:8px}.voting-root .voting-round-steps li{grid-template-columns:1fr;gap:8px}.voting-root .voting-round-steps li .voting-stage-label{font-size:11px}}
+.voting-root .voting-preview-back{padding:0 0 16px;border-bottom:1px solid #ffffff14}
+.voting-root .voting-admin .voting-preview-back button{border:0;border-radius:0;padding:8px 0;color:#ffffff99;background:none;font-size:13px}
+.voting-root .voting-admin .voting-preview-back button:hover{color:#fff;background:none}
+.voting-root .voting-admin-controls{padding-top:24px}

@@ -111,7 +111,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await waitFor(() => polls > pollingBefore, 'Expected periodic state polling');
     assert.equal(await page.getByLabel('Criterion', { exact: true }).inputValue(), 'Reliability', 'Polling must not discard unsaved setup');
     assert.equal(await page.getByLabel('Name', { exact: true }).first().inputValue(), 'Alex Chen');
-    await button('Save setup').click();
+    await button('Continue to preview').click();
+    await button('← Edit setup').click();
     await page.getByRole('status').filter({ hasText: 'Setup saved' }).waitFor();
     assert.equal(state.candidates.length, 3);
     assert.equal(new Set(state.candidates.map(candidate => candidate.id)).size, 3);
@@ -122,7 +123,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.getByRole('radio', { name: '3', exact: true }).check();
     assert.equal(await page.getByRole('radio', { name: '3', exact: true }).isChecked(), true);
     await button('Edit setup').click();
-    await page.getByRole('tab', {name:'Preview', exact:true}).click();
+    await button('Continue to preview').click();
     await button('Shuffle order').click();
     await page.getByRole('status').filter({ hasText: 'Remaining candidate order shuffled' }).waitFor();
     assert.equal(state.candidates[0].name, 'Morgan Wu');
@@ -135,6 +136,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
       if (phase === 'initial') {
         await page.getByRole('region', { name: 'Ballot setup' }).waitFor({ state: 'detached' });
         assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0, 'Setup must lock after starting');
+        assert.equal(await button('← Edit setup').count(),0,'Setup navigation must disappear during voting');
+        assert.equal(await page.getByRole('tab').count(),0);
         assert.equal(await page.getByRole('button', {name: /^Choose /}).first().isDisabled(), true, 'Cannot abandon an active candidate');
       }
     }

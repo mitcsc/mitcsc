@@ -30,7 +30,7 @@ export default function DeliberationsAdminPage() {
   const [connectionError, setConnectionError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"setup" | "live">("live");
+  const [tab, setTab] = useState<"setup" | "live">("setup");
   const [confirmClose, setConfirmClose] = useState(false);
   const [setupRevision, setSetupRevision] = useState(0);
   const pollInFlight = useRef(false);
@@ -88,6 +88,7 @@ export default function DeliberationsAdminPage() {
   const candidates = [...(state?.candidates || [])].sort((a, b) => a.order - b.order);
   const started = !!state?.ballotVersion || candidates.some(c => c.completed) || (!!state && state.phase !== "waiting");
   const editable = state?.initialized && !started && state.phase === "waiting";
+  const showPreview = started || tab === "live";
   const changePhase = (phase: VotingPhase) => {
     if (phase === "locked" && !confirmClose) { setConfirmClose(true); return; }
     void act({action: "setPhase", phase});
@@ -106,16 +107,16 @@ export default function DeliberationsAdminPage() {
   const canChoose = state?.phase === "waiting" || state?.phase === "locked";
   const nextCandidate = candidates.find(c => !c.completed && c.id !== state?.currentCandidate?.id);
   return <div className={`voting-admin ${state?.isAdmin && state.initialized ? "voting-console" : ""}`}>
-    {state?.isAdmin && state.initialized && <div className="voting-console-header"><div role="tablist" aria-label="Admin views"><button role="tab" aria-selected={tab === "setup"} onClick={() => setTab("setup")}>Setup</button><button role="tab" aria-selected={tab === "live"} onClick={() => setTab("live")}>Preview</button></div><span>{state.active ? "Session open" : "Session closed"}</span></div>}
+    {state?.isAdmin && editable && showPreview && <div className="voting-preview-back"><button onClick={() => setTab("setup")}>← Edit setup</button></div>}
     {error && <div className="voting-admin-alert" role="alert">{error}</div>}
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
     {notice && <div className="voting-admin-notice" role="status">{notice}</div>}
     {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? <section className="voting-admin-card voting-admin-login">{state && <h2>Admin already assigned</h2>}{state ? <><p>Someone else has already joined as admin. You’re signed in and can participate on the voting page.</p><Link href="/vote">Go to voting →</Link><p className="voting-admin-muted">The admin should keep using the same browser for this session.</p></> : <><form onSubmit={join}><label><span className="voting-sr-only">Your name</span><input placeholder="Your name" value={name} onChange={e => setName(e.target.value)} maxLength={100} autoComplete="name" required/></label><label><span className="voting-sr-only">Session password</span><input placeholder="Session password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required/></label><button className="voting-admin-primary" disabled={busy || !password || !name.trim()}>{busy ? "Checking…" : "Join"}</button></form></>}</section> : <>
       {!state.active && <div className="voting-admin-notice">Voting is closed. Set a password in Settings to open the session.</div>}
       {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Create the voting tabs in your election spreadsheet.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
-        <div className="voting-admin-controls" hidden={tab !== "live"}>
+        <div className="voting-admin-controls" hidden={!showPreview}>
           <section className="voting-admin-candidates" aria-label="Candidate selection">
-            <div className="voting-admin-heading"><h2>Candidates</h2><button disabled={busy || candidates.filter(c => !c.completed && c.id !== state.currentCandidate?.id).length < 2} onClick={() => {if (window.confirm("Shuffle the remaining candidates? Save any setup edits first.")) void act({action: "shuffle"});}}>Shuffle order</button></div>
+            <div className="voting-admin-heading voting-candidate-toolbar"><button aria-label="Shuffle order" title="Shuffle remaining candidates" disabled={busy || candidates.filter(c => !c.completed && c.id !== state.currentCandidate?.id).length < 2} onClick={() => {if (window.confirm("Shuffle the remaining candidates? Save any setup edits first.")) void act({action: "shuffle"});}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg></button></div>
             <ol className="voting-candidate-list">{candidates.map((c) => <li key={c.id}>
               <button className={c.id === state.currentCandidate?.id ? "is-selected" : ""} aria-current={c.id === state.currentCandidate?.id ? "true" : undefined} aria-label={c.completed ? `Reopen submissions for ${c.name}` : `Choose ${c.name}`} disabled={busy || !canChoose || (!c.completed && c.id === state.currentCandidate?.id)} onClick={() => c.completed ? reopenCandidate(c.id) : selectCandidate(c.id)}>
                 <span className={`voting-candidate-dot ${c.completed ? "is-done" : c.id === state.currentCandidate?.id ? "is-now" : ""}`} aria-hidden="true"/><span><strong>{c.name}</strong><small>{c.completed ? "Complete" : c.id === state.currentCandidate?.id ? "Now" : ""}</small></span>{c.id === state.currentCandidate?.id && <span className="voting-candidate-marker" aria-hidden="true">●</span>}
@@ -126,7 +127,7 @@ export default function DeliberationsAdminPage() {
           <section className="voting-round-controls" aria-label="Round controls">
             {!state.currentCandidate ? <div className="voting-round-empty"><h2>Choose a candidate to begin</h2><p>Select a name from the candidate list.</p></div> : <>
               <p className="voting-current-label">Current candidate</p><h2 className="voting-current-name">{state.currentCandidate.name}</h2>
-              <ol className="voting-round-steps" aria-label="Voting rounds">{steps.map((label, index) => <li key={label} aria-current={stepIndex === index ? "step" : undefined} className={stepIndex === index ? "is-current" : stepIndex > index ? "is-complete" : ""}>{label}</li>)}</ol>
+              <ol className="voting-round-steps" aria-label="Voting rounds">{steps.map((label, index) => <li key={label} aria-current={stepIndex === index ? "step" : undefined} className={stepIndex === index ? "is-current" : stepIndex > index ? "is-complete" : ""}><span className="voting-stage-marker" aria-hidden="true">{stepIndex > index ? <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 3 3 7-7"/></svg> : index + 1}</span><span className="voting-stage-label">{label}</span><span className="voting-sr-only">{stepIndex > index ? ": Completed" : stepIndex === index ? ": In progress" : ": Upcoming"}</span></li>)}</ol>
               <div className="voting-round-status" aria-live="polite"><h3 className="voting-sr-only">{state.phase === "locked" ? "Voting closed" : round?.label}</h3><p>{state.phase === "locked" ? "This candidate is complete." : round?.description}</p></div>
               {(state.phase === "final" || state.phase === "locked") && <p className="voting-submission-count"><strong>{state.submittedCount}</strong> final ballots submitted</p>}
               {confirmClose && <div className="voting-inline-confirm" role="alert"><p>Close voting? Voters who haven’t submitted will need you to reopen it.</p><button className="voting-admin-primary" disabled={busy} onClick={() => changePhase("locked")}>Yes, close voting</button><button disabled={busy} onClick={() => setConfirmClose(false)}>Cancel</button></div>}
@@ -136,7 +137,7 @@ export default function DeliberationsAdminPage() {
             </>}
           </section>
         </div>
-        <div hidden={tab !== "setup"} className="voting-setup-tab">{editable ? <AdminSetup key={`${state.sessionId}-${setupRevision}`} candidates={candidates} criteria={state.criteria} busy={busy} onSave={(nextCandidates, criteria) => act({action: "saveSetup", candidates: nextCandidates, criteria})}/> : <section className="voting-admin-card"><h2>Criteria</h2><p className="voting-admin-muted">Setup is locked once voting begins.</p><div className="voting-admin-read-criteria">{state.criteria.map(c => <div key={c.id}><strong>{c.label}</strong><span>{c.min}–{c.max} · {c.required ? "Required" : "Optional"}</span><p>{c.description}</p></div>)}</div></section>}</div>
+        <div hidden={showPreview} className="voting-setup-tab">{editable ? <AdminSetup key={`${state.sessionId}-${setupRevision}`} candidates={candidates} criteria={state.criteria} busy={busy} onContinue={() => setTab("live")} onSave={(nextCandidates, criteria) => act({action: "saveSetup", candidates: nextCandidates, criteria})}/> : <section className="voting-admin-card"><h2>Criteria</h2><p className="voting-admin-muted">Setup is locked once voting begins.</p><div className="voting-admin-read-criteria">{state.criteria.map(c => <div key={c.id}><strong>{c.label}</strong><span>{c.min}–{c.max} · {c.required ? "Required" : "Optional"}</span><p>{c.description}</p></div>)}</div></section>}</div>
       </>}
     </>}
   </div>;
