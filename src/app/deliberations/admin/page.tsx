@@ -24,6 +24,7 @@ export default function DeliberationsAdminPage() {
   const [state, setState] = useState<VotingState | null>(null);
   const [loading, setLoading] = useState(true);
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [connectionError, setConnectionError] = useState("");
   const [notice, setNotice] = useState("");
@@ -77,7 +78,7 @@ export default function DeliberationsAdminPage() {
     event.preventDefault(); if (mutating.current) return;
     mutating.current = true; generation.current++; setBusy(true); setError("");
     try {
-      await responseData(await fetch("/api/voting/join", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({role: "admin", password})}));
+      await responseData(await fetch("/api/voting/join", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({role: "voter", password, name: name.trim()})}));
       setPassword(""); applyState(await responseData(await fetch("/api/voting/state", {cache: "no-store"})));
     } catch (e) {setError(e instanceof Error ? e.message : "Unable to sign in.");}
     finally {mutating.current = false; setBusy(false);}
@@ -119,11 +120,11 @@ export default function DeliberationsAdminPage() {
     return !state.ballotVersion || !permitted[state.phase]?.includes(phase);
   };
   return <div className="voting-admin">
-    <header className="voting-admin-header"><div><p className="voting-admin-kicker">MIT Chinese Students’ Club · Deliberations</p><h1>Facilitator desk</h1><p>Set the ballot. Guide the discussion. Let everyone be heard.</p></div><div className="voting-admin-header-links"><Link href="/deliberations">Voter page ↗</Link>{state?.isAdmin && <button disabled={busy} onClick={logout}>Sign out</button>}</div></header>
+    <header className="voting-admin-header"><div><p className="voting-admin-kicker">MIT Chinese Students’ Club · Deliberations</p><h1>Facilitator desk</h1><p>Set the ballot. Guide the discussion. Let everyone be heard.</p></div><div className="voting-admin-header-links"><Link href="/deliberations">Vote ↗</Link>{state?.isAdmin && <button disabled={busy} onClick={logout}>Sign out</button>}</div></header>
     {error && <div className="voting-admin-alert" role="alert">{error}</div>}
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
     {notice && <div className="voting-admin-notice" role="status">{notice}</div>}
-    {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? <section className="voting-admin-card voting-admin-login"><p className="voting-admin-kicker">Presidents & facilitators</p><h2>Open the desk</h2><p>Use the admin password from your private Voting Settings sheet.</p><form onSubmit={join}><label>Admin password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required/></label><button className="voting-admin-primary" disabled={busy || !password}>{busy ? "Checking…" : "Enter facilitator desk"}</button></form>{state && !state.isAdmin && <p className="voting-admin-muted">You are signed in as a voter. Admin access replaces this browser’s voter session; use another browser profile to do both.</p>}</section> : <>
+    {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? <section className="voting-admin-card voting-admin-login"><p className="voting-admin-kicker">Shared session access</p><h2>{state ? "Facilitator already assigned" : "Open the desk"}</h2>{state ? <><p>Someone else has already joined as facilitator. You’re signed in and can participate on the voting page.</p><Link href="/deliberations">Go to voting →</Link><p className="voting-admin-muted">If the facilitator has lost access, a president can change the facilitator_reset value in the private Settings sheet, then join again to claim the desk.</p><button disabled={busy} onClick={logout}>Sign out</button></> : <><p>Enter your name and the shared session password. The first person to join becomes facilitator and can also vote.</p><form onSubmit={join}><label>Your name<input value={name} onChange={e => setName(e.target.value)} maxLength={120} autoComplete="name" required/></label><label>Session password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required/></label><button className="voting-admin-primary" disabled={busy || !password || !name.trim()}>{busy ? "Checking…" : "Join session"}</button></form><p className="voting-admin-muted">The president should join before sharing the password with voters. If access is lost, change facilitator_reset in the Settings sheet and join again.</p></>}</section> : <>
       <div className="voting-admin-session"><span className={`voting-admin-status ${state.active ? "is-active" : ""}`}>{state.active ? "Session active" : "Voting closed"}</span><span>{state.sessionId}</span><span className="voting-admin-muted">Updated {lastUpdated} · refreshes every 4s</span>{state.spreadsheetUrl && <a href={state.spreadsheetUrl} target="_blank" rel="noopener noreferrer">Open election sheet ↗</a>}</div>
       {!state.active && <div className="voting-admin-notice">Voting is closed. Set a session password in the permanent Settings sheet to let voters join and submit. You can still prepare the election here.</div>}
       {!state.initialized ? <section className="voting-admin-card"><p className="voting-admin-kicker">A clean start</p><h2>Set up this election</h2><p>We’ll add Candidates, Criteria, Responses, and Summary tabs to the connected spreadsheet. Existing votes will not be erased.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
