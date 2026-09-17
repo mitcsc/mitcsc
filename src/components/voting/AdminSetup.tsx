@@ -46,6 +46,7 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
     if (await onSave(candidates, criteria)) { setMessage(""); onContinue(); }
   };
   return <section ref={panelRef} style={{"--candidate-width": `${split}%`} as CSSProperties} aria-label="Ballot setup" className="voting-admin-card voting-setup-editor">
+    <div className="voting-setup-toolbar"><span>Setup</span><button className="voting-admin-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Start"}</button></div>
 
 
       <fieldset disabled={busy} className="voting-admin-editor"><legend>Candidates <span>{candidates.length}</span></legend>
@@ -66,7 +67,7 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
         }
       }}/>
       <fieldset disabled={busy} className="voting-admin-editor"><legend>Criteria</legend>{criteria.map(c => <div className="voting-admin-criterion" key={c.id}><label>Criterion<input placeholder="Criterion name" value={c.label} maxLength={150} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, label: e.target.value} : x))}/></label><label>Description<textarea placeholder="Short description (optional)" value={c.description} rows={2} maxLength={1000} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, description: e.target.value} : x))}/></label><div className="voting-admin-scale"><label>Minimum<input type="number" min={0} max={9} step={1} value={c.min} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, min: Number(e.target.value)} : x))}/></label><label>Maximum<input type="number" min={1} max={10} step={1} value={c.max} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, max: Number(e.target.value)} : x))}/></label><label className="voting-admin-check"><input type="checkbox" checked={c.required} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, required: e.target.checked} : x))}/> Required</label><button onClick={() => updateCriteria(criteria.filter(x => x.id !== c.id))}>Remove</button></div></div>)}<button onClick={() => updateCriteria([...criteria, {id: crypto.randomUUID(), label: "", description: "", min: 1, max: 5, required: true}])}>+ Add criterion</button></fieldset>
-    <div className="voting-admin-save"><button className="voting-admin-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Start"}</button></div>{message && <p role="status">{message}</p>}
+    {message && <p role="status">{message}</p>}
   </section>;
 }
 
