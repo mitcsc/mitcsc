@@ -202,7 +202,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   }
   const phase = phases[state.phase];
   if (state.phase === "deliberation") return <section className="voter-discussion" aria-label="Discussion"><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer" role="status">Discussion in progress</p></section>;
-  if (draft.submitted) return <section className="voter-submitted" role="status"><h2>Vote submitted</h2><p>{state.currentCandidate!.name} · Waiting for the next candidate.</p></section>;
+  if (draft.submitted) return <section className="voter-submitted" role="status"><h2>Vote submitted for {state.currentCandidate!.name}</h2><p>Waiting for the next candidate.</p></section>;
   return <section className="voter-panel voter-ballot">
     <div className="voter-ballot-heading"><span className="voter-phase">{phase.label}</span></div>
     <h2>{state.currentCandidate!.name}</h2>

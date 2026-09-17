@@ -111,11 +111,11 @@ async function main() {
     await page.reload();
     rejectSubmission = false;
     await page.getByRole('button', { name: 'Submit vote' }).click();
-    await page.getByRole('heading', { name: 'Vote submitted' }).waitFor();
+    await page.getByRole('heading', { name: 'Vote submitted for Alex Chen' }).waitFor();
     assert.equal(submissions.length, 2);
     assert.deepEqual(submissions[1], submissions[0], 'A retry must preserve its ID and entire payload');
     await page.reload();
-    await page.getByRole('heading', { name: 'Vote submitted' }).waitFor();
+    await page.getByRole('heading', { name: 'Vote submitted for Alex Chen' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Submit vote' }).count(), 0);
     // Start another candidate, save locally, and advance before final submission.
     state.currentCandidate = { id: 'candidate-two', name: 'Morgan Lee', context: '', order: 1, completed: false };
