@@ -334,3 +334,25 @@
 .voting-setup-toolbar>span{font-size:14px;color:#ffffffb3}
 .voting-root .voting-admin .voting-setup-toolbar>button{padding:9px 24px;border-radius:7px}
 @media(max-width:760px){.voting-root .voting-setup-editor{grid-template-rows:auto minmax(140px,1fr) minmax(180px,1.3fr) auto}}
+
+/* Each pane owns its editing tools; the page toolbar owns progression. */
+.voting-root .voting-admin .voting-pane-heading{position:sticky;top:0;z-index:4;background:#0c0c0d;padding:0 0 18px;margin-bottom:8px;border-bottom:1px solid #ffffff0d}
+.voting-root .voting-admin .voting-pane-heading h3{font:500 14px/1.4 "Instrument Sans",sans-serif;letter-spacing:0;margin:0;color:#dedee0}
+.voting-pane-heading h3 span{font-weight:400;color:#77777c;margin-left:6px;font-size:12px}
+.voting-root .voting-admin .voting-pane-heading .voting-candidate-add{margin-top:14px;gap:4px}
+.voting-root .voting-admin .voting-pane-heading button{font-size:12px;border-radius:6px;min-height:34px;padding:6px 10px}
+.voting-root .voting-admin .voting-criteria-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:86px}
+.voting-root .voting-admin .voting-criterion-heading{display:flex;align-items:center;gap:12px}
+.voting-root .voting-admin .voting-criterion-heading>label{flex:1;min-width:0;font-size:0;gap:0}
+.voting-root .voting-admin .voting-criterion-heading input{font-size:15px;background:transparent;border-color:transparent;padding:6px 0}
+.voting-root .voting-admin .voting-remove-criterion{border:0;padding:0;width:28px;height:30px;flex:none;font-size:21px;line-height:1;color:#ffffff66}
+.voting-root .voting-admin .voting-remove-criterion:hover{color:#fff;background:#ffffff0d}
+.voting-root .voting-admin .voting-admin-criterion{padding:16px 0 22px;margin:0 0 12px;background:none;border-width:0 0 1px;border-radius:0;gap:12px}
+.voting-root .voting-admin .voting-admin-scale{grid-template-columns:repeat(2,minmax(54px,80px)) minmax(0,1fr);gap:12px;align-items:end}
+.voting-root .voting-admin .voting-admin-scale>label{font-size:12px;font-weight:400;color:#aaa}
+.voting-root .voting-admin .voting-admin-scale .voting-admin-check{justify-self:end;align-self:end;min-height:42px;font-size:12px}
+.voting-root .voting-admin .voting-admin-scale input[type=number]{padding:9px 12px;min-height:42px}
+.voting-root .voting-admin .voting-admin-editor{padding-top:20px}
+.voting-root .voting-admin .voting-pane-heading .voting-paste-panel{margin-top:12px}
+.voting-root .voting-admin .voting-criteria-heading{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:14px}
+.voting-root .voting-admin .voting-admin-scale .voting-admin-check{justify-self:start;margin-left:8px}
