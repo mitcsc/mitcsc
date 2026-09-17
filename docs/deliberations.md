@@ -60,7 +60,8 @@ Copying it creates a new ID.
 4. Select **Set up election** to create the required tabs without deleting existing data.
 5. Add candidates and criteria, save, and choose a candidate order.
 6. Share `/vote` and the voter password with exec.
-7. Open initial ratings, lead deliberation, open revisions, then open final submissions.
+7. Open initial ratings, lead discussion, then open voting.
+   Voters can revise and submit as soon as they are ready.
 8. Wait for confirmed submissions, lock the candidate, and move to the next one.
 9. Clear `session_password` when voting is finished.
 
@@ -75,7 +76,7 @@ Randomization is saved once, so refreshing does not change the order.
 Use the same browser throughout the session.
 Saving initial ratings keeps them on that device only.
 The first saved ratings remain separate from later revisions.
-Only **Submit final vote** sends both versions to Sheets.
+Only **Submit vote** sends both versions to Sheets.
 Wait for the saved confirmation before leaving.
 Browser storage can be cleared or unavailable, especially in private browsing.
 The app reports storage failures and preserves pending submissions until confirmation.
@@ -114,3 +115,6 @@ The president joins before sharing the password with exec.
 Use the same browser throughout the election.
 Signing out and signing back in with the password preserves the browser's admin identity.
 Clearing cookies or switching browsers loses that identity; there is no account-based recovery.
+
+The admin sees joined voters who have not submitted for the current candidate.
+This list excludes the admin and is not an online-presence indicator.

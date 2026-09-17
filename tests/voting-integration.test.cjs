@@ -68,6 +68,7 @@ global.fetch = async (input, options = {}) => {
     book.get(rangeParts(range).tab).push(...data.values);
     return json({updates:{updatedRows:data.values.length}});
   }
+  if (suffix.startsWith('/values/')) return json({values:getRows(book,decodeURIComponent(suffix.slice(8)))});
   throw new Error(`Unimplemented mock ${suffix}`);
 };
 const service = require('../src/lib/voting/service.ts');
@@ -83,7 +84,7 @@ const identity = role => ({id:role,name:role,role,sessionId:config.sessionId,she
 const admin = identity('admin'), voter = identity('voter');
 before(() => {
   books.set(config.sheetId, new Map([['Personal notes', [['Keep this untouched']]]]));
-  books.set('settings-test', new Map([['Settings', [['key','value'], ['session_id', config.sessionId], ['session_password',config.password], ['voting_sheet_url', `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit`]]]]));
+  books.set('settings-test', new Map([['Session History', [['session_id','election_sheet_id','claim_id','voter_id','voter_name','claimed_at'],[config.sessionId,config.sheetId,'a','admin','President',''],[config.sessionId,config.sheetId,'b','voter','Voter One',''],[config.sessionId,config.sheetId,'c','late-voter','Voter Two',''],['other',config.sheetId,'d','other','Other session','']]],['Settings', [['key','value'], ['session_id', config.sessionId], ['session_password',config.password], ['voting_sheet_url', `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit`]]]]));
 });
 test('full election: safe setup, local ballot flow, immutable criteria, submission retry, next candidate', async () => {
   const initial = await service.getState(config, admin);
@@ -102,6 +103,8 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   assert.equal(privateState.currentCandidate.context, '');
   assert.equal(privateState.candidates, undefined);
   assert.equal(privateState.spreadsheetUrl, undefined);
+  assert.equal(privateState.participants,undefined);
+  assert.deepEqual((await service.getState(config,admin)).participants.map(v=>v.name),['Voter One','Voter Two']);
   assert.ok(!JSON.stringify(privateState).includes('secret'));
   await assert.rejects(service.adminAction(config, admin, {action:'saveSetup',candidates,criteria}), {status:409});
   const ballot = {submissionId:'ballot-001',sessionId:config.sessionId,candidateId:'alex',ballotVersion:version,initialRatings:{reliability:2},finalRatings:{reliability:4}};
@@ -115,7 +118,7 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   invalidate(config.sheetId);
   assert.equal((await service.getState(config,voter)).criteria[0].max, 5);
   await service.adminAction(config, admin, {action:'setPhase',phase:'revision'});
-  await service.adminAction(config, admin, {action:'setPhase',phase:'final'});
+
   await assert.rejects(service.submit(config,voter,{...ballot,ballotVersion:'stale'}), {status:409});
   await assert.rejects(service.submit(config,voter,{...ballot,finalRatings:{reliability:9}}));
   failNextAppend = true;
@@ -125,6 +128,7 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   assert.equal((await service.submit(config,voter,ballot)).ok,true);
   assert.equal(books.get(config.sheetId).get('Responses').length,2,'Retries must not append duplicate ratings');
   assert.equal((await service.getState(config,admin)).submittedCount,1);
+  assert.deepEqual((await service.getState(config,admin)).participants.map(v=>[v.id,v.submitted]),[['voter',true],['late-voter',false]]);
   const response = books.get(config.sheetId).get('Responses')[1];
   assert.equal(response[9],2);
   assert.equal(response[10],4);

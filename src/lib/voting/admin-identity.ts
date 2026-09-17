@@ -47,3 +47,11 @@ export async function claimIdentity(config: Settings, name: string, existing: Id
   const first = (await claims(config, true))[0];
   return { id, name: sameSession ? existing.name : name, sessionId: config.sessionId, sheetId: config.sheetId, role: first?.[2] === claimId && first?.[3] === id ? "admin" : "voter", claimId, exp: Date.now() + 24 * 3600_000 };
 }
+
+export async function sessionVoters(config: Settings): Promise<{id: string; name: string}[]> {
+  const rows = await claims(config);
+  const adminId = rows[0]?.[3];
+  const voters = new Map<string, {id: string; name: string}>();
+  for (const row of rows) if (row[3] && row[3] !== adminId) voters.set(row[3], {id: row[3], name: row[4] || "Voter"});
+  return [...voters.values()];
+}

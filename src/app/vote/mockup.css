@@ -273,3 +273,9 @@
 @keyframes voting-discussion-shimmer{0%,15%{background-position:100% 50%}85%,100%{background-position:0% 50%}}
 @media(max-width:760px){.voting-root .voter-room .voter-discussion{min-height:calc(100svh - 48px)}}
 @media(prefers-reduced-motion:reduce){.voter-discussion-shimmer{animation:none;background:none;color:#a2a2a6}}
+.voting-root .voting-round-steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+.voting-root .voter-room .voter-rating-initial{background:#ffffff14;border-color:#ffffff40;color:#d0d0d3}
+.voting-root .voter-room .voter-criterion:disabled .voter-rating-initial{background:#ffffff14;border-color:#ffffff40;color:#d0d0d3}
+.voting-waiting-on{padding:16px 0 0;font-size:13px;color:#ffffff80}
+.voting-root .voting-waiting-on p{margin:0 0 10px}
+.voting-waiting-on ul{display:flex;flex-wrap:wrap;gap:8px 18px;list-style:none;margin:0;padding:0;color:#ddd}

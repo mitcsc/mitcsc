@@ -1,3 +1,4 @@
+import { sessionVoters } from "./admin-identity";
 import { randomInt, randomUUID } from "node:crypto";
 import { Identity, VotingError, text } from "./security";
 import { invalidate, readRanges, sheets, writeRanges } from "./sheets";
@@ -58,7 +59,15 @@ function state(config: Settings, identity: Identity, s: Snapshot): VotingState {
   const visible = s.runtime.context_visible === "true";
   return { sessionId: config.sessionId, active: !!config.password, phase: phase(s), ballotVersion: s.runtime.ballot_version || "", currentCandidate: current ? { ...current, context: admin || visible ? current.context : "" } : null, criteria: ballotCriteria(s), contextVisible: visible, submittedCount: new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === current?.id && r[6] === s.runtime.ballot_version).map(r => r[4])).size, voter: { id: identity.id, name: identity.name }, isAdmin: admin, initialized: s.initialized, ...(admin ? { candidates: s.candidates, spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit` } : {}) };
 }
-export async function getState(config: Settings, identity: Identity) { return state(config, identity, await snapshot(config)); }
+export async function getState(config: Settings, identity: Identity) {
+  const s = await snapshot(config);
+  const result = state(config, identity, s);
+  if (identity.role === "admin") {
+    const submitted = new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === result.currentCandidate?.id && r[6] === result.ballotVersion).map(r => r[4]));
+    result.participants = (await sessionVoters(config)).map(voter => ({...voter, submitted: submitted.has(voter.id)}));
+  }
+  return result;
+}
 async function saveRuntime(config: Settings, runtime: Record<string, string>) {
   await writeRanges(config.sheetId, [{ range: "'Session'!A1:B20", values: [HEADERS.Session, ...Object.entries(runtime), ...Array.from({ length: Math.max(0, 19 - Object.keys(runtime).length) }, () => ["", ""])] }]);
 }
@@ -183,7 +192,7 @@ export async function submit(config: Settings, identity: Identity, input: Record
     if (ballot.sessionId !== config.sessionId) throw new VotingError("This ballot belongs to another session.", 409);
     const existing = s.responses.find(r => r[1] === config.sessionId && r[2] === ballot.candidateId && r[4] === identity.id && r[6] === ballot.ballotVersion);
     if (existing) return { ok: true, submissionId: existing[0] };
-    if (!config.password || phase(s) !== "final") throw new VotingError("Final submissions are not currently open.", 409);
+    if (!config.password || !["revision", "final"].includes(phase(s))) throw new VotingError("Final submissions are not currently open.", 409);
     if (ballot.sessionId !== config.sessionId || ballot.candidateId !== s.runtime.candidate_id || ballot.ballotVersion !== s.runtime.ballot_version) throw new VotingError("This ballot is no longer current. Keep your draft and contact the admin.", 409);
     const criteria = ballotCriteria(s);
     validateRatings(ballot.initialRatings, criteria); validateRatings(ballot.finalRatings, criteria);

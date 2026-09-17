@@ -15,8 +15,8 @@ const phases: Record<VotingPhase, { label: string; description: string }> = {
   waiting: { label: "Waiting to begin", description: "Your admin will open the next ballot. This page updates automatically." },
   initial: { label: "Initial ratings", description: "Record your own first impression before the discussion begins." },
   deliberation: { label: "Discussion", description: "Discuss the candidate. Ratings are paused." },
-  revision: { label: "Revisions open", description: "You may revise your ratings after the discussion, or keep your original choices." },
-  final: { label: "Submit your ballot", description: "Review your ratings and send your initial and final responses together." },
+  revision: { label: "Voting open", description: "You may revise your ratings after the discussion, or keep your original choices." },
+  final: { label: "Voting open", description: "Review your ratings and send your initial and final responses together." },
   locked: { label: "Voting closed", description: "The admin has closed this ballot. Wait here for the next candidate." },
 };
 const prefix = "csc-voting-v1:";
@@ -148,7 +148,6 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   const [storageError, setStorageError] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [localSaved, setLocalSaved] = useState(false);
   const draftRef = useRef(draft);
   useEffect(() => {
     try {
@@ -160,11 +159,11 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   function persist(next: Draft) {
     draftRef.current = next;
     setDraft(next);
-    try { localStorage.setItem(key, JSON.stringify(next)); setStorageError(false); setLocalSaved(true); }
-    catch { setStorageError(true); setLocalSaved(false); }
+    try { localStorage.setItem(key, JSON.stringify(next)); setStorageError(false); }
+    catch { setStorageError(true); }
   }
   const initialOpen = state.phase === "initial" && !draft.initial;
-  const revisionsOpen = state.phase === "revision" && !!draft.initial;
+  const revisionsOpen = ["revision", "final"].includes(state.phase) && !!draft.initial;
   const editable = connected && !draft.submitted && !draft.submissionId && (initialOpen || revisionsOpen);
   const values = draft.initial ? draft.final : draft.ratings;
   function validate(ratings: Ratings) {
@@ -188,7 +187,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     setError("");
   }
   async function submit() {
-    if (busy || !draft.initial || draft.submitted || state.phase !== "final" || !connected) return;
+    if (busy || !draft.initial || draft.submitted || !["revision", "final"].includes(state.phase) || !connected) return;
     if (!validate(draft.final)) { setError("Your ballot does not match the current criteria. Ask the admin for help."); return; }
     setBusy(true); setError("");
     const next = { ...draft, submissionId: draft.submissionId || crypto.randomUUID() };
@@ -217,17 +216,14 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     <div className="voter-criteria">{state.criteria.map((criterion) => <fieldset className="voter-criterion" key={criterion.id} disabled={!editable}>
       <legend>{criterion.label}{!criterion.required && <span className="voter-required">Optional</span>}</legend>
       {criterion.description && <p>{criterion.description}</p>}
-      <div className="voter-scale" role="radiogroup" aria-label={criterion.label}>{Array.from({ length: Math.max(0, Math.min(21, criterion.max - criterion.min + 1)) }, (_, i) => criterion.min + i).map(value => <label key={value} className={`voter-rating ${values[criterion.id] === value ? "voter-rating-selected" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} value={value} checked={values[criterion.id] === value} onChange={() => setRating(criterion.id, value)} /><span>{value}</span></label>)}{!criterion.required && <label className={`voter-rating voter-rating-na ${values[criterion.id] === null ? "voter-rating-selected" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} checked={values[criterion.id] === null} onChange={() => setRating(criterion.id, null)} /><span>Not enough information</span></label>}</div>
-      {draft.initial && <p className="voter-original">Initial: {draft.initial[criterion.id] === null || draft.initial[criterion.id] === undefined ? "Not enough information" : draft.initial[criterion.id]}{values[criterion.id] !== draft.initial[criterion.id] && <span> · Revised</span>}</p>}
+      <div className="voter-scale" role="radiogroup" aria-label={criterion.label}>{Array.from({ length: Math.max(0, Math.min(21, criterion.max - criterion.min + 1)) }, (_, i) => criterion.min + i).map(value => <label key={value} className={`voter-rating ${values[criterion.id] === value ? "voter-rating-selected" : draft.initial?.[criterion.id] === value ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} value={value} title={draft.initial?.[criterion.id] === value ? "Initial rating" : undefined} checked={values[criterion.id] === value} onChange={() => setRating(criterion.id, value)} /><span>{value}</span></label>)}{!criterion.required && <label className={`voter-rating voter-rating-na ${values[criterion.id] === null ? "voter-rating-selected" : draft.initial?.[criterion.id] === null ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} checked={values[criterion.id] === null} onChange={() => setRating(criterion.id, null)} /><span>Not enough information</span></label>}</div>
     </fieldset>)}</div>
     {error && <div className="voter-alert" role="alert">{error}</div>}
     {!draft.submitted && <div className="voter-ballot-actions">
       {state.phase === "initial" && !draft.initial && <><button className="voter-primary" disabled={!connected || !state.criteria.length} onClick={saveInitial}>Save ratings</button></>}
       {state.phase === "initial" && draft.initial && <p className="voter-action-status">Ratings saved</p>}
-      {state.phase === "revision" && draft.initial && <p className="voter-action-status">{localSaved && !storageError ? "Revisions saved" : "Change ratings or keep them unchanged."}</p>}
-      {state.phase === "final" && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
+      {["revision", "final"].includes(state.phase) && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
       {state.phase === "locked" && draft.initial && <p className="voter-action-status">This ballot was not submitted. Your draft remains here; tell your admin.</p>}
-      <p className="voter-footnote">{draft.initial ? "Saved on this device · not yet submitted" : "Save your ratings before discussion"}</p>
     </div>}
   </section>;
 }

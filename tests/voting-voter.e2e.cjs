@@ -53,7 +53,7 @@ async function main() {
     state.phase = phase;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     if (phase === 'deliberation') { await page.getByRole('status').filter({hasText:'Discussion in progress'}).waitFor(); return; }
-    await page.locator('.voter-phase').filter({ hasText: ({ initial: 'Initial ratings', deliberation: 'Discussion', revision: 'Revisions open', final: 'Submit your ballot', locked: 'Voting closed' })[phase] }).waitFor();
+    await page.locator('.voter-phase').filter({ hasText: ({ initial: 'Initial ratings', deliberation: 'Discussion', revision: 'Voting open', final: 'Voting open', locked: 'Voting closed' })[phase] }).waitFor();
   };
   try {
     await page.goto(`${baseURL}/vote`);
@@ -89,10 +89,10 @@ async function main() {
     await page.screenshot({path:'/private/tmp/voting-mobile-mockup.png'});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
     await page.reload();
-    await page.locator('.voter-phase').filter({ hasText: 'Revisions open' }).waitFor();
+    await page.locator('.voter-phase').filter({ hasText: 'Voting open' }).waitFor();
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '5', exact: true }).isChecked(), true);
-    await fieldset('Reliability').getByText('Initial: 3', { exact: false }).waitFor();
-    await refreshPhase('final');
+    assert.equal(await fieldset('Reliability').locator('.voter-rating-initial').innerText(),'3');
+    assert.equal(await page.locator('.voter-footnote').count(),0);
     await page.getByRole('button', { name: 'Submit vote' }).click();
     await page.getByRole('alert').filter({ hasText: 'Temporary spreadsheet failure.' }).waitFor();
     assert.equal(submissions.length, 1);

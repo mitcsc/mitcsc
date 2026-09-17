@@ -14,7 +14,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
   page.on('pageerror', error => errors.push(error.message));
   let authenticated = false;
   let polls = 0;
-  let state = { sessionId: 'test-election', active: true, phase: 'waiting', ballotVersion: '', currentCandidate: null, criteria: [], contextVisible: false, submittedCount: 0, voter: null, isAdmin: true, initialized: false, candidates: [], spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/test/edit' };
+  let state = { sessionId: 'test-election', active: true, phase: 'waiting', ballotVersion: '', currentCandidate: null, criteria: [], contextVisible: false, submittedCount: 0, voter: null, isAdmin: true, participants:[{id:'v1',name:'Voter One',submitted:false},{id:'v2',name:'Voter Two',submitted:true}], initialized: false, candidates: [], spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/test/edit' };
   const actions = [];
   const snapshots = new Map();
   await page.route('**/api/voting/**', async route => {
@@ -130,10 +130,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     assert.equal(await page.getByLabel('Name', { exact: true }).first().inputValue(), 'Morgan Wu');
     await page.getByRole('button', {name: /^Choose /}).first().click();
     await waitFor(() => state.currentCandidate?.name === 'Morgan Wu', 'Candidate selection did not persist');
-    for (const [name, phase] of [['Start initial ratings', 'initial'], ['Start discussion', 'deliberation'], ['Open revisions', 'revision'], ['Open final submissions', 'final']]) {
+    for (const [name, phase] of [['Start initial ratings', 'initial'], ['Start discussion', 'deliberation'], ['Open voting', 'revision']]) {
       await page.getByRole('button', { name: name }).click();
       await waitFor(() => state.phase === phase, `Phase ${phase} did not persist`);
       if (phase === 'initial') {
+        await button('Start discussion').waitFor();
         await page.getByRole('region', { name: 'Ballot setup' }).waitFor({ state: 'detached' });
         assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0, 'Setup must lock after starting');
         assert.equal(await button('← Edit setup').count(),0,'Setup navigation must disappear during voting');
@@ -141,9 +142,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
         assert.equal(await page.getByRole('button', {name: /^Choose /}).first().isDisabled(), true, 'Cannot abandon an active candidate');
       }
     }
-    await page.getByRole('heading', {name:'Final submissions open',exact:true}).waitFor({state:'attached'});
+    await page.getByRole('heading', {name:'Voting open',exact:true}).waitFor({state:'attached'});
     await button('Close voting for this candidate').waitFor();
     await page.screenshot({path: '/private/tmp/voting-controls.png'});
+    await page.getByText('Waiting on 1',{exact:true}).waitFor();
+    assert.equal(await page.locator('.voting-waiting-on').getByText('Voter One',{exact:true}).count(),1);
+    assert.equal(await page.locator('.voting-waiting-on').getByText('Voter Two',{exact:true}).count(),0);
     const originalVersion = state.ballotVersion;
     await page.getByRole('button', { name: 'Close voting for this candidate' }).click();
     await button('Yes, close voting').click();
