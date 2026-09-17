@@ -92,8 +92,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     assert.equal(await page.getByLabel('Name', { exact: true }).first().inputValue(), 'Morgan Wu');
     await button('Select').first().click();
     await waitFor(() => state.currentCandidate?.name === 'Morgan Wu', 'Candidate selection did not persist');
-    for (const [name, phase] of [['1Initial ratings', 'initial'], ['2Deliberate', 'deliberation'], ['3Allow revisions', 'revision'], ['4Final submission', 'final']]) {
-      await page.getByRole('button', { name: new RegExp(name.replace(/^\d/, '^\\d\\s*')) }).click();
+    for (const [name, phase] of [['Initial ratings', 'initial'], ['Deliberate', 'deliberation'], ['Allow revisions', 'revision'], ['Final submission', 'final']]) {
+      await page.getByRole('button', { name: name }).click();
       await waitFor(() => state.phase === phase, `Phase ${phase} did not persist`);
       if (phase === 'initial') {
         await page.getByRole('heading', { name: 'Build your ballot' }).waitFor({ state: 'detached' });
@@ -104,7 +104,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     const originalVersion = state.ballotVersion;
     await page.getByLabel('Reveal candidate context to voters').click();
     await waitFor(() => state.contextVisible, 'Context toggle did not persist');
-    await page.getByRole('button', { name: /5\s*Close candidate/ }).click();
+    await page.getByRole('button', { name: 'Close candidate' }).click();
     await waitFor(() => state.phase === 'locked', 'Candidate did not lock');
     await button('Select').first().click();
     await waitFor(() => state.phase === 'waiting' && !state.ballotVersion, 'Next candidate selection should reset active version');

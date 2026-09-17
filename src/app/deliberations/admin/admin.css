@@ -1,3 +1,122 @@
-.voting-admin{--va-paper:#f5f0e7;--va-ink:#292521;--va-muted:#766d64;--va-line:#d9d0c4;--va-red:#782b35;max-width:1200px;margin:0 auto;padding:68px 28px 88px;color:var(--va-ink);font-family:Arial,Helvetica,sans-serif;background:var(--va-paper);border-radius:4px;line-height:1.55}
-.voting-admin *{box-sizing:border-box}.voting-admin-header{display:flex;align-items:start;justify-content:space-between;gap:24px;margin-bottom:32px}.voting-admin h1,.voting-admin h2,.voting-admin h3{font-family:Canela,Georgia,serif;font-weight:400;line-height:1.14;letter-spacing:-.035em;margin:0 0 14px}.voting-admin h1{font-size:clamp(36px,5vw,58px)}.voting-admin h2{font-size:30px}.voting-admin h3{font-size:27px}.voting-admin p{margin:0 0 16px}.voting-admin .voting-admin-kicker{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--va-red);margin:0 0 12px}.voting-admin-header-links{display:flex;gap:12px;align-items:center;flex-shrink:0}.voting-admin a{color:var(--va-red);text-underline-offset:4px;text-decoration:underline;font-size:13px}.voting-admin button{border:1px solid var(--va-line);border-radius:5px;background:transparent;padding:9px 13px;cursor:pointer;color:var(--va-ink);font-size:13px;line-height:1.4;transition:background .15s,border-color .15s}.voting-admin button:hover:not(:disabled){background:#e9e1d6;border-color:#b1a291}.voting-admin button:disabled{cursor:not-allowed;opacity:.43}.voting-admin :is(button,input,textarea,a):focus-visible{outline:3px solid #b95767;outline-offset:3px}.voting-admin button.voting-admin-primary{background:var(--va-red);border-color:var(--va-red);color:#fff;padding:12px 18px}.voting-admin button.voting-admin-primary:hover:not(:disabled){background:#60222a}.voting-admin-card{padding:28px;background:#fffcf7;border:1px solid var(--va-line);border-radius:8px;margin-bottom:22px}.voting-admin-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:15px}.voting-admin-heading h2,.voting-admin-heading .voting-admin-kicker{margin-bottom:5px}.voting-admin-muted{color:var(--va-muted);font-size:13px}.voting-admin-session{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 0;border-top:1px solid var(--va-line);border-bottom:1px solid var(--va-line);margin-bottom:24px;font-size:12px}.voting-admin-session a{margin-left:auto}.voting-admin-status{font-size:11px;font-weight:700;border-radius:20px;background:#e8ded6;padding:5px 10px}.voting-admin-status.is-active{background:#e2eadc;color:#365329}.voting-admin-alert,.voting-admin-notice{padding:16px 20px;border:1px solid #c78087;border-left:4px solid var(--va-red);background:#f9e9e8;border-radius:4px;margin-bottom:20px;font-size:14px}.voting-admin-notice{border-color:#d1be99;background:#f5eddb}.voting-admin-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:22px}.voting-admin-grid>.voting-admin-card{min-width:0}.voting-admin-pill{font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:.08em;background:#eee3df;color:var(--va-red);padding:6px 10px;border-radius:20px}.voting-admin-count{display:flex;align-items:center;gap:18px;padding:20px 0;border-top:1px solid var(--va-line);margin-top:24px}.voting-admin-count strong{font:48px/1 Canela,Georgia,serif;color:var(--va-red)}.voting-admin-count span{font-size:13px;max-width:210px}.voting-admin-phase-list{display:grid;gap:8px;margin:22px 0}.voting-admin-phase-list button{display:flex;align-items:center;gap:12px;text-align:left;padding:12px}.voting-admin-phase-list button>span{border-radius:50%;border:1px solid var(--va-line);width:22px;height:22px;display:grid;place-content:center;font-size:10px}.voting-admin-phase-list button.is-current{opacity:1;background:var(--va-red);border-color:var(--va-red);color:#fff}.voting-admin-phase-list small{margin-left:auto;font-size:10px;text-transform:uppercase;letter-spacing:.06em}.voting-admin blockquote{margin:16px 0 0;padding:14px;border-left:2px solid var(--va-red);background:#f1eae1;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.voting-admin label{display:grid;gap:7px;font-size:12px;font-weight:600}.voting-admin input:not([type=checkbox]):not([type=radio]),.voting-admin textarea{width:100%;min-width:0;background:#fffdfa;border:1px solid #c7bcb0;border-radius:4px;padding:10px 12px;font:14px/1.45 Arial,Helvetica,sans-serif;color:var(--va-ink)}.voting-admin textarea{resize:vertical}.voting-admin input[type=checkbox],.voting-admin input[type=radio]{accent-color:var(--va-red);width:17px;height:17px}.voting-admin label.voting-admin-check{display:flex;align-items:center;gap:9px;font-weight:400}.voting-admin-queue{list-style:none;padding:0;margin:20px 0}.voting-admin-queue li{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid var(--va-line)}.voting-admin-queue li.is-current{border-left:3px solid var(--va-red);padding-left:10px}.voting-admin-queue li>div{flex:1;min-width:0}.voting-admin-queue strong{display:block;font-size:14px;overflow-wrap:anywhere}.voting-admin-queue small{font-size:11px;color:var(--va-muted)}.voting-admin-queue button{padding:6px 9px;font-size:11px}.voting-admin-number{font-family:Georgia,serif;color:var(--va-muted);font-size:17px}.voting-admin-editor{border:0;border-top:1px solid var(--va-line);margin:25px 0;padding:20px 0 0;min-width:0}.voting-admin-editor>legend{padding:0 10px 0 0;font-size:18px;font-family:Canela,Georgia,serif}.voting-admin-editor>legend span{font:11px Arial,sans-serif;color:var(--va-muted)}.voting-admin-edit-row{display:flex;gap:16px;padding:16px 0 22px;border-bottom:1px solid var(--va-line);margin-bottom:18px}.voting-admin-fields{flex:1;display:grid;gap:12px;min-width:0}.voting-admin-row-actions{display:flex;align-items:start;gap:5px}.voting-admin-row-actions button{padding:7px 9px}.voting-admin-paste{margin-top:22px;margin-bottom:10px}.voting-admin-criterion{padding:20px;background:#f5f0e7;border:1px solid var(--va-line);border-radius:5px;display:grid;gap:14px;margin-bottom:18px}.voting-admin-scale{display:flex;align-items:end;gap:14px;flex-wrap:wrap}.voting-admin-scale>label:not(.voting-admin-check){max-width:110px}.voting-admin-scale .voting-admin-check{padding-bottom:10px}.voting-admin-save{display:flex;align-items:center;gap:18px;border-top:1px solid var(--va-line);padding-top:20px;margin-top:22px}.voting-admin-preview{max-width:600px;background:var(--va-paper);border:1px solid var(--va-line);padding:24px;border-radius:6px}.voting-admin-preview fieldset{border:0;margin:24px 0;padding:0}.voting-admin-preview legend{font-weight:600}.voting-admin-preview p{font-size:13px;color:var(--va-muted)}.voting-admin-ratings{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.voting-admin-ratings label{display:flex;align-items:center;border:1px solid var(--va-line);border-radius:4px;padding:9px}.voting-admin-login{max-width:510px;margin:20px auto 70px}.voting-admin-login form{display:grid;gap:20px;margin:24px 0}.voting-admin-read-criteria{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px}.voting-admin-read-criteria>div{border-top:1px solid var(--va-line);padding-top:15px}.voting-admin-read-criteria strong{display:block;font-size:14px}.voting-admin-read-criteria span,.voting-admin-read-criteria p{font-size:12px;color:var(--va-muted)}
-@media(max-width:760px){.voting-admin{padding:32px 16px 50px}.voting-admin-header{display:block}.voting-admin-header-links{margin-top:20px}.voting-admin-grid{grid-template-columns:1fr;gap:0}.voting-admin-card{padding:20px}.voting-admin-edit-row{flex-wrap:wrap;gap:10px}.voting-admin-fields{flex-basis:calc(100% - 40px)}.voting-admin-row-actions{margin-left:25px}.voting-admin-session a{margin-left:0}.voting-admin-save{align-items:start;flex-direction:column}.voting-admin-heading{flex-wrap:wrap}.voting-admin-scale{gap:10px}.voting-admin h2{font-size:27px}}
+.voting-admin{--va-paper:#111111;--va-ink:#f4f4f4;--va-muted:#999999;--va-line:#292929;--va-red:#c5393a;max-width:1200px;margin:0 auto;padding:68px 28px 88px;color:var(--va-ink);font-family:Arial,Helvetica,sans-serif;background:var(--va-paper);border-radius:4px;line-height:1.55}
+
+.voting-admin *{box-sizing:border-box}
+.voting-admin-header{display:flex;align-items:start;justify-content:space-between;gap:24px;margin-bottom:32px}
+.voting-admin h1,.voting-admin h2,.voting-admin h3{font-family:Canela,Georgia,serif;font-weight:400;line-height:1.14;letter-spacing:-.035em;margin:0 0 14px}
+.voting-admin h1{font-size:clamp(36px,5vw,58px)}
+.voting-admin h2{font-size:30px}
+.voting-admin h3{font-size:27px}
+.voting-admin p{margin:0 0 16px}
+.voting-admin .voting-admin-kicker{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--va-red);margin:0 0 12px}
+.voting-admin-header-links{display:flex;gap:12px;align-items:center;flex-shrink:0}
+.voting-admin a{color:var(--va-red);text-underline-offset:4px;text-decoration:underline;font-size:13px}
+.voting-admin button{border:1px solid var(--va-line);border-radius:5px;background:transparent;padding:9px 13px;cursor:pointer;color:var(--va-ink);font-size:13px;line-height:1.4;transition:background .15s,border-color .15s}
+.voting-admin button:hover:not(:disabled){background:#111111;border-color:#292929}
+.voting-admin button:disabled{cursor:not-allowed;opacity:.43}
+.voting-admin :is(button,input,textarea,a):focus-visible{outline:3px solid #292929;outline-offset:3px}
+.voting-admin button.voting-admin-primary{background:var(--va-red);border-color:var(--va-red);color:#ffffff;padding:12px 18px}
+.voting-admin button.voting-admin-primary:hover:not(:disabled){background:#c5393a}
+.voting-admin-card{padding:28px;background:#111111;border:1px solid var(--va-line);border-radius:8px;margin-bottom:22px}
+.voting-admin-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:15px}
+.voting-admin-heading h2,.voting-admin-heading .voting-admin-kicker{margin-bottom:5px}
+.voting-admin-muted{color:var(--va-muted);font-size:13px}
+.voting-admin-session{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 0;border-top:1px solid var(--va-line);border-bottom:1px solid var(--va-line);margin-bottom:24px;font-size:12px}
+.voting-admin-session a{margin-left:auto}
+.voting-admin-status{font-size:11px;font-weight:700;border-radius:20px;background:#111111;padding:5px 10px}
+.voting-admin-status.is-active{background:#111111;color:#999999}
+.voting-admin-alert,.voting-admin-notice{padding:16px 20px;border:1px solid #292929;border-left:4px solid var(--va-red);background:#111111;border-radius:4px;margin-bottom:20px;font-size:14px}
+.voting-admin-notice{border-color:#292929;background:#111111}
+.voting-admin-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:22px}
+.voting-admin-grid>.voting-admin-card{min-width:0}
+.voting-admin-pill{font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:.08em;background:#111111;color:var(--va-red);padding:6px 10px;border-radius:20px}
+.voting-admin-count{display:flex;align-items:center;gap:18px;padding:20px 0;border-top:1px solid var(--va-line);margin-top:24px}
+.voting-admin-count strong{font:48px/1 Canela,Georgia,serif;color:var(--va-red)}
+.voting-admin-count span{font-size:13px;max-width:210px}
+.voting-admin-phase-list{display:grid;gap:8px;margin:22px 0}
+.voting-admin-phase-list button{display:flex;align-items:center;gap:12px;text-align:left;padding:12px}
+.voting-admin-phase-list button>span{border-radius:50%;border:1px solid var(--va-line);width:22px;height:22px;display:grid;place-content:center;font-size:10px}
+.voting-admin-phase-list button.is-current{opacity:1;background:var(--va-red);border-color:var(--va-red);color:#ffffff}
+.voting-admin-phase-list small{margin-left:auto;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.voting-admin blockquote{margin:16px 0 0;padding:14px;border-left:2px solid var(--va-red);background:#111111;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.voting-admin label{display:grid;gap:7px;font-size:12px;font-weight:600}
+.voting-admin input:not([type=checkbox]):not([type=radio]),.voting-admin textarea{width:100%;min-width:0;background:#111111;border:1px solid #292929;border-radius:4px;padding:10px 12px;font:14px/1.45 Arial,Helvetica,sans-serif;color:var(--va-ink)}
+.voting-admin textarea{resize:vertical}
+.voting-admin input[type=checkbox],.voting-admin input[type=radio]{accent-color:var(--va-red);width:17px;height:17px}
+.voting-admin label.voting-admin-check{display:flex;align-items:center;gap:9px;font-weight:400}
+.voting-admin-queue{list-style:none;padding:0;margin:20px 0}
+.voting-admin-queue li{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid var(--va-line)}
+.voting-admin-queue li.is-current{border-left:3px solid var(--va-red);padding-left:10px}
+.voting-admin-queue li>div{flex:1;min-width:0}
+.voting-admin-queue strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.voting-admin-queue small{font-size:11px;color:var(--va-muted)}
+.voting-admin-queue button{padding:6px 9px;font-size:11px}
+.voting-admin-number{font-family:Georgia,serif;color:var(--va-muted);font-size:17px}
+.voting-admin-editor{border:0;border-top:1px solid var(--va-line);margin:25px 0;padding:20px 0 0;min-width:0}
+.voting-admin-editor>legend{padding:0 10px 0 0;font-size:18px;font-family:Canela,Georgia,serif}
+.voting-admin-editor>legend span{font:11px Arial,sans-serif;color:var(--va-muted)}
+.voting-admin-edit-row{display:flex;gap:16px;padding:16px 0 22px;border-bottom:1px solid var(--va-line);margin-bottom:18px}
+.voting-admin-fields{flex:1;display:grid;gap:12px;min-width:0}
+.voting-admin-row-actions{display:flex;align-items:start;gap:5px}
+.voting-admin-row-actions button{padding:7px 9px}
+.voting-admin-paste{margin-top:22px;margin-bottom:10px}
+.voting-admin-criterion{padding:20px;background:#111111;border:1px solid var(--va-line);border-radius:5px;display:grid;gap:14px;margin-bottom:18px}
+.voting-admin-scale{display:flex;align-items:end;gap:14px;flex-wrap:wrap}
+.voting-admin-scale>label:not(.voting-admin-check){max-width:110px}
+.voting-admin-scale .voting-admin-check{padding-bottom:10px}
+.voting-admin-save{display:flex;align-items:center;gap:18px;border-top:1px solid var(--va-line);padding-top:20px;margin-top:22px}
+.voting-admin-preview{max-width:600px;background:var(--va-paper);border:1px solid var(--va-line);padding:24px;border-radius:6px}
+.voting-admin-preview fieldset{border:0;margin:24px 0;padding:0}
+.voting-admin-preview legend{font-weight:600}
+.voting-admin-preview p{font-size:13px;color:var(--va-muted)}
+.voting-admin-ratings{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.voting-admin-ratings label{display:flex;align-items:center;border:1px solid var(--va-line);border-radius:4px;padding:9px}
+.voting-admin-login{max-width:510px;margin:20px auto 70px}
+.voting-admin-login form{display:grid;gap:20px;margin:24px 0}
+.voting-admin-read-criteria{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px}
+.voting-admin-read-criteria>div{border-top:1px solid var(--va-line);padding-top:15px}
+.voting-admin-read-criteria strong{display:block;font-size:14px}
+.voting-admin-read-criteria span,.voting-admin-read-criteria p{font-size:12px;color:var(--va-muted)}
+
+@media(max-width:760px){.voting-admin{padding:32px 16px 50px}
+.voting-admin-header{display:block}
+.voting-admin-header-links{margin-top:20px}
+.voting-admin-grid{grid-template-columns:1fr;gap:0}
+.voting-admin-card{padding:20px}
+.voting-admin-edit-row{flex-wrap:wrap;gap:10px}
+.voting-admin-fields{flex-basis:calc(100% - 40px)}
+.voting-admin-row-actions{margin-left:25px}
+.voting-admin-session a{margin-left:0}
+.voting-admin-save{align-items:start;flex-direction:column}
+.voting-admin-heading{flex-wrap:wrap}
+.voting-admin-scale{gap:10px}
+.voting-admin h2{font-size:27px}
+}
+
+.voting-admin{--va-paper:#0c0c0c;--va-ink:#f4f4f4;--va-muted:#999;--va-line:#292929;--va-red:#c5393a;padding:24px 0 48px;max-width:1080px;background:transparent}
+.voting-admin h1{font-family:Charlottenburg,Arial,sans-serif;font-size:clamp(36px,5vw,52px);letter-spacing:0}
+.voting-admin h2{font-size:26px}
+.voting-admin-header{align-items:center;margin-bottom:28px}
+.voting-admin-header h1{margin:0}
+.voting-admin a{color:#ddd;text-decoration:none}
+.voting-admin a:hover{color:#fff}
+.voting-admin-header-links button{border:0;padding:0;color:#999}
+.voting-admin-card{background:transparent;border:0;border-top:1px solid var(--va-line);border-radius:0;padding:26px 0;margin-bottom:20px}
+.voting-admin-grid{gap:40px}
+.voting-admin-session{border:0;padding:0;margin:0 0 20px}
+.voting-admin-session a{margin-left:0;color:#999}
+.voting-admin-phase-list{margin:24px 0;gap:6px}
+.voting-admin-phase-list button{padding:11px 14px}
+.voting-admin button:hover:not(:disabled){background:#202020;border-color:#555}
+.voting-admin button.voting-admin-primary:hover:not(:disabled){background:#ac3031;border-color:#ac3031}
+.voting-admin-heading{align-items:baseline;flex-wrap:wrap}
+.voting-admin-heading>button{font-size:12px}
+.voting-admin-queue{margin:0}
+.voting-admin-queue li.is-current{border-left:0;padding-left:0}
+.voting-admin-queue li.is-current strong{color:#ef7777}
+.voting-admin-login{max-width:420px;margin:60px auto}
+.voting-admin-login>p{color:#999;font-size:14px}
+.voting-admin-login form{margin-bottom:0}
+.voting-admin-criterion{background:transparent;border:0;border-bottom:1px solid var(--va-line);border-radius:0;padding:0 0 24px}
+.voting-admin-alert,.voting-admin-notice{background:#191314;color:#f2c4c4;border:1px solid #573032;border-radius:4px;font-size:13px;padding:12px 16px}
+.voting-admin input:not([type=checkbox]):not([type=radio]),.voting-admin textarea{background:#141414;border-color:#333}
+@media(max-width:760px){.voting-admin{padding:16px 0 32px}.voting-admin-header{display:flex}.voting-admin-header-links{margin:0}.voting-admin-grid{gap:0}.voting-admin-card{padding:24px 0}.voting-admin-login{margin:32px auto}.voting-admin h1{font-size:34px}}

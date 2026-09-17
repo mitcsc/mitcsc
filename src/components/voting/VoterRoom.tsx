@@ -119,28 +119,25 @@ export default function VoterRoom() {
     } catch (e) { setError((e as Error).message); }
     finally { setJoining(false); }
   }
-  return <main className="voter-room">
-    <header className="voter-masthead"><Link href="/" className="voter-wordmark">MIT Chinese Students Club</Link>{state?.isAdmin && <Link href="/deliberations/admin" className="voter-admin-link">Admin controls ↗</Link>}</header>
-    <div className="voter-intro"><p className="voter-eyebrow">A considered choice</p><h1>Deliberations</h1><p>First impressions. Open discussion. Your final say.</p></div>
+  return <div className="voter-room">
+    <header className="voter-intro"><h1>Deliberations</h1>{state?.isAdmin && <Link href="/deliberations/admin" className="voter-admin-link">Admin ↗</Link>}</header>
     {checking && <div className="voter-panel voter-wait" role="status">Connecting to the voting room…</div>}
     {error && <div className="voter-alert" role="alert">{error} {!joining && !checking && <button className="voter-text-button" onClick={() => void refresh()}>Reconnect</button>}</div>}
     {!checking && needsJoin && <section className="voter-panel voter-join">
-      <p className="voter-eyebrow">The voting room</p><h2>Take your seat.</h2><p>Enter the session password shared by your admin.</p>
+      <h2>Join session</h2>
       <form onSubmit={join}>
-        <label htmlFor="voter-name">Your name<input id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} placeholder="How should we identify your ballot?" /></label>
+        <label htmlFor="voter-name">Your name<input id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} /></label>
         <label htmlFor="voter-password">Session password<input id="voter-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
         <button className="voter-primary" disabled={joining || !name.trim() || !password}>{joining ? "Joining…" : "Join session →"}</button>
-      </form><p className="voter-footnote">Use the same browser throughout the session. Draft ratings stay on this device until you submit your final ballot.</p>
+      </form><p className="voter-footnote">Use the same browser until you submit your final ballot.</p>
     </section>}
     {!checking && state && <>
-      <div className="voter-session-bar"><span className={`voter-connection ${connected ? "voter-connected" : ""}`}><i />{connected ? "Connected · updates every few seconds" : "Connection interrupted"}</span><span>{state.voter?.name || "Admin account"}</span></div>
-      {state.isAdmin && <div className="voter-context" role="status">You started this session and have admin controls. <Link href="/deliberations/admin">Open controls →</Link> You can also vote below.</div>}
+      <div className="voter-session-bar"><span>{state.voter?.name}</span>{!connected && <span>Connection interrupted</span>}</div>
         {pendingCount > 0 && <div className="voter-alert" role="status">{pendingCount} earlier {pendingCount === 1 ? "ballot remains" : "ballots remain"} unsubmitted on this browser. Tell your admin before leaving; advancing did not submit those ratings.</div>}
-        {!state.active ? <div className="voter-panel voter-wait"><p className="voter-eyebrow">Session closed</p><h2>Voting is paused.</h2><p>Your saved drafts remain on this browser. This page will update when the admin reopens the session.</p></div> : !state.currentCandidate || state.phase === "waiting" ? <div className="voter-panel voter-wait"><div className="voter-wait-symbol" aria-hidden="true">↗</div><p className="voter-eyebrow">You’re in</p><h2>Waiting for the next candidate.</h2><p>{phases.waiting.description}</p></div> : <VoterBallot key={draftKey(state)} state={state} connected={connected} onSubmitted={() => { countPending(); void refresh(); }} />}
+        {!state.active ? <div className="voter-panel voter-wait"><h2>Voting is paused.</h2><p>Your saved drafts remain on this browser. This page will update when the admin reopens the session.</p></div> : !state.currentCandidate || state.phase === "waiting" ? <div className="voter-panel voter-wait"><h2>Waiting for the next candidate.</h2><p>{phases.waiting.description}</p></div> : <VoterBallot key={draftKey(state)} state={state} connected={connected} onSubmitted={() => { countPending(); void refresh(); }} />}
     </>}
     {!checking && !needsJoin && !state && !error && <div className="voter-panel">The voting room is not available yet.</div>}
-    <footer className="voter-footer">Your ratings are private to you and the election organizers.</footer>
-  </main>;
+  </div>;
 }
 
 function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; connected: boolean; onSubmitted: () => void }) {
@@ -204,31 +201,31 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   }
   const phase = phases[state.phase];
   return <section className="voter-panel voter-ballot">
-    <div className="voter-ballot-heading"><span className="voter-eyebrow">Current candidate</span><span className="voter-phase">{phase.label}</span></div>
+    <div className="voter-ballot-heading"><span className="voter-phase">{phase.label}</span></div>
     <h2>{state.currentCandidate!.name}</h2><p className="voter-phase-description">{phase.description}</p>
-    <ol className="voter-progress" aria-label="Voting stages">{["Initial ratings", "Discussion", "Final ballot"].map((label, i) => <li key={label} className={(state.phase === "initial" ? 0 : state.phase === "deliberation" || state.phase === "revision" ? 1 : 2) === i ? "voter-step-current" : ""}><span>{i + 1}</span>{label}</li>)}</ol>
+
     {storageError && <div className="voter-alert" role="alert">Browser storage is unavailable or unreadable. Ratings currently exist only in this open page; do not refresh or close it before submitting.</div>}
-    {state.contextVisible && state.currentCandidate!.context && <aside className="voter-context"><p className="voter-eyebrow">Discussion context</p><p>{state.currentCandidate!.context}</p></aside>}
-    {draft.submitted ? <div className="voter-success" role="status"><span aria-hidden="true">✓</span><h3>Ballot received.</h3><p>Your initial and final ratings were saved to the election spreadsheet. You’re ready for the next candidate.</p></div> : <>
+    {state.contextVisible && state.currentCandidate!.context && <aside className="voter-context"><p>{state.currentCandidate!.context}</p></aside>}
+    {draft.submitted ? <div className="voter-success" role="status"><h3>Ballot received.</h3><p>Your ratings have been submitted.</p></div> : <>
       {!draft.initial && state.phase !== "initial" && <div className="voter-alert" role="status">No saved initial ratings were found for this ballot on this browser. You cannot submit a final ballot yet. Tell your admin; if you voted in another browser, return to that browser.</div>}
       {draft.submissionId && <div className="voter-alert" role="status">A final submission was attempted but has not been confirmed on this browser. These ratings are preserved for retry when final submission is open.</div>}
-      {draft.initial && <p className="voter-local-note">Initial ratings recorded {storageError ? "in this page" : "on this browser"}. {state.phase === "revision" ? "Changes below are saved locally." : "They have not been sent to the spreadsheet yet."}</p>}
+
     </>}
-    <div className="voter-criteria">{state.criteria.map((criterion, index) => <fieldset className="voter-criterion" key={criterion.id} disabled={!editable}>
-      <legend><span className="voter-criterion-number">{String(index + 1).padStart(2, "0")}</span>{criterion.label}{criterion.required && <span className="voter-required">Required</span>}</legend>
+    <div className="voter-criteria">{state.criteria.map((criterion) => <fieldset className="voter-criterion" key={criterion.id} disabled={!editable}>
+      <legend>{criterion.label}{criterion.required && <span className="voter-required" aria-label="Required">*</span>}</legend>
       {criterion.description && <p>{criterion.description}</p>}
       <div className="voter-scale" role="radiogroup" aria-label={criterion.label}>{Array.from({ length: Math.max(0, Math.min(21, criterion.max - criterion.min + 1)) }, (_, i) => criterion.min + i).map(value => <label key={value} className={`voter-rating ${values[criterion.id] === value ? "voter-rating-selected" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} value={value} checked={values[criterion.id] === value} onChange={() => setRating(criterion.id, value)} /><span>{value}</span></label>)}{!criterion.required && <label className={`voter-rating voter-rating-na ${values[criterion.id] === null ? "voter-rating-selected" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} checked={values[criterion.id] === null} onChange={() => setRating(criterion.id, null)} /><span>Not enough information</span></label>}</div>
       {draft.initial && <p className="voter-original">Initial: {draft.initial[criterion.id] === null || draft.initial[criterion.id] === undefined ? "Not enough information" : draft.initial[criterion.id]}{values[criterion.id] !== draft.initial[criterion.id] && <span> · Revised</span>}</p>}
     </fieldset>)}</div>
     {error && <div className="voter-alert" role="alert">{error}</div>}
     {!draft.submitted && <div className="voter-ballot-actions">
-      {state.phase === "initial" && !draft.initial && <><button className="voter-primary" disabled={!connected || !state.criteria.length} onClick={saveInitial}>Save initial ratings →</button><p>Locks your first impressions on this browser. Final submission comes after discussion.</p></>}
+      {state.phase === "initial" && !draft.initial && <><button className="voter-primary" disabled={!connected || !state.criteria.length} onClick={saveInitial}>Save initial ratings →</button></>}
       {state.phase === "initial" && draft.initial && <p className="voter-action-status">✓ Initial ratings recorded. Ready for discussion.</p>}
-      {state.phase === "deliberation" && draft.initial && <p className="voter-action-status">Your first impressions are preserved. Listen and discuss.</p>}
-      {state.phase === "revision" && draft.initial && <p className="voter-action-status">{localSaved && !storageError ? "✓ Revisions saved on this browser." : "Your original ratings are carried forward. Revise any rating above."} Wait for final submission to open.</p>}
-      {state.phase === "final" && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : "Submit final ballot →"}</button><p>Send both your initial and final ratings to the election spreadsheet.</p></>}
+      {state.phase === "deliberation" && draft.initial && <p className="voter-action-status">Initial ratings saved.</p>}
+      {state.phase === "revision" && draft.initial && <p className="voter-action-status">{localSaved && !storageError ? "✓ Revisions saved on this browser." : "Your original ratings are carried forward. Revise any rating above."}</p>}
+      {state.phase === "final" && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : "Submit final ballot →"}</button></>}
       {state.phase === "locked" && draft.initial && <p className="voter-action-status">This ballot was not submitted. Your draft remains here; tell your admin.</p>}
     </div>}
-    <p className="voter-footnote">Keep this browser open through final submission. Refreshing preserves saved drafts when browser storage is available; switching devices does not.</p>
+    <p className="voter-footnote">Drafts stay in this browser until final submission.</p>
   </section>;
 }

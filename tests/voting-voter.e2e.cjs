@@ -127,8 +127,7 @@ async function main() {
     // A first-join admin uses the same cookie and voting flow.
     state.isAdmin = true; state.currentCandidate = { id: 'candidate-admin', name: 'Admin Ballot', context: '', order: 3, completed: false }; state.ballotVersion = 'v4';
     await refreshPhase('initial');
-    await page.getByRole('status').filter({ hasText: 'You started this session and have admin controls.' }).waitFor();
-    await page.getByRole('link', { name: 'Admin controls' }).waitFor();
+    await page.getByRole('link', { name: 'Admin ↗' }).waitFor();
     await rate('Reliability', 2);
     await page.getByRole('button', { name: 'Save initial ratings' }).click();
     await refreshPhase('final');
