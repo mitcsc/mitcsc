@@ -269,8 +269,8 @@
 .voting-root .voter-room .voter-discussion{min-height:calc(100svh - 64px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center}
 .voting-root .voter-room .voter-discussion h2{font-size:clamp(32px,5vw,44px);font-weight:500;line-height:1.15;letter-spacing:-.02em;margin:0;overflow-wrap:anywhere;max-width:100%}
 .voter-discussion-shimmer{margin:0;font-size:16px;line-height:1.5;color:#a2a2a6}
-@supports (background-clip:text){.voter-discussion-shimmer{background:linear-gradient(100deg,#8b8b91 35%,#eeeeef 50%,#8b8b91 65%);background-size:250% 100%;background-clip:text;-webkit-background-clip:text;color:transparent;animation:voting-discussion-shimmer 3.8s ease-in-out infinite}}
-@keyframes voting-discussion-shimmer{0%,15%{background-position:100% 50%}85%,100%{background-position:0% 50%}}
+@supports (background-clip:text){.voter-discussion-shimmer{background:linear-gradient(100deg,#8b8b91 0%,#8b8b91 35%,#eeeeef 50%,#8b8b91 65%,#8b8b91 100%);background-size:200% 100%;background-repeat:repeat-x;background-clip:text;-webkit-background-clip:text;color:transparent;animation:voting-discussion-shimmer 3.8s linear infinite}}
+@keyframes voting-discussion-shimmer{from{background-position:200% 50%}to{background-position:0% 50%}}
 @media(max-width:760px){.voting-root .voter-room .voter-discussion{min-height:calc(100svh - 48px)}}
 @media(prefers-reduced-motion:reduce){.voter-discussion-shimmer{animation:none;background:none;color:#a2a2a6}}
 .voting-root .voting-round-steps{grid-template-columns:repeat(3,minmax(0,1fr))}
