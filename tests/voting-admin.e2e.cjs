@@ -65,10 +65,24 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.getByLabel('Session password').fill('test-admin');
     await button('Join').click();
     await button('Set up election').click();
-    await page.getByRole('heading', { name: 'Build your ballot' }).waitFor();
-    await page.getByLabel('Or paste names, one per line').fill('Alex Chen\nJordan Lee\nMorgan Wu');
-    await button('Add pasted names').click();
+    await page.getByRole('region', { name: 'Ballot setup' }).waitFor();
+    await button('Paste names').click();
+    await page.getByLabel('Names, one per line').fill('Alex Chen\nJordan Lee\nMorgan Wu');
+    await button('Add names').click();
     assert.equal(await page.getByLabel('Name', { exact: true }).count(), 3);
+    assert.equal(await page.getByLabel('Names, one per line').count(), 0, 'Paste closes after adding names');
+    const firstHandle = page.getByRole('button', {name:'Reorder Alex Chen',exact:true});
+    const start = await firstHandle.boundingBox();
+    const second = await page.getByRole('button', {name:'Reorder Jordan Lee',exact:true}).boundingBox();
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2 + 10, {steps:12});
+    await page.mouse.up();
+    await waitFor(async () => await page.getByLabel('Name', {exact:true}).first().inputValue() === 'Jordan Lee', 'Drag did not reorder candidates');
+    await firstHandle.focus();
+    await page.keyboard.press('ArrowUp');
+    assert.equal(await page.getByLabel('Name', {exact:true}).first().inputValue(), 'Alex Chen', 'Keyboard reorder should restore order');
+
     await button('+ Add criterion').click();
     await page.getByLabel('Criterion', { exact: true }).fill('Reliability');
     await page.getByLabel('Description', { exact: true }).fill('Follow-through and preparation');
@@ -98,8 +112,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
       await page.getByRole('button', { name: name }).click();
       await waitFor(() => state.phase === phase, `Phase ${phase} did not persist`);
       if (phase === 'initial') {
-        await page.getByRole('heading', { name: 'Build your ballot' }).waitFor({ state: 'detached' });
-        assert.equal(await page.getByRole('heading', { name: 'Build your ballot' }).count(), 0, 'Setup must lock after starting');
+        await page.getByRole('region', { name: 'Ballot setup' }).waitFor({ state: 'detached' });
+        assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0, 'Setup must lock after starting');
         assert.equal(await page.getByRole('button', {name: /^Choose /}).first().isDisabled(), true, 'Cannot abandon an active candidate');
       }
     }
@@ -113,7 +127,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.getByRole('heading', {name: 'Voting closed', exact: true}).waitFor();
     await page.getByRole('button', {name: /^Choose /}).first().click();
     await waitFor(() => state.phase === 'waiting' && !state.ballotVersion, 'Next candidate selection should reset active version');
-    assert.equal(await page.getByRole('heading', { name: 'Build your ballot' }).count(), 0, 'Completed history must keep setup locked even in waiting');
+    assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0, 'Completed history must keep setup locked even in waiting');
     await page.getByRole('button', {name: /^Reopen submissions for /}).click();
     await waitFor(() => state.phase === 'final', 'Completed candidate did not reopen');
     assert.equal(state.ballotVersion, originalVersion, 'Reopening must preserve ballot version');
