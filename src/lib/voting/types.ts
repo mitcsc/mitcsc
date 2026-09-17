@@ -16,6 +16,7 @@ export interface VotingState {
   isAdmin: boolean;
   initialized: boolean;
   participants?: { id: string; name: string; submitted: boolean; initialSubmitted?: boolean }[];
+  candidateStates?: {candidateId: string; phase: VotingPhase; ballotVersion: string; submittedCount: number; participants: NonNullable<VotingState["participants"]>}[];
   candidates?: Candidate[];
   spreadsheetUrl?: string;
 }

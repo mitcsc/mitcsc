@@ -95,7 +95,16 @@ export async function getState(config: Settings, identity: Identity) {
   if (identity.role === "admin") {
     const submitted = new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === result.currentCandidate?.id && r[6] === result.ballotVersion).map(r => r[4]));
     const initial = new Set((await initialReceipts(config)).filter(r => r[0] === config.sessionId && r[1] === result.currentCandidate?.id && r[2] === result.ballotVersion).map(r => r[3]));
-    result.participants = (await sessionVoters(config)).map(voter => ({...voter, submitted: submitted.has(voter.id), initialSubmitted: initial.has(voter.id)}));
+    const voters = await sessionVoters(config);
+    result.participants = voters.map(voter => ({...voter, submitted: submitted.has(voter.id), initialSubmitted: initial.has(voter.id)}));
+    const receipts = await initialReceipts(config);
+    result.candidateStates = s.candidates.map(candidate => {
+      const ballot = [...s.ballots].reverse().find(row => row[0] === candidate.id);
+      const version = candidate.id === result.currentCandidate?.id ? result.ballotVersion : ballot?.[1] || "";
+      const finalVoters = new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === candidate.id && r[6] === version).map(r => r[4]));
+      const initialVoters = new Set(receipts.filter(r => r[0] === config.sessionId && r[1] === candidate.id && r[2] === version).map(r => r[3]));
+      return {candidateId: candidate.id, phase: candidate.id === result.currentCandidate?.id ? result.phase : candidate.completed ? "locked" as const : "waiting" as const, ballotVersion: version, submittedCount: finalVoters.size, participants: voters.map(voter => ({...voter, submitted: finalVoters.has(voter.id), initialSubmitted: initialVoters.has(voter.id)}))};
+    });
   }
   return result;
 }

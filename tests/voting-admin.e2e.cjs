@@ -137,7 +137,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     assert.equal(await button('Shuffle order').count(), 0, 'Shuffle is only available in setup');
     const localOrder = await page.evaluate(() => JSON.parse(localStorage.getItem('voting-order:test-election')));
     assert.equal(localOrder.length, 3);
-    await page.getByRole('button', {name:'Choose Morgan Wu',exact:true}).evaluate(button => { if (!button.disabled) button.click(); });
+    await page.getByRole('button', {name:'View Morgan Wu',exact:true}).evaluate(button => { if (!button.disabled) button.click(); });
     await page.locator('.voting-current-name').filter({hasText:'Morgan Wu'}).waitFor();
     for (const [name, phase] of [['Start initial ratings', 'initial'], ['Start discussion', 'deliberation'], ['Open voting', 'revision']]) {
       await page.getByRole('button', { name: name }).click();
@@ -148,7 +148,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
         assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0, 'Setup must lock after starting');
         assert.equal(await button('Back to setup').count(),0,'Setup navigation must disappear during voting');
         assert.equal(await page.getByRole('tab').count(),0);
-        assert.equal(await page.getByRole('button', {name: /^Choose /}).first().isDisabled(), true, 'Cannot abandon an active candidate');
+        assert.equal(await page.getByRole('button', {name: /^View /}).first().isDisabled(), false, 'Candidate browsing stays available');
       }
     }
     await page.getByRole('heading', {name:'Voting open',exact:true}).waitFor({state:'attached'});
@@ -159,13 +159,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     assert.equal(await page.locator('.voting-waiting-on').getByText('Voter Two',{exact:true}).count(),0);
     const originalVersion = state.ballotVersion;
     await page.getByRole('button', { name: 'Close voting for this candidate' }).click();
-    await button('Yes, close voting').click();
     await waitFor(() => state.phase === 'locked', 'Candidate did not lock');
     await page.getByRole('heading', {name: 'Voting closed', exact: true}).waitFor();
-    await page.getByRole('button', {name: /^Choose /}).first().click();
-    await waitFor(() => state.phase === 'waiting' && !state.ballotVersion, 'Next candidate selection should reset active version');
+    await page.getByRole('button', {name: /^View /}).first().click();
+    assert.equal(state.phase,'locked','Browsing another candidate must not change the live round');
     assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0, 'Completed history must keep setup locked even in waiting');
-    await page.getByRole('button', {name: /^Reopen submissions for /}).click();
+    await page.getByRole('button',{name:'View Morgan Wu',exact:true}).click();
+    await page.getByRole('button', {name:'Reopen final submission',exact:true}).click();
     await waitFor(() => state.phase === 'final', 'Completed candidate did not reopen');
     assert.equal(state.ballotVersion, originalVersion, 'Reopening must preserve ballot version');
     assert.equal(actions.at(-1).candidateId, state.candidates.find(c => c.name === 'Morgan Wu').id);

@@ -150,6 +150,11 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   assert.equal(state.candidates.find(c=>c.id==='alex').completed,true);
   assert.equal(state.candidates[0].id,'alex');
   state = await service.adminAction(config,admin,{action:'setPhase',phase:'initial',candidateId:'sam'});
+  const historical = state.candidateStates.find(c=>c.candidateId==='alex');
+  assert.equal(historical.phase,'locked');
+  assert.equal(historical.submittedCount,1,'Historical candidate count is independent of the live round');
+  assert.equal(historical.ballotVersion,version);
+  assert.equal(historical.participants.find(v=>v.id===voter.id).initialSubmitted,true);
   assert.notEqual(state.ballotVersion,version);
   assert.equal(state.contextVisible,false);
   assert.equal(state.submittedCount,0);

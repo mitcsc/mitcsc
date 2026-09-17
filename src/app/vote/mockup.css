@@ -426,3 +426,8 @@
 .voting-pane-title{min-height:24px}
 .voting-criteria-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
 .voting-root .voting-admin .voting-criteria-actions .voting-start{display:inline-flex;align-items:center;gap:18px;padding:7px 16px;min-height:34px;border-radius:6px}
+.voting-root .voting-admin .voting-reopen-action{align-self:flex-start;margin-top:16px;padding:10px 14px;border-radius:7px;font-size:13px;color:#ccc;border-color:#ffffff26}
+.voting-root .voting-admin .voting-reopen-action:hover:not(:disabled){background:#ffffff08;color:#fff}
+
+@supports(background-clip:text){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer{color:transparent}}
+@media(prefers-reduced-motion:reduce){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer{color:#a2a2a6}}
