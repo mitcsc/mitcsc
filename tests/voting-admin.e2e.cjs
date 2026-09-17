@@ -121,9 +121,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.getByLabel('Your name').fill('Test President');
     await page.getByLabel('Session password').fill('test-admin');
     await button('Join session').click();
-    await page.getByRole('heading', { name: 'Facilitator already assigned' }).waitFor();
+    await page.getByRole('heading', { name: 'Admin already assigned' }).waitFor();
     assert.equal(await page.getByRole('link', { name: 'Go to voting →' }).count(), 1);
-    assert.equal(await button('Join session').count(), 0, 'Later voters should not get trapped in a facilitator login loop');
+    assert.equal(await button('Join session').count(), 0, 'Later voters should not get trapped in a admin login loop');
     assert.deepEqual(errors, []);
     console.log(`PASS: admin login, setup, polling draft preservation, preview, shuffle, phase flow, recovery and mobile layout (${actions.length} mutations mocked).`);
   } finally { await browser.close(); }
