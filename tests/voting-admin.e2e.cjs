@@ -77,6 +77,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
     await page.mouse.down();
     await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2 + 10, {steps:12});
+    await waitFor(async () => await page.getByRole('button', {name:'Reorder Jordan Lee',exact:true}).locator('..').evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42 < -20), 'Adjacent row should move aside before drop');
     await page.mouse.up();
     await waitFor(async () => await page.getByLabel('Name', {exact:true}).first().inputValue() === 'Jordan Lee', 'Drag did not reorder candidates');
     await firstHandle.focus();

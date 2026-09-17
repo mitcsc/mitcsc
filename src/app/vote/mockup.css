@@ -316,3 +316,12 @@
 .voting-root{flex:none;display:flex;flex-direction:column}
 .voting-root .voting-admin.voting-console{flex:1;height:0;width:100%}
 .voting-root .voter-room{flex:1;min-height:0}
+
+.voting-root .voter-room .voter-lobby{gap:0}
+.voter-lobby-status{display:flex;align-items:center;gap:9px;font-size:13px;color:#929294;margin-bottom:24px}
+.voter-lobby-status>span{width:6px;height:6px;border-radius:50%;background:oklch(.58 .22 25)}
+.voting-root .voter-room .voter-lobby h2{font-size:clamp(32px,5vw,40px);line-height:1.15;letter-spacing:-1px;font-weight:400;color:#f2f2f2;margin:0}
+.voting-root .voter-room .voter-lobby p{font-size:15px;line-height:1.5;color:#929294;margin:14px 0 0}
+.voter-lobby-joined{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:#bababc;margin-top:27px;max-width:100%}
+.voter-lobby-joined svg{flex:none}
+.voter-lobby-joined span{overflow-wrap:anywhere;min-width:0}

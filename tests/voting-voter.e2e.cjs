@@ -20,7 +20,7 @@ async function main() {
   const submissions = [];
   let rejectSubmission = true;
   const state = {
-    sessionId: 'ui-test-session', active: true, phase: 'initial', ballotVersion: 'v1',
+    sessionId: 'ui-test-session', active: true, phase: 'waiting', votingStarted: false, ballotVersion: 'v1',
     currentCandidate: { id: 'candidate-one', name: 'Alex Chen', context: '', order: 0, completed: false },
     criteria: [
       { id: 'reliability', label: 'Reliability', description: 'Consider follow-through.', min: 1, max: 5, required: true },
@@ -60,6 +60,10 @@ async function main() {
     await page.getByLabel('Your name').fill('Test Voter');
     await page.getByLabel('Session password').fill('private-test-password');
     await page.getByRole('button', { name: 'Join' }).click();
+    await page.getByRole('heading', { name: 'You’re in.' }).waitFor();
+    await waitText('Joined as Test Voter');
+    state.votingStarted = true;
+    await refreshPhase('initial');
     await page.getByRole('heading', { name: 'Alex Chen' }).waitFor();
     assert.deepEqual(joinRequests, [{ name: 'Test Voter', password: 'private-test-password', role: 'voter' }]);
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: 'Not enough information' }).count(), 0);

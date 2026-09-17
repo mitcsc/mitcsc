@@ -6,6 +6,7 @@ export interface VotingState {
   sessionId: string;
   active: boolean;
   phase: VotingPhase;
+  votingStarted?: boolean;
   ballotVersion: string;
   currentCandidate: Candidate | null;
   criteria: Criterion[];
