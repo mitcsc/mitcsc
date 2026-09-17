@@ -83,7 +83,10 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
     try {
       const next: VotingState = await responseData(await fetch("/api/voting/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(action)}));
       applyState(next);
-      if (action.action === "setPhase") setSelectedId(next.currentCandidate?.id || null);
+      if (action.action === "setPhase") {
+        const upcoming = action.phase === "locked" ? candidates.find(candidate => candidate.id !== next.currentCandidate?.id && next.candidates?.some(updated => updated.id === candidate.id && !updated.completed)) : undefined;
+        setSelectedId(upcoming?.id || next.currentCandidate?.id || null);
+      }
       if (action.action === "initialize") setTab("setup");
       if (action.action === "initialize") setSetupRevision(x => x + 1);
       return true;
@@ -136,8 +139,7 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
               </div>}
 
               {round && <button className="voting-admin-primary voting-round-next" disabled={busy || (!viewingLive && !liveIdle) || !state.active || (round.next === "initial" && state.currentCandidate.completed) || !state.criteria.length} onClick={() => changePhase(round.next)}>{busy ? "Updating…" : round.action}</button>}
-              {state.phase === "locked" && liveIdle && nextCandidate && <button className="voting-admin-primary voting-round-next" disabled={busy} onClick={() => selectCandidate(nextCandidate.id)}>Next candidate: {nextCandidate.name}</button>}
-              {state.phase === "locked" && <button className="voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? "Reopening…" : "Reopen final submission"}</button>}
+              {state.phase === "locked" && <button className="voting-admin-primary voting-round-next voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? "Reopening…" : "Reopen final submission"}</button>}
               {!viewingLive && !liveIdle && <p className="voting-admin-muted">Another candidate is live. Close that round before opening this one.</p>}
               {state.phase === "locked" && !nextCandidate && <p className="voting-admin-muted">All candidates are complete.</p>}
             </>}

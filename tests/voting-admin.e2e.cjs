@@ -160,7 +160,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     const originalVersion = state.ballotVersion;
     await page.getByRole('button', { name: 'Close voting for this candidate' }).click();
     await waitFor(() => state.phase === 'locked', 'Candidate did not lock');
-    await page.getByRole('heading', {name: 'Voting closed', exact: true}).waitFor();
+    await button('Start initial ratings').waitFor();
+    assert.notEqual(await page.locator('.voting-current-name').textContent(),'Morgan Wu','Closing selects the next unfinished candidate');
+    assert.equal(await page.getByRole('button',{name:/^Next candidate:/}).count(),0);
     await page.getByRole('button', {name: /^View /}).first().click();
     assert.equal(state.phase,'locked','Browsing another candidate must not change the live round');
     assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0, 'Completed history must keep setup locked even in waiting');
