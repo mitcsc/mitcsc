@@ -145,7 +145,8 @@ async function main() {
     // Presidents are routed to controls and never receive a ballot.
     state.isAdmin = true;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await page.waitForURL('**/vote/admin');
+    await page.locator('.voting-console').waitFor();
+    assert.equal(new URL(page.url()).pathname,'/vote');
     assert.equal(await page.getByRole('button', {name: 'Submit vote'}).count(), 0);
     assert.equal(submissions.length, 2);
     assert.deepEqual(errors, [], 'No uncaught browser errors');

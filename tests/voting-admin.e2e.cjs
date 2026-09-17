@@ -175,8 +175,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     assert.equal(await page.getByRole('link', {name: /Election sheet/}).count(), 0);
     state.isAdmin = false;
     await page.reload();
-    await page.getByRole('heading', { name: 'Admin already assigned' }).waitFor();
-    assert.equal(await page.getByRole('link', { name: 'Go to voting →' }).count(), 1);
+    await page.locator('.voter-room').waitFor();
+    assert.ok(new URL(page.url()).pathname === '/vote');
+    assert.equal(await page.getByRole('region', {name:'Round controls'}).count(),0);
     assert.equal(await button('Join').count(), 0, 'Later voters should not get trapped in a admin login loop');
     assert.deepEqual(errors, []);
     console.log(`PASS: admin login, setup, polling draft preservation, preview, shuffle, phase flow, recovery and mobile layout (${actions.length} mutations mocked).`);

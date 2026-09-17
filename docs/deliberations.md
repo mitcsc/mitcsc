@@ -56,7 +56,7 @@ Copying it creates a new ID.
 
 1. Create a blank private spreadsheet and share it as Editor with the service account.
 2. Enter its URL, a new session ID, and the shared password in the permanent settings spreadsheet.
-3. Open `/vote/admin` and enter your name and the shared password before distributing it to exec.
+3. Open `/vote` and enter your name and the shared password before distributing it to exec.
 4. Select **Set up election** to create the required tabs without deleting existing data.
 5. Add candidates and criteria, save, and choose a candidate order.
 6. Share `/vote` and the voter password with exec.
@@ -123,3 +123,7 @@ Initial-rating participation is recorded in the automatically created `Initial s
 This stores a receipt per voter and ballot, without storing rating values.
 The admin sees everyone still pending during initial ratings; after that stage closes, the final waiting list includes only voters with an initial receipt.
 Receipt retries are idempotent, including after the stage closes.
+
+Everyone joins at `/vote` through the same name and password form.
+The first admitted participant sees the admin controls on that page; later participants see the voter interface.
+The legacy `/vote/admin` URL redirects to `/vote`.

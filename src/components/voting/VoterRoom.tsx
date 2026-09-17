@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import AdminRoom from "./AdminRoom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FinalBallot, Ratings, VotingPhase, VotingState } from "@/lib/voting/types";
 
@@ -46,7 +46,6 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 }
 
 export default function VoterRoom() {
-  const router = useRouter();
   const [state, setState] = useState<VotingState | null>(null);
   const [checking, setChecking] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
@@ -62,7 +61,6 @@ export default function VoterRoom() {
     inFlight.current = true;
     try {
       const next = await api<VotingState>("state");
-      if (next.isAdmin) { router.replace("/vote/admin"); return; }
       setState(next);
       setNeedsJoin(false);
       setConnected(true);
@@ -79,8 +77,9 @@ export default function VoterRoom() {
       setChecking(false);
       inFlight.current = false;
     }
-  }, [router]);
+  }, []);
   useEffect(() => {
+    if (state?.isAdmin) return;
     void refresh();
     const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 4000);
     const resume = () => { if (!document.hidden) void refresh(); };
@@ -96,7 +95,7 @@ export default function VoterRoom() {
       window.removeEventListener("offline", offline);
       document.removeEventListener("visibilitychange", resume);
     };
-  }, [refresh]);
+  }, [refresh, state?.isAdmin]);
   const countPending = useCallback(() => {
     if (!state?.voter) return;
     try {
@@ -112,6 +111,10 @@ export default function VoterRoom() {
     } catch { setPendingCount(0); }
   }, [state]);
   useEffect(() => { countPending(); }, [countPending]);
+  const exitAdmin = useCallback((next?: VotingState) => {
+    setState(next || null);
+    setNeedsJoin(!next);
+  }, []);
   async function join(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setJoining(true); setError("");
@@ -122,6 +125,7 @@ export default function VoterRoom() {
     } catch (e) { setError((e as Error).message); }
     finally { setJoining(false); }
   }
+  if (state?.isAdmin) return <AdminRoom initialState={state} onExit={exitAdmin}/>;
   return <div className="voter-room">
 
     {checking && <div className="voter-panel voter-wait" role="status">Connecting to the voting room…</div>}
