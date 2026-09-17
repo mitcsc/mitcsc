@@ -4,7 +4,7 @@ export class VotingError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 export const COOKIE = "csc_voting";
-export interface Identity { id: string; name: string; role: "admin" | "voter"; sessionId: string; sheetId: string; exp: number; claimId?: string; facilitatorEpoch?: string }
+export interface Identity { id: string; name: string; role: "admin" | "voter"; sessionId: string; sheetId: string; exp: number; claimId?: string }
 function secret() {
   const value = process.env.VOTING_COOKIE_SECRET;
   if (value) {

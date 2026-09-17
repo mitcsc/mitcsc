@@ -43,14 +43,14 @@ test('successful joins on shared Wi-Fi do not consume failed-password budget', (
   assert.throws(() => limitJoin(request, true), /Too many/);
 });
 
-test('first concurrent join is sole facilitator; later joins vote; reset revokes and permits reclaim', async () => {
+test('first concurrent join is sole admin; later joins vote and refresh preserves ownership', async () => {
   const { GoogleAuth } = require('google-auth-library');
   const { claimIdentity, canonicalIdentity } = require('./facilitator.ts');
   const originalClient = GoogleAuth.prototype.getClient;
   const originalFetch = global.fetch;
   const keys = ['VOTING_SETTINGS_SHEET_ID', 'GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY'];
   const originalEnv = Object.fromEntries(keys.map(key => [key, process.env[key]]));
-  const rows = [['session_id', 'election_sheet_id', 'reset', 'claim_id', 'voter_id', 'voter_name', 'claimed_at']];
+  const rows = [['session_id', 'election_sheet_id', 'claim_id', 'voter_id', 'voter_name', 'claimed_at']];
   try {
     process.env.VOTING_SETTINGS_SHEET_ID = 'test-first-join-settings';
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL = 'test@example.invalid';
@@ -65,29 +65,23 @@ test('first concurrent join is sole facilitator; later joins vote; reset revokes
       ] }] });
       if (init.method === 'POST' && url.includes(':append')) {
         rows.push(...JSON.parse(init.body).values);
-        return Response.json({ updates: { updatedRange: `Admins!A${rows.length}:G${rows.length}` } });
+        return Response.json({ updates: { updatedRange: `Admins!A${rows.length}:F${rows.length}` } });
       }
       if (url.includes('Admins')) return Response.json({ values: rows });
       throw new Error(`Unexpected request ${url}`);
     };
     const config = await settings();
     assert.equal(config.adminPassword, undefined, 'sheet cannot assign an admin password');
-    assert.equal(config.facilitatorReset, '');
     const joined = await Promise.all([claimIdentity(config, 'First', null), claimIdentity(config, 'Second', null)]);
     assert.equal(joined.filter(person => person.role === 'admin').length, 1);
     const owner = joined.find(person => person.role === 'admin');
     const voter = joined.find(person => person.role === 'voter');
-    assert.equal(owner.claimId, rows[1][3]);
+    assert.equal(owner.claimId, rows[1][2]);
     assert.equal((await canonicalIdentity(config, owner)).role, 'admin');
     assert.equal((await canonicalIdentity(config, { ...voter, role: 'admin' })).role, 'voter');
     const before = rows.length;
     assert.equal((await claimIdentity(config, 'First', owner)).id, owner.id);
     assert.equal(rows.length, before, 'same browser rejoin does not append');
-    const reset = { ...config, facilitatorReset: 'new-recovery-epoch' };
-    assert.equal((await canonicalIdentity(reset, owner)).role, 'voter');
-    const reclaimed = await claimIdentity(reset, owner.name, owner);
-    assert.equal(reclaimed.role, 'admin');
-    assert.equal(reclaimed.id, owner.id, 'reset preserves ballot ownership');
   } finally {
     GoogleAuth.prototype.getClient = originalClient;
     global.fetch = originalFetch;

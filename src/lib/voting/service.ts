@@ -12,7 +12,7 @@ const HEADERS = {
   Summary: ["session_id", "candidate_id", "candidate_name", "criterion", "initial_average", "final_average", "ratings_count"],
 };
 const PHASES: VotingPhase[] = ["waiting", "initial", "deliberation", "revision", "final", "locked"];
-export interface Settings { sessionId: string; password: string; sheetId: string; settingsSheetId: string; facilitatorReset: string }
+export interface Settings { sessionId: string; password: string; sheetId: string; settingsSheetId: string }
 export async function settings(): Promise<Settings> {
   const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
@@ -21,7 +21,7 @@ export async function settings(): Promise<Settings> {
   const raw = values.voting_sheet_url || "";
   const sheetId = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] || (/^[a-zA-Z0-9_-]{15,}$/.test(raw) ? raw : "");
   if (!values.session_id || !sheetId) throw new VotingError("Complete session_id and voting_sheet_url in the settings sheet.", 503);
-  return { sessionId: values.session_id, password: values.session_password || "", sheetId, settingsSheetId: id, facilitatorReset: values.admin_reset || "" };
+  return { sessionId: values.session_id, password: values.session_password || "", sheetId, settingsSheetId: id };
 }
 export function authorize(identity: Identity | null, config: Settings, admin = false): Identity {
   if (!identity || identity.sessionId !== config.sessionId || identity.sheetId !== config.sheetId) throw new VotingError("Enter the session password to join.", 401);
