@@ -1,5 +1,7 @@
 "use client";
 
+import LoadingLabel from "./LoadingLabel";
+
 import AdminRoom from "./AdminRoom";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -129,7 +131,7 @@ export default function VoterRoom() {
   if (state?.isAdmin) return <AdminRoom initialState={state} onExit={exitAdmin}/>;
   return <div className="voter-room">
 
-    {checking && <div className="voter-panel voter-wait" role="status">Connecting to the voting room…</div>}
+    {checking && <div className="voter-panel voter-wait" role="status"><LoadingLabel>Connecting to the voting room…</LoadingLabel></div>}
     {error && <div className="voter-alert" role="alert">{error} {!joining && !checking && <button className="voter-text-button" onClick={() => void refresh()}>Reconnect</button>}</div>}
     {!checking && needsJoin && <section className="voter-panel voter-join">
       <Image className="voter-join-logo" src="/img/logo/logo.png" alt="MIT CSC" width={144} height={144} priority/>
@@ -137,7 +139,7 @@ export default function VoterRoom() {
       <form onSubmit={join}>
         <label htmlFor="voter-name"><span className="voting-sr-only">Your name</span><input placeholder="Your name" id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} /></label>
         <label htmlFor="voter-password"><span className="voting-sr-only">Session password</span><input placeholder="Session password" id="voter-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
-        <button className="voter-primary" disabled={joining || !name.trim() || !password}>{joining ? "Joining…" : "Join"}</button>
+        <button className="voter-primary" disabled={joining || !name.trim() || !password}>{joining ? <LoadingLabel>Joining…</LoadingLabel> : "Join"}</button>
       </form>
     </section>}
     {!checking && state && <>
@@ -233,9 +235,9 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     </fieldset>)}</div>
     {error && <div className="voter-alert" role="alert">{error}</div>}
     {!draft.submitted && <div className="voter-ballot-actions">
-      {state.phase === "initial" && !draft.initialConfirmed && <><button className="voter-primary" disabled={busy || !connected || !state.criteria.length} onClick={() => void saveInitial()}>{busy ? "Saving…" : error ? "Retry" : "Save ratings"}</button></>}
+      {state.phase === "initial" && !draft.initialConfirmed && <><button className="voter-primary" disabled={busy || !connected || !state.criteria.length} onClick={() => void saveInitial()}>{busy ? <LoadingLabel>Saving…</LoadingLabel> : error ? "Retry" : "Save ratings"}</button></>}
       {state.phase === "initial" && draft.initialConfirmed && <p className="voter-action-status">Ratings saved</p>}
-      {["revision", "final"].includes(state.phase) && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
+      {["revision", "final"].includes(state.phase) && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? <LoadingLabel>Sending ballot…</LoadingLabel> : error ? "Retry" : "Submit vote"}</button></>}
       {state.phase === "locked" && draft.initial && <p className="voter-action-status">This ballot was not submitted. Your draft remains here; tell your admin.</p>}
     </div>}
   </section>;
