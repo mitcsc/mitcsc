@@ -106,8 +106,8 @@ export default function DeliberationsAdminPage() {
   const stepIndex = ["initial", "deliberation", "revision", "final", "locked"].indexOf(state?.phase || "");
   const canChoose = state?.phase === "waiting" || state?.phase === "locked";
   const nextCandidate = candidates.find(c => !c.completed && c.id !== state?.currentCandidate?.id);
-  return <div className={`voting-admin ${state?.isAdmin && state.initialized ? "voting-console" : ""}`}>
-    {state?.isAdmin && editable && showPreview && <div className="voting-preview-back"><button onClick={() => setTab("setup")}>← Edit setup</button></div>}
+  return <div className={`voting-admin ${state?.isAdmin && state.initialized ? `voting-console ${showPreview ? "voting-live-page" : ""}` : ""}`}>
+
     {error && <div className="voting-admin-alert" role="alert">{error}</div>}
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
     {notice && <div className="voting-admin-notice" role="status">{notice}</div>}
@@ -116,13 +116,14 @@ export default function DeliberationsAdminPage() {
       {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Create the voting tabs in your election spreadsheet.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
         <div className="voting-admin-controls" hidden={!showPreview}>
           <section className="voting-admin-candidates" aria-label="Candidate selection">
-            <div className="voting-admin-heading voting-candidate-toolbar"><button aria-label="Shuffle order" title="Shuffle remaining candidates" disabled={busy || candidates.filter(c => !c.completed && c.id !== state.currentCandidate?.id).length < 2} onClick={() => {if (window.confirm("Shuffle the remaining candidates? Save any setup edits first.")) void act({action: "shuffle"});}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg></button></div>
+            {editable && <div className="voting-preview-back"><button onClick={() => setTab("setup")}>← Edit setup</button></div>}
             <ol className="voting-candidate-list">{candidates.map((c) => <li key={c.id}>
               <button className={c.id === state.currentCandidate?.id ? "is-selected" : ""} aria-current={c.id === state.currentCandidate?.id ? "true" : undefined} aria-label={c.completed ? `Reopen submissions for ${c.name}` : `Choose ${c.name}`} disabled={busy || !canChoose || (!c.completed && c.id === state.currentCandidate?.id)} onClick={() => c.completed ? reopenCandidate(c.id) : selectCandidate(c.id)}>
                 <span className={`voting-candidate-dot ${c.completed ? "is-done" : c.id === state.currentCandidate?.id ? "is-now" : ""}`} aria-hidden="true"/><span><strong>{c.name}</strong><small>{c.completed ? "Complete" : c.id === state.currentCandidate?.id ? "Now" : ""}</small></span>{c.id === state.currentCandidate?.id && <span className="voting-candidate-marker" aria-hidden="true">●</span>}
               </button>
             </li>)}</ol>
             {!candidates.length ? <p className="voting-admin-muted">Add candidates below.</p> : !canChoose && <p className="voting-admin-muted">Close voting before changing candidates.</p>}
+            <div className="voting-sidebar-footer"><button aria-label="Shuffle order" title="Shuffle remaining candidates" disabled={busy || candidates.filter(c => !c.completed && c.id !== state.currentCandidate?.id).length < 2} onClick={() => {if (window.confirm("Shuffle the remaining candidates? Save any setup edits first.")) void act({action: "shuffle"});}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg><span>Shuffle remaining</span></button></div>
           </section>
           <section className="voting-round-controls" aria-label="Round controls">
             {!state.currentCandidate ? <div className="voting-round-empty"><h2>Choose a candidate to begin</h2><p>Select a name from the candidate list.</p></div> : <>

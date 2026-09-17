@@ -244,3 +244,24 @@
 .voting-root .voting-admin .voting-preview-back button{border:0;border-radius:0;padding:8px 0;color:#ffffff99;background:none;font-size:13px}
 .voting-root .voting-admin .voting-preview-back button:hover{color:#fff;background:none}
 .voting-root .voting-admin-controls{padding-top:24px}
+/* The running session is a full-height workspace, with tools anchored in its sidebar. */
+.voting-root:has(.voting-live-page){padding:0}
+.voting-root .voting-admin.voting-live-page{max-width:none;margin:0;width:100%;min-height:100svh}
+.voting-root .voting-live-page .voting-admin-controls{grid-template-columns:clamp(240px,24vw,320px) minmax(0,1fr);gap:0;padding:0;min-height:100svh;align-items:stretch}
+.voting-root .voting-live-page .voting-admin-candidates{display:flex;flex-direction:column;min-height:100svh;border-right:1px solid #ffffff14;padding:24px 16px 0}
+.voting-root .voting-live-page .voting-candidate-list{margin:0 0 20px}
+.voting-root .voting-live-page .voting-preview-back{padding:0 8px 16px;border:0}
+.voting-root .voting-live-page .voting-admin-candidates>.voting-admin-muted{padding:0 12px;font-size:12px;color:#ffffff66}
+.voting-root .voting-live-page .voting-sidebar-footer{margin-top:auto;border-top:1px solid #ffffff14;padding:16px 0;display:flex;align-items:center}
+.voting-root .voting-admin .voting-sidebar-footer>button{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid transparent;border-radius:7px;color:#ffffff99;font-size:12px;min-height:40px;width:100%;text-align:left}
+.voting-root .voting-admin .voting-sidebar-footer>button:hover:not(:disabled){background:#ffffff08;border-color:#ffffff14;color:#fff}
+.voting-root .voting-live-page .voting-round-controls{align-self:center;width:calc(100% - 96px);max-width:760px;min-height:0;margin:48px auto;padding:0;justify-content:center}
+.voting-root .voting-live-page .voting-round-empty{padding:0}
+.voting-root .voting-live-page .voting-round-status p{max-width:560px}
+@media(max-width:760px){
+ .voting-root .voting-live-page .voting-admin-controls{grid-template-columns:minmax(0,1fr);min-height:100svh}
+ .voting-root .voting-live-page .voting-admin-candidates{min-height:0;padding:20px 20px 0;border-right:0;border-bottom:1px solid #ffffff14}
+ .voting-root .voting-live-page .voting-sidebar-footer{padding:10px 0;margin-top:0;justify-content:flex-end}
+ .voting-root .voting-admin .voting-sidebar-footer>button{width:auto}
+ .voting-root .voting-live-page .voting-round-controls{width:calc(100% - 40px);margin:36px auto 48px;align-self:start}
+}
