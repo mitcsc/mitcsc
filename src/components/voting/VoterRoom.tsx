@@ -227,7 +227,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
       {state.phase === "revision" && draft.initial && <p className="voter-action-status">{localSaved && !storageError ? "Revisions saved" : "Change ratings or keep them unchanged."}</p>}
       {state.phase === "final" && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
       {state.phase === "locked" && draft.initial && <p className="voter-action-status">This ballot was not submitted. Your draft remains here; tell your admin.</p>}
-      <p className="voter-footnote">Saved on this device · not yet submitted</p>
+      <p className="voter-footnote">{draft.initial ? "Saved on this device · not yet submitted" : "Save your ratings before discussion"}</p>
     </div>}
   </section>;
 }
