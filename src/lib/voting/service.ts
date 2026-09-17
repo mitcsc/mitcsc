@@ -8,6 +8,7 @@ const HEADERS = {
   Criteria: ["id", "label", "description", "min", "max", "required"],
   Responses: ["submission_id", "session_id", "candidate_id", "candidate_name", "voter_id", "voter_name", "ballot_version", "criterion_id", "criterion_label", "initial_rating", "final_rating", "submitted_at"],
   Session: ["key", "value"],
+  Ballots: ["candidate_id", "ballot_version", "candidate_name", "candidate_context", "criteria_json"],
   Summary: ["session_id", "candidate_id", "candidate_name", "criterion", "initial_average", "final_average", "ratings_count"],
 };
 const PHASES: VotingPhase[] = ["waiting", "initial", "deliberation", "revision", "final", "locked"];
@@ -27,7 +28,7 @@ export function authorize(identity: Identity | null, config: Settings, admin = f
   if (admin && identity.role !== "admin") throw new VotingError("Facilitator access required.", 403);
   return identity;
 }
-interface Snapshot { initialized: boolean; candidates: Candidate[]; criteria: Criterion[]; runtime: Record<string, string>; responses: string[][] }
+interface Snapshot { initialized: boolean; candidates: Candidate[]; criteria: Criterion[]; runtime: Record<string, string>; responses: string[][]; ballots: string[][] }
 async function tabNames(id: string) {
   const meta = await sheets<{ sheets: { properties: { title: string } }[] }>(id, "?fields=sheets.properties.title");
   return meta.sheets.map(s => s.properties.title);
@@ -37,12 +38,12 @@ function checkHeaders(name: keyof typeof HEADERS, rows: string[][]) {
 }
 async function snapshot(config: Settings): Promise<Snapshot> {
   const names = await tabNames(config.sheetId);
-  if (Object.keys(HEADERS).some(name => !names.includes(name))) return { initialized: false, candidates: [], criteria: [], runtime: {}, responses: [] };
-  const tables = await readRanges(config.sheetId, ["'Candidates'!A1:E102", "'Criteria'!A1:F22", "'Session'!A1:B20", "'Responses'!A:L"]);
-  (["Candidates", "Criteria", "Session", "Responses"] as const).forEach((name, i) => checkHeaders(name, tables[i]));
+  if (Object.keys(HEADERS).some(name => !names.includes(name))) return { initialized: false, candidates: [], criteria: [], runtime: {}, responses: [], ballots: [] };
+  const tables = await readRanges(config.sheetId, ["'Candidates'!A1:E102", "'Criteria'!A1:F22", "'Session'!A1:B20", "'Responses'!A:L", "'Ballots'!A:E"]);
+  (["Candidates", "Criteria", "Session", "Responses", "Ballots"] as const).forEach((name, i) => checkHeaders(name, tables[i]));
   const candidates = tables[0].slice(1).filter(r => r[0]).map(r => ({ id: r[0], name: r[1] || "", context: r[2] || "", order: Number(r[3]), completed: r[4]?.toLowerCase() === "true" })).sort((a, b) => a.order - b.order);
   const criteria = tables[1].slice(1).filter(r => r[0]).map(r => ({ id: r[0], label: r[1] || "", description: r[2] || "", min: Number(r[3]), max: Number(r[4]), required: r[5]?.toLowerCase() !== "false" }));
-  return { initialized: true, candidates, criteria, runtime: Object.fromEntries(tables[2].slice(1).filter(r => r[0]).map(r => [r[0], r[1] || ""])), responses: tables[3].slice(1).filter(r => r[0]) };
+  return { initialized: true, candidates, criteria, runtime: Object.fromEntries(tables[2].slice(1).filter(r => r[0]).map(r => [r[0], r[1] || ""])), responses: tables[3].slice(1).filter(r => r[0]), ballots: tables[4].slice(1).filter(r => r[0]) };
 }
 function phase(s: Snapshot): VotingPhase { return PHASES.includes(s.runtime.phase as VotingPhase) ? s.runtime.phase as VotingPhase : "waiting"; }
 function ballotCriteria(s: Snapshot): Criterion[] {
@@ -121,7 +122,7 @@ export async function adminAction(config: Settings, identity: Identity, input: R
     if (!s.initialized) throw new VotingError("Set up this election first.", 409);
     const current = s.candidates.find(c => c.id === s.runtime.candidate_id);
     if (input.action === "saveSetup") {
-      if (phase(s) !== "waiting" || s.responses.length || s.runtime.ballot_version) throw new VotingError("Setup can only change before the first ballot opens.", 409);
+      if (phase(s) !== "waiting" || s.responses.length || s.runtime.ballot_version || s.ballots.length || s.candidates.some(c => c.completed)) throw new VotingError("Setup can only change before the first ballot opens.", 409);
       const candidates = input.candidates as Candidate[], criteria = input.criteria as Criterion[];
       validateSetup(candidates, criteria);
       await writeRanges(config.sheetId, [
@@ -140,19 +141,28 @@ export async function adminAction(config: Settings, identity: Identity, input: R
     } else if (input.action === "setPhase") {
       const next = input.phase as VotingPhase;
       if (!PHASES.includes(next)) throw new VotingError("Invalid voting phase.");
-      if (next === "initial") {
+      if (next === "final" && input.candidateId && ["waiting", "locked"].includes(phase(s))) {
+        const saved = s.ballots.find(b => b[0] === input.candidateId);
+        if (!saved || !s.candidates.some(c => c.id === input.candidateId)) throw new VotingError("That candidate has no saved ballot to reopen.", 409);
+        await saveRuntime(config, { ...s.runtime, phase: "final", candidate_id: saved[0], ballot_version: saved[1], candidate_name: saved[2], candidate_context: saved[3], criteria_json: saved[4], context_visible: "true" });
+      } else if (next === "initial") {
         if (!["waiting", "locked"].includes(phase(s))) throw new VotingError("Lock the current candidate before opening another ballot.", 409);
         const selected = s.candidates.find(c => c.id === (input.candidateId || current?.id));
         if (!selected || selected.completed) throw new VotingError("Choose an unfinished candidate.", 409);
         validateSetup(s.candidates, s.criteria);
         if (!s.criteria.length) throw new VotingError("Add at least one criterion.");
-        await saveRuntime(config, { ...s.runtime, phase: next, candidate_id: selected.id, candidate_name: selected.name, candidate_context: selected.context, ballot_version: randomUUID(), criteria_json: JSON.stringify(s.criteria), context_visible: "false" });
-      } else if (next === "waiting" && phase(s) === "waiting" && input.candidateId) {
+        let saved = s.ballots.find(b => b[0] === selected.id);
+        if (!saved) {
+          saved = [selected.id, randomUUID(), selected.name, selected.context, JSON.stringify(s.criteria)];
+          await sheets(config.sheetId, `/values/${encodeURIComponent("'Ballots'!A:E")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, "POST", { values: [saved] });
+        }
+        await saveRuntime(config, { ...s.runtime, phase: next, candidate_id: saved[0], candidate_name: saved[2], candidate_context: saved[3], ballot_version: saved[1], criteria_json: saved[4], context_visible: "false" });
+      } else if (next === "waiting" && ["waiting", "locked"].includes(phase(s)) && input.candidateId) {
         const selected = s.candidates.find(c => c.id === input.candidateId);
         if (!selected || selected.completed) throw new VotingError("Choose an unfinished candidate.", 409);
-        await saveRuntime(config, { ...s.runtime, candidate_id: selected.id });
+        await saveRuntime(config, { ...s.runtime, phase: "waiting", candidate_id: selected.id, candidate_name: "", candidate_context: "", ballot_version: "", criteria_json: "", context_visible: "false" });
       } else {
-        const allowed: Record<VotingPhase, VotingPhase[]> = { waiting: [], initial: ["deliberation", "revision", "final", "locked"], deliberation: ["revision", "final", "locked"], revision: ["deliberation", "final", "locked"], final: ["revision", "locked"], locked: [] };
+        const allowed: Record<VotingPhase, VotingPhase[]> = { waiting: [], initial: ["deliberation", "revision", "final", "locked"], deliberation: ["revision", "final", "locked"], revision: ["deliberation", "final", "locked"], final: ["locked"], locked: [] };
         if (next !== phase(s) && !allowed[phase(s)].includes(next)) throw new VotingError("That phase change is not available.", 409);
         if (next === "locked" && current) await writeRanges(config.sheetId, [{ range: "'Candidates'!A2", values: s.candidates.map(c => [c.id, c.name, c.context, c.order, c.completed || c.id === current.id]) }]);
         await saveRuntime(config, { ...s.runtime, phase: next });
