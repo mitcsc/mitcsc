@@ -1,0 +1,25 @@
+.voting-root {
+  width: 100%;
+  flex: 1;
+  padding: 8rem 1.25rem 4rem;
+  background: #f4efe6;
+  color: #2a2524;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 400;
+  line-height: 1.55;
+  --voting-bg: #f4efe6;
+  --voting-panel: #fffcf6;
+  --voting-border: #ded4c5;
+  --voting-muted: #706762;
+  --voting-accent: #c5393a;
+}
+.voting-root *, .voting-root *::before, .voting-root *::after { box-sizing: border-box; }
+.voting-root input, .voting-root textarea, .voting-root select, .voting-root button { font: inherit; }
+.voting-root button, .voting-root a, .voting-root input, .voting-root textarea, .voting-root select { -webkit-tap-highlight-color: transparent; }
+.voting-root :focus-visible { outline: 2px solid #f3b6a8; outline-offset: 4px; }
+.voting-root button:not(:disabled) { cursor: pointer; }
+.voting-root button:disabled { cursor: not-allowed; }
+.voting-root input, .voting-root textarea, .voting-root select { color-scheme: light; }
+.voting-root input[type="number"] { font-variant-numeric: tabular-nums; }
+@media (min-width: 768px) { .voting-root { padding-top: 10rem; padding-inline: 2rem; } }
+@media (prefers-reduced-motion: reduce) { .voting-root *, .voting-root *::before, .voting-root *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }

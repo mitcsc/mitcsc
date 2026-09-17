@@ -45,7 +45,7 @@ test('successful joins on shared Wi-Fi do not consume failed-password budget', (
 
 test('first concurrent join is sole admin; later joins vote and refresh preserves ownership', async () => {
   const { GoogleAuth } = require('google-auth-library');
-  const { claimIdentity, canonicalIdentity } = require('./facilitator.ts');
+  const { claimIdentity, canonicalIdentity } = require('./admin-identity.ts');
   const originalClient = GoogleAuth.prototype.getClient;
   const originalFetch = global.fetch;
   const keys = ['VOTING_SETTINGS_SHEET_ID', 'GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY'];
@@ -57,7 +57,7 @@ test('first concurrent join is sole admin; later joins vote and refresh preserve
     process.env.GOOGLE_PRIVATE_KEY = 'mock';
     GoogleAuth.prototype.getClient = async () => ({ getAccessToken: async () => ({ token: 'mock' }) });
     global.fetch = async (url, init) => {
-      if (url.includes('?fields=')) return Response.json({ sheets: [{ properties: { title: 'Admins' } }] });
+      if (url.includes('?fields=')) return Response.json({ sheets: [{ properties: { title: 'Session History' } }] });
       if (url.includes(':batchGet')) return Response.json({ valueRanges: [{ values: [
         ['session_id', 'fall'], ['session_password', 'shared-password'],
         ['voting_sheet_url', 'https://docs.google.com/spreadsheets/d/test-election-sheet/edit'],
@@ -65,9 +65,9 @@ test('first concurrent join is sole admin; later joins vote and refresh preserve
       ] }] });
       if (init.method === 'POST' && url.includes(':append')) {
         rows.push(...JSON.parse(init.body).values);
-        return Response.json({ updates: { updatedRange: `Admins!A${rows.length}:F${rows.length}` } });
+        return Response.json({ updates: { updatedRange: `Session History!A${rows.length}:F${rows.length}` } });
       }
-      if (url.includes('Admins')) return Response.json({ values: rows });
+      if (decodeURIComponent(url).includes('Session History')) return Response.json({ values: rows });
       throw new Error(`Unexpected request ${url}`);
     };
     const config = await settings();

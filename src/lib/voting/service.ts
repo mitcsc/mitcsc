@@ -16,7 +16,7 @@ export interface Settings { sessionId: string; password: string; sheetId: string
 export async function settings(): Promise<Settings> {
   const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
-  const [rows] = await readRanges(id, ["'Settings'!A1:B20"]);
+  const [rows] = await readRanges(id, ["'Settings'!A:B"]);
   const values = Object.fromEntries(rows.map(row => [row[0]?.trim(), row[1] || ""]));
   const raw = values.voting_sheet_url || "";
   const sheetId = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] || (/^[a-zA-Z0-9_-]{15,}$/.test(raw) ? raw : "");
@@ -36,10 +36,10 @@ async function tabNames(id: string) {
 function checkHeaders(name: keyof typeof HEADERS, rows: string[][]) {
   if (HEADERS[name].some((value, i) => rows[0]?.[i] !== value)) throw new VotingError(`The ${name} tab has unexpected columns. Restore its original headers before continuing.`, 409);
 }
-async function snapshot(config: Settings): Promise<Snapshot> {
+async function snapshot(config: Settings, fresh = false): Promise<Snapshot> {
   const names = await tabNames(config.sheetId);
   if (Object.keys(HEADERS).some(name => !names.includes(name))) return { initialized: false, candidates: [], criteria: [], runtime: {}, responses: [], ballots: [] };
-  const tables = await readRanges(config.sheetId, ["'Candidates'!A1:E102", "'Criteria'!A1:F22", "'Session'!A1:B20", "'Responses'!A:L", "'Ballots'!A:E"]);
+  const tables = await readRanges(config.sheetId, ["'Candidates'!A1:E102", "'Criteria'!A1:F22", "'Session'!A1:B20", "'Responses'!A:L", "'Ballots'!A:E"], fresh);
   (["Candidates", "Criteria", "Session", "Responses", "Ballots"] as const).forEach((name, i) => checkHeaders(name, tables[i]));
   const candidates = tables[0].slice(1).filter(r => r[0]).map(r => ({ id: r[0], name: r[1] || "", context: r[2] || "", order: Number(r[3]), completed: r[4]?.toLowerCase() === "true" })).sort((a, b) => a.order - b.order);
   const criteria = tables[1].slice(1).filter(r => r[0]).map(r => ({ id: r[0], label: r[1] || "", description: r[2] || "", min: Number(r[3]), max: Number(r[4]), required: r[5]?.toLowerCase() !== "false" }));
@@ -110,14 +110,14 @@ export async function adminAction(config: Settings, identity: Identity, input: R
         const [rows] = await readRanges(config.sheetId, [`'${name}'!A1:L2`]);
         if (!rows.length) await writeRanges(config.sheetId, [{ range: `'${name}'!A1`, values: [HEADERS[name]] }]);
       }
-      const s = await snapshot(config);
+      const s = await snapshot(config, true);
       if (!s.runtime.session_id) await saveRuntime(config, { session_id: config.sessionId, phase: "waiting", candidate_id: "", ballot_version: "", context_visible: "false", criteria_json: "" });
       // Formula stays in Summary only; all user-controlled values use RAW writes.
       const [summary] = await readRanges(config.sheetId, ["'Summary'!A2:G2"]);
       if (!summary.length) await sheets(config.sheetId, "/values:batchUpdate", "POST", { valueInputOption: "USER_ENTERED", data: [{ range: "'Summary'!A2", values: [[`=IFERROR(QUERY(UNIQUE(Responses!B2:K),"select Col1,Col2,Col3,Col8,avg(Col9),avg(Col10),count(Col10) where Col1 is not null group by Col1,Col2,Col3,Col8 label Col1 '',Col2 '',Col3 '',Col8 '',avg(Col9) '',avg(Col10) '',count(Col10) ''",0),"")`]] }] });
       return getState(config, identity);
     }
-    const s = await snapshot(config);
+    const s = await snapshot(config, true);
     state(config, identity, s);
     if (!s.initialized) throw new VotingError("Set up this election first.", 409);
     const current = s.candidates.find(c => c.id === s.runtime.candidate_id);
@@ -176,7 +176,7 @@ export async function submit(config: Settings, identity: Identity, input: Record
     const id = text(input.submissionId, "submission ID", 100);
     if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new VotingError("Invalid submission ID.");
     invalidate(config.sheetId);
-    const s = await snapshot(config);
+    const s = await snapshot(config, true);
     state(config, identity, s);
     const ballot = input as unknown as FinalBallot;
     if (ballot.sessionId !== config.sessionId) throw new VotingError("This ballot belongs to another session.", 409);

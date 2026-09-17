@@ -96,6 +96,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
       await page.getByRole('button', { name: new RegExp(name.replace(/^\d/, '^\\d\\s*')) }).click();
       await waitFor(() => state.phase === phase, `Phase ${phase} did not persist`);
       if (phase === 'initial') {
+        await page.getByRole('heading', { name: 'Build your ballot' }).waitFor({ state: 'detached' });
         assert.equal(await page.getByRole('heading', { name: 'Build your ballot' }).count(), 0, 'Setup must lock after starting');
         assert.equal(await button('Select').first().isDisabled(), true, 'Cannot abandon an active candidate');
       }

@@ -44,8 +44,8 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
   if (method === "GET" && !fresh) pending.set(key, promise);
   try { return await promise; } finally { if (method === "GET" && !fresh) pending.delete(key); }
 }
-export async function readRanges(id: string, ranges: string[]) {
-  const result = await sheets<{ valueRanges: { values?: string[][] }[] }>(id, `/values:batchGet?${ranges.map(r => `ranges=${encodeURIComponent(r)}`).join("&")}&valueRenderOption=UNFORMATTED_VALUE`);
+export async function readRanges(id: string, ranges: string[], fresh = false) {
+  const result = await sheets<{ valueRanges: { values?: string[][] }[] }>(id, `/values:batchGet?${ranges.map(r => `ranges=${encodeURIComponent(r)}`).join("&")}&valueRenderOption=UNFORMATTED_VALUE`, "GET", undefined, fresh);
   return result.valueRanges.map(range => (range.values || []).map(row => row.map(cell => String(cell))));
 }
 export async function writeRanges(id: string, data: { range: string; values: (string | number | boolean)[][] }[]) {

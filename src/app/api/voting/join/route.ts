@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { cookieOptions, failure, json } from "@/lib/voting/http";
 import { body, COOKIE, DEVICE_COOKIE, equal, limitJoin, readIdentity, requireOrigin, signIdentity, text, VotingError } from "@/lib/voting/security";
 import { settings } from "@/lib/voting/service";
-import { claimIdentity } from "@/lib/voting/facilitator";
+import { claimIdentity } from "@/lib/voting/admin-identity";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { COOKIE, readIdentity, VotingError } from "./security";
-import { canonicalIdentity } from "./facilitator";
+import { canonicalIdentity } from "./admin-identity";
 import { authorize, settings } from "./service";
 export function json(value: unknown, status = 200) {
   return NextResponse.json(value, { status, headers: { "Cache-Control": "private, no-store, max-age=0", "Vary": "Cookie", "X-Content-Type-Options": "nosniff" } });

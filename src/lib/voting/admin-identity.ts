@@ -4,23 +4,24 @@ import { sheets } from "./sheets";
 import type { Settings } from "./service";
 const HEADERS = ["session_id", "election_sheet_id", "claim_id", "voter_id", "voter_name", "claimed_at"];
 async function claims(config: Settings, fresh = false): Promise<string[][]> {
-  const result = await sheets<{ values?: string[][] }>(config.settingsSheetId, `/values/${encodeURIComponent("'Admins'!A:F")}`, "GET", undefined, fresh);
+  const result = await sheets<{ values?: string[][] }>(config.settingsSheetId, `/values/${encodeURIComponent("'Session History'!A:F")}`, "GET", undefined, fresh);
   const rows = (result.values || []).map(row => row.map(String));
-  if (HEADERS.some((header, i) => rows[0]?.[i] !== header)) throw new VotingError("Restore the Admins tab headers in the settings spreadsheet.", 409);
+  if (HEADERS.some((header, i) => rows[0]?.[i] !== header)) throw new VotingError("Restore the Session History tab headers in the settings spreadsheet.", 409);
   return rows.slice(1).filter(row => row[0] === config.sessionId && row[1] === config.sheetId);
 }
 async function ensureClaims(config: Settings) {
   const suffix = "?fields=sheets.properties.title";
   type Metadata = { sheets: { properties: { title: string } }[] };
-  const exists = (data: Metadata) => data.sheets.some(sheet => sheet.properties.title === "Admins");
+  const exists = (data: Metadata) => data.sheets.some(sheet => sheet.properties.title === "Session History");
   const metadata = await sheets<Metadata>(config.settingsSheetId, suffix);
   if (exists(metadata)) return;
   try {
     // Header and tab creation are one atomic Sheets batch, avoiding a race with the first claim.
     const sheetId = Math.floor(Math.random() * 1_000_000_000) + 1;
     await sheets(config.settingsSheetId, ":batchUpdate", "POST", { requests: [
-      { addSheet: { properties: { title: "Admins", sheetId, hidden: true } } },
+      { addSheet: { properties: { title: "Session History", sheetId, hidden: true } } },
       { updateCells: { start: { sheetId, rowIndex: 0, columnIndex: 0 }, rows: [{ values: HEADERS.map(stringValue => ({ userEnteredValue: { stringValue } })) }], fields: "userEnteredValue" } },
+      { addProtectedRange: { protectedRange: { range: { sheetId }, description: "App-managed admin ownership", warningOnly: false, editors: { users: [process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!], domainUsersCanEdit: false } } } },
     ] });
   } catch (error) {
     // Another instance may have created it concurrently. Never overwrite its rows.
@@ -39,7 +40,7 @@ export async function claimIdentity(config: Settings, name: string, existing: Id
   await ensureClaims(config);
   const id = sameSession ? existing.id : randomUUID();
   const claimId = randomUUID();
-  await sheets(config.settingsSheetId, `/values/${encodeURIComponent("'Admins'!A:F")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, "POST", {
+  await sheets(config.settingsSheetId, `/values/${encodeURIComponent("'Session History'!A:F")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, "POST", {
     values: [[config.sessionId, config.sheetId, claimId, id, name, new Date().toISOString()]],
   });
   // Google append order is authoritative, including simultaneous joins on separate app instances.
