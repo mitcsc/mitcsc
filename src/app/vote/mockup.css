@@ -427,12 +427,10 @@
 .voting-criteria-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
 .voting-root .voting-admin .voting-criteria-actions .voting-start{display:inline-flex;align-items:center;gap:18px;padding:7px 16px;min-height:34px;border-radius:6px}
 
-@supports(background-clip:text){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer{color:transparent}}
-@media(prefers-reduced-motion:reduce){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer{color:#a2a2a6}}
+@supports(background-clip:text){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer,.voting-root .voter-room .voter-submitted p.voter-discussion-shimmer{color:transparent}}
+@media(prefers-reduced-motion:reduce){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer,.voting-root .voter-room .voter-submitted p.voter-discussion-shimmer{color:#a2a2a6}}
 
 .voter-join-logo{display:block;width:144px;height:144px;object-fit:contain;margin:0 auto 16px}
 
-.voting-loading-label{display:inline-flex;align-items:center;justify-content:center;gap:8px;vertical-align:middle}
-.voting-loading-label>img{display:block;width:32px;height:32px;object-fit:contain;flex:none;margin:-5px 0}
-.voter-wait>.voting-loading-label{flex-direction:column;gap:12px}
-.voter-wait>.voting-loading-label>img{width:56px;height:56px;margin:0}
+
+.voting-root .voter-room img.voter-waiting-panda{display:block;width:64px;height:64px;object-fit:contain;flex:none;margin:0 auto 8px}
