@@ -202,6 +202,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     finally { setBusy(false); }
   }
   const phase = phases[state.phase];
+  if (state.phase === "deliberation") return <section className="voter-discussion" aria-label="Discussion"><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer" role="status">Discussion in progress</p></section>;
   if (draft.submitted) return <section className="voter-submitted" role="status"><h2>Vote submitted</h2><p>{state.currentCandidate!.name} · Waiting for the next candidate.</p></section>;
   return <section className="voter-panel voter-ballot">
     <div className="voter-ballot-heading"><span className="voter-phase">{phase.label}</span></div>
@@ -223,7 +224,6 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     {!draft.submitted && <div className="voter-ballot-actions">
       {state.phase === "initial" && !draft.initial && <><button className="voter-primary" disabled={!connected || !state.criteria.length} onClick={saveInitial}>Save ratings</button></>}
       {state.phase === "initial" && draft.initial && <p className="voter-action-status">Ratings saved</p>}
-      {state.phase === "deliberation" && draft.initial && <p className="voter-action-status">Discussion in progress</p>}
       {state.phase === "revision" && draft.initial && <p className="voter-action-status">{localSaved && !storageError ? "Revisions saved" : "Change ratings or keep them unchanged."}</p>}
       {state.phase === "final" && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
       {state.phase === "locked" && draft.initial && <p className="voter-action-status">This ballot was not submitted. Your draft remains here; tell your admin.</p>}

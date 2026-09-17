@@ -52,6 +52,7 @@ async function main() {
   const refreshPhase = async phase => {
     state.phase = phase;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    if (phase === 'deliberation') { await page.getByRole('status').filter({hasText:'Discussion in progress'}).waitFor(); return; }
     await page.locator('.voter-phase').filter({ hasText: ({ initial: 'Initial ratings', deliberation: 'Discussion', revision: 'Revisions open', final: 'Submit your ballot', locked: 'Voting closed' })[phase] }).waitFor();
   };
   try {
@@ -75,6 +76,11 @@ async function main() {
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '3', exact: true }).isChecked(), true);
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '4', exact: true }).isDisabled(), true);
     await refreshPhase('deliberation');
+    assert.equal(await page.getByRole('radio').count(),0,'Discussion should hide the ballot');
+    assert.equal(await page.getByRole('button',{name:'Save ratings'}).count(),0);
+    await page.emulateMedia({reducedMotion:'reduce'});
+    assert.equal(await page.locator('.voter-discussion-shimmer').evaluate(el => getComputedStyle(el).animationName),'none');
+    await page.emulateMedia({reducedMotion:'no-preference'});
     state.contextVisible = true; state.currentCandidate.context = 'Discussion notes released by admin.';
     await refreshPhase('revision');
     assert.equal(await page.getByText('Discussion notes released by admin.').count(), 0);
