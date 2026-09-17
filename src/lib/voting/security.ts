@@ -4,18 +4,23 @@ export class VotingError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 export const COOKIE = "csc_voting";
-export interface Identity { id: string; name: string; role: "admin" | "voter"; sessionId: string; sheetId: string; exp: number }
+export interface Identity { id: string; name: string; role: "admin" | "voter"; sessionId: string; sheetId: string; exp: number; claimId?: string; facilitatorEpoch?: string }
 function secret() {
   const value = process.env.VOTING_COOKIE_SECRET;
-  if (!value || value.length < 32) throw new VotingError("Configure VOTING_COOKIE_SECRET with at least 32 random characters.", 503);
-  return value;
+  if (value) {
+    if (value.length < 32) throw new VotingError("VOTING_COOKIE_SECRET must contain at least 32 random characters.", 503);
+    return value;
+  }
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  if (!privateKey) throw new VotingError("Google service account credentials are not configured.", 503);
+  return createHmac("sha256", privateKey).update("mitcsc:voting:cookie-signing:v1").digest("base64url");
 }
 export function equal(a: string, b: string) {
   const key = secret();
   return timingSafeEqual(createHmac("sha256", key).update(a).digest(), createHmac("sha256", key).update(b).digest());
 }
-export function signIdentity(data: Omit<Identity, "id" | "exp">) {
-  const identity = { ...data, id: randomUUID(), exp: Date.now() + 24 * 3600_000 };
+export function signIdentity(data: Omit<Identity, "id" | "exp"> & { id?: string }) {
+  const identity = { ...data, id: data.id || randomUUID(), exp: Date.now() + 24 * 3600_000 };
   const payload = Buffer.from(JSON.stringify(identity)).toString("base64url");
   return `${payload}.${createHmac("sha256", secret()).update(payload).digest("base64url")}`;
 }

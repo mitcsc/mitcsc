@@ -7,9 +7,9 @@ const pending = new Map<string, Promise<unknown>>();
 export function invalidate(sheetId: string) {
   for (const key of cache.keys()) if (key.includes(sheetId) && key.includes("/values")) cache.delete(key);
 }
-export async function sheets<T>(sheetId: string, suffix = "", method = "GET", data?: unknown): Promise<T> {
+export async function sheets<T>(sheetId: string, suffix = "", method = "GET", data?: unknown, fresh = false): Promise<T> {
   const key = `${sheetId}${suffix}`;
-  if (method === "GET") {
+  if (method === "GET" && !fresh) {
     const hit = cache.get(key);
     if (hit && hit.until > Date.now()) return hit.value as T;
     const running = pending.get(key);
@@ -41,8 +41,8 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
     return result;
   };
   const promise = execute();
-  if (method === "GET") pending.set(key, promise);
-  try { return await promise; } finally { if (method === "GET") pending.delete(key); }
+  if (method === "GET" && !fresh) pending.set(key, promise);
+  try { return await promise; } finally { if (method === "GET" && !fresh) pending.delete(key); }
 }
 export async function readRanges(id: string, ranges: string[]) {
   const result = await sheets<{ valueRanges: { values?: string[][] }[] }>(id, `/values:batchGet?${ranges.map(r => `ranges=${encodeURIComponent(r)}`).join("&")}&valueRenderOption=UNFORMATTED_VALUE`);

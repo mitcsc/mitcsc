@@ -12,20 +12,20 @@ const HEADERS = {
   Summary: ["session_id", "candidate_id", "candidate_name", "criterion", "initial_average", "final_average", "ratings_count"],
 };
 const PHASES: VotingPhase[] = ["waiting", "initial", "deliberation", "revision", "final", "locked"];
-export interface Settings { sessionId: string; password: string; adminPassword: string; sheetId: string }
+export interface Settings { sessionId: string; password: string; sheetId: string; settingsSheetId: string; facilitatorReset: string }
 export async function settings(): Promise<Settings> {
-  const id = process.env.VOTING_SETTINGS_SHEET_ID;
+  const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
   const [rows] = await readRanges(id, ["'Settings'!A1:B20"]);
   const values = Object.fromEntries(rows.map(row => [row[0]?.trim(), row[1] || ""]));
   const raw = values.voting_sheet_url || "";
   const sheetId = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] || (/^[a-zA-Z0-9_-]{15,}$/.test(raw) ? raw : "");
-  if (!values.session_id || !sheetId || !values.admin_password) throw new VotingError("Complete session_id, admin_password, and voting_sheet_url in the settings sheet.", 503);
-  return { sessionId: values.session_id, password: values.session_password || "", adminPassword: values.admin_password, sheetId };
+  if (!values.session_id || !sheetId) throw new VotingError("Complete session_id and voting_sheet_url in the settings sheet.", 503);
+  return { sessionId: values.session_id, password: values.session_password || "", sheetId, settingsSheetId: id, facilitatorReset: values.admin_reset || "" };
 }
 export function authorize(identity: Identity | null, config: Settings, admin = false): Identity {
   if (!identity || identity.sessionId !== config.sessionId || identity.sheetId !== config.sheetId) throw new VotingError("Enter the session password to join.", 401);
-  if (admin && identity.role !== "admin") throw new VotingError("Facilitator access required.", 403);
+  if (admin && identity.role !== "admin") throw new VotingError("Admin access required.", 403);
   return identity;
 }
 interface Snapshot { initialized: boolean; candidates: Candidate[]; criteria: Criterion[]; runtime: Record<string, string>; responses: string[][]; ballots: string[][] }
@@ -48,7 +48,7 @@ async function snapshot(config: Settings): Promise<Snapshot> {
 function phase(s: Snapshot): VotingPhase { return PHASES.includes(s.runtime.phase as VotingPhase) ? s.runtime.phase as VotingPhase : "waiting"; }
 function ballotCriteria(s: Snapshot): Criterion[] {
   if (!s.runtime.criteria_json) return s.criteria;
-  try { return JSON.parse(s.runtime.criteria_json); } catch { throw new VotingError("The saved ballot is damaged. Contact the facilitator.", 409); }
+  try { return JSON.parse(s.runtime.criteria_json); } catch { throw new VotingError("The saved ballot is damaged. Contact the admin.", 409); }
 }
 function state(config: Settings, identity: Identity, s: Snapshot): VotingState {
   if (s.runtime.session_id && s.runtime.session_id !== config.sessionId) throw new VotingError("This spreadsheet belongs to another session. Use a new election spreadsheet or restore its session ID.", 409);
@@ -56,7 +56,7 @@ function state(config: Settings, identity: Identity, s: Snapshot): VotingState {
   const found = s.candidates.find(c => c.id === s.runtime.candidate_id) || null;
   const current = found && s.runtime.ballot_version ? { ...found, name: s.runtime.candidate_name || found.name, context: s.runtime.candidate_context || "" } : found;
   const visible = s.runtime.context_visible === "true";
-  return { sessionId: config.sessionId, active: !!config.password, phase: phase(s), ballotVersion: s.runtime.ballot_version || "", currentCandidate: current ? { ...current, context: admin || visible ? current.context : "" } : null, criteria: ballotCriteria(s), contextVisible: visible, submittedCount: new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === current?.id && r[6] === s.runtime.ballot_version).map(r => r[4])).size, voter: admin ? null : { id: identity.id, name: identity.name }, isAdmin: admin, initialized: s.initialized, ...(admin ? { candidates: s.candidates, spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit` } : {}) };
+  return { sessionId: config.sessionId, active: !!config.password, phase: phase(s), ballotVersion: s.runtime.ballot_version || "", currentCandidate: current ? { ...current, context: admin || visible ? current.context : "" } : null, criteria: ballotCriteria(s), contextVisible: visible, submittedCount: new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === current?.id && r[6] === s.runtime.ballot_version).map(r => r[4])).size, voter: { id: identity.id, name: identity.name }, isAdmin: admin, initialized: s.initialized, ...(admin ? { candidates: s.candidates, spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit` } : {}) };
 }
 export async function getState(config: Settings, identity: Identity) { return state(config, identity, await snapshot(config)); }
 async function saveRuntime(config: Settings, runtime: Record<string, string>) {
@@ -167,13 +167,12 @@ export async function adminAction(config: Settings, identity: Identity, input: R
         if (next === "locked" && current) await writeRanges(config.sheetId, [{ range: "'Candidates'!A2", values: s.candidates.map(c => [c.id, c.name, c.context, c.order, c.completed || c.id === current.id]) }]);
         await saveRuntime(config, { ...s.runtime, phase: next });
       }
-    } else throw new VotingError("Unknown facilitator action.");
+    } else throw new VotingError("Unknown admin action.");
     return getState(config, identity);
   });
 }
 export async function submit(config: Settings, identity: Identity, input: Record<string, unknown>) {
   return serialize(async () => {
-    if (identity.role !== "voter") throw new VotingError("Join as a voter to submit a ballot.", 403);
     const id = text(input.submissionId, "submission ID", 100);
     if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new VotingError("Invalid submission ID.");
     invalidate(config.sheetId);
@@ -184,7 +183,7 @@ export async function submit(config: Settings, identity: Identity, input: Record
     const existing = s.responses.find(r => r[1] === config.sessionId && r[2] === ballot.candidateId && r[4] === identity.id && r[6] === ballot.ballotVersion);
     if (existing) return { ok: true, submissionId: existing[0] };
     if (!config.password || phase(s) !== "final") throw new VotingError("Final submissions are not currently open.", 409);
-    if (ballot.sessionId !== config.sessionId || ballot.candidateId !== s.runtime.candidate_id || ballot.ballotVersion !== s.runtime.ballot_version) throw new VotingError("This ballot is no longer current. Keep your draft and contact the facilitator.", 409);
+    if (ballot.sessionId !== config.sessionId || ballot.candidateId !== s.runtime.candidate_id || ballot.ballotVersion !== s.runtime.ballot_version) throw new VotingError("This ballot is no longer current. Keep your draft and contact the admin.", 409);
     const criteria = ballotCriteria(s);
     validateRatings(ballot.initialRatings, criteria); validateRatings(ballot.finalRatings, criteria);
     const submittedAt = new Date().toISOString();

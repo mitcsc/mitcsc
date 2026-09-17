@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { COOKIE, readIdentity, VotingError } from "./security";
+import { canonicalIdentity } from "./facilitator";
 import { authorize, settings } from "./service";
 export function json(value: unknown, status = 200) {
   return NextResponse.json(value, { status, headers: { "Cache-Control": "private, no-store, max-age=0", "Vary": "Cookie", "X-Content-Type-Options": "nosniff" } });
@@ -8,7 +9,9 @@ export function json(value: unknown, status = 200) {
 export async function session(admin = false) {
   const config = await settings();
   const jar = await cookies();
-  const identity = authorize(readIdentity(jar.get(COOKIE)?.value), config, admin);
+  const admitted = authorize(readIdentity(jar.get(COOKIE)?.value), config);
+  const identity = await canonicalIdentity(config, admitted);
+  authorize(identity, config, admin);
   return { config, identity };
 }
 export function failure(error: unknown) {
