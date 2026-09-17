@@ -118,3 +118,8 @@ Clearing cookies or switching browsers loses that identity; there is no account-
 
 The admin sees joined voters who have not submitted for the current candidate.
 This list excludes the admin and is not an online-presence indicator.
+
+Initial-rating participation is recorded in the automatically created `Initial submissions` tab.
+This stores a receipt per voter and ballot, without storing rating values.
+The admin sees everyone still pending during initial ratings; after that stage closes, the final waiting list includes only voters with an initial receipt.
+Receipt retries are idempotent, including after the stage closes.

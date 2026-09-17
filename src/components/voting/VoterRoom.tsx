@@ -7,6 +7,7 @@ import type { FinalBallot, Ratings, VotingPhase, VotingState } from "@/lib/votin
 type Draft = {
   ratings: Ratings;
   initial: Ratings | null;
+  initialConfirmed?: boolean;
   final: Ratings;
   submissionId?: string;
   submitted: boolean;
@@ -164,7 +165,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   }
   const initialOpen = state.phase === "initial" && !draft.initial;
   const revisionsOpen = ["revision", "final"].includes(state.phase) && !!draft.initial;
-  const editable = connected && !draft.submitted && !draft.submissionId && (initialOpen || revisionsOpen);
+  const editable = connected && !busy && !draft.submitted && !draft.submissionId && (initialOpen || revisionsOpen);
   const values = draft.initial ? draft.final : draft.ratings;
   function validate(ratings: Ratings) {
     return state.criteria.every(c => {
@@ -180,11 +181,18 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     if (current.initial) persist({ ...current, final: { ...current.final, [id]: value } });
     else persist({ ...current, ratings: { ...current.ratings, [id]: value } });
   }
-  function saveInitial() {
-    if (!validate(draft.ratings)) { setError("Choose a numeric rating for each required criterion."); return; }
-    const ratings = complete(draft.ratings);
-    persist({ ...draft, initial: { ...ratings }, final: { ...ratings } });
-    setError("");
+  async function saveInitial() {
+    if (busy || !connected) return;
+    const ratings = draft.initial || complete(draft.ratings);
+    if (!validate(ratings)) { setError("Choose a numeric rating for each required criterion."); return; }
+    const next = {...draft, initial: {...ratings}, final: draft.initial ? draft.final : {...ratings}};
+    persist(next);
+    setBusy(true); setError("");
+    try {
+      await api("initial", {sessionId: state.sessionId, candidateId: state.currentCandidate!.id, ballotVersion: state.ballotVersion, ratings});
+      persist({...next, initialConfirmed: true});
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
   }
   async function submit() {
     if (busy || !draft.initial || draft.submitted || !["revision", "final"].includes(state.phase) || !connected) return;
@@ -204,8 +212,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   if (state.phase === "deliberation") return <section className="voter-discussion" aria-label="Discussion"><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer" role="status">Discussion in progress</p></section>;
   if (draft.submitted) return <section className="voter-submitted" role="status"><h2>Vote submitted for {state.currentCandidate!.name}</h2><p>Waiting for the next candidate.</p></section>;
   return <section className="voter-panel voter-ballot">
-    <div className="voter-ballot-heading"><span className="voter-phase">{phase.label}</span></div>
-    <h2>{state.currentCandidate!.name}</h2>
+    <div className="voter-ballot-heading"><span className="voter-phase">{phase.label}</span><h2>{state.currentCandidate!.name}</h2></div>
 
     {storageError && <div className="voter-alert" role="alert">Browser storage is unavailable or unreadable. Ratings currently exist only in this open page; do not refresh or close it before submitting.</div>}
     {draft.submitted ? <div className="voter-success" role="status"><h3>Ballot received.</h3><p>Your ratings have been submitted.</p></div> : <>
@@ -220,8 +227,8 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     </fieldset>)}</div>
     {error && <div className="voter-alert" role="alert">{error}</div>}
     {!draft.submitted && <div className="voter-ballot-actions">
-      {state.phase === "initial" && !draft.initial && <><button className="voter-primary" disabled={!connected || !state.criteria.length} onClick={saveInitial}>Save ratings</button></>}
-      {state.phase === "initial" && draft.initial && <p className="voter-action-status">Ratings saved</p>}
+      {state.phase === "initial" && !draft.initialConfirmed && <><button className="voter-primary" disabled={busy || !connected || !state.criteria.length} onClick={() => void saveInitial()}>{busy ? "Saving…" : error ? "Retry" : "Save ratings"}</button></>}
+      {state.phase === "initial" && draft.initialConfirmed && <p className="voter-action-status">Ratings saved</p>}
       {["revision", "final"].includes(state.phase) && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
       {state.phase === "locked" && draft.initial && <p className="voter-action-status">This ballot was not submitted. Your draft remains here; tell your admin.</p>}
     </div>}

@@ -13,7 +13,7 @@ const rounds: { phase: VotingPhase; label: string; description: string; next: Vo
   {phase: "revision", label: "Voting open", description: "Voters can revise their ratings and submit when ready.", next: "locked", action: "Close voting for this candidate"},
   {phase: "final", label: "Voting open", description: "Voters can revise their ratings and submit when ready.", next: "locked", action: "Close voting for this candidate"},
 ];
-const steps = ["Initial ratings", "Discussion", "Vote"];
+const steps = ["Initial ratings", "Discussion", "Submit"];
 
 async function responseData(response: Response) {
   const data = await response.json().catch(() => ({error: "The server returned an unexpected response. Please try again."}));
@@ -141,9 +141,13 @@ export default function DeliberationsAdminPage() {
               <p className="voting-current-label">Current candidate</p><h2 className="voting-current-name">{state.currentCandidate.name}</h2>
               <ol className="voting-round-steps" aria-label="Voting rounds">{steps.map((label, index) => <li key={label} aria-current={stepIndex === index ? "step" : undefined} className={stepIndex === index ? "is-current" : stepIndex > index ? "is-complete" : ""}><span className="voting-stage-marker" aria-hidden="true">{stepIndex > index ? <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 3 3 7-7"/></svg> : index + 1}</span><span className="voting-stage-label">{label}</span><span className="voting-sr-only">{stepIndex > index ? ": Completed" : stepIndex === index ? ": In progress" : ": Upcoming"}</span></li>)}</ol>
               <div className="voting-round-status" aria-live="polite"><h3 className="voting-sr-only">{state.phase === "locked" ? "Voting closed" : round?.label}</h3><p>{state.phase === "locked" ? "This candidate is complete." : round?.description}</p></div>
-              {(["revision", "final", "locked"].includes(state.phase)) && <p className="voting-submission-count"><strong>{state.submittedCount}</strong> final ballots submitted</p>}
-              {["revision", "final"].includes(state.phase) && state.participants && <div className="voting-waiting-on" aria-live="polite">
-                {state.participants.length === 0 ? <p>No voters have joined yet.</p> : state.participants.every(voter => voter.submitted) ? <p>Everyone has submitted.</p> : <><p>Waiting on {state.participants.filter(voter => !voter.submitted).length}</p><ul>{state.participants.filter(voter => !voter.submitted).map(voter => <li key={voter.id}>{voter.name}</li>)}</ul></>}
+              {(state.phase === "locked") && <p className="voting-submission-count"><strong>{state.submittedCount}</strong> final ballots submitted</p>}
+              {["initial", "revision", "final"].includes(state.phase) && state.participants && <div className="voting-waiting-on" aria-live="polite">
+                {(() => {
+                  const voters = state.phase === "initial" ? state.participants : state.participants.filter(voter => voter.initialSubmitted);
+                  const waiting = voters.filter(voter => state.phase === "initial" ? !voter.initialSubmitted : !voter.submitted);
+                  return voters.length === 0 ? <p>{state.phase === "initial" ? "No voters have joined yet." : "No initial ratings were submitted."}</p> : <><div className="voting-response-progress"><span><strong>{voters.length - waiting.length}</strong> / {voters.length} submitted</span><span>{state.phase === "initial" ? "Initial ratings" : "Final votes"}</span></div><progress aria-label="Submitted votes" value={voters.length - waiting.length} max={voters.length}/>{waiting.length === 0 ? <p>Everyone has submitted.</p> : <><p>Waiting on {waiting.length}</p><ul>{waiting.map(voter => <li key={voter.id}>{voter.name}</li>)}</ul></>}</>;
+                })()}
               </div>}
               {confirmClose && <div className="voting-inline-confirm" role="alert"><p>Close voting? Voters who haven’t submitted will need you to reopen it.</p><button className="voting-admin-primary" disabled={busy} onClick={() => changePhase("locked")}>Yes, close voting</button><button disabled={busy} onClick={() => setConfirmClose(false)}>Cancel</button></div>}
               {round && !confirmClose && <button className="voting-admin-primary voting-round-next" disabled={busy || !state.active || (round.next === "initial" && state.currentCandidate.completed) || !state.criteria.length} onClick={() => changePhase(round.next)}>{busy ? "Updating…" : round.action}</button>}

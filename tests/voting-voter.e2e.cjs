@@ -40,6 +40,7 @@ async function main() {
       joinRequests.push(route.request().postDataJSON()); authenticated = true;
       return reply(200, { ok: true });
     }
+    if (path.endsWith('/initial')) return reply(200, {ok:true});
     if (path.endsWith('/submit')) {
       const ballot = route.request().postDataJSON(); submissions.push(ballot);
       return rejectSubmission ? reply(503, { error: 'Temporary spreadsheet failure.' }) : reply(200, { ok: true, submissionId: ballot.submissionId });
@@ -117,6 +118,10 @@ async function main() {
     await page.reload();
     await page.getByRole('heading', { name: 'Vote submitted for Alex Chen' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Submit vote' }).count(), 0);
+    state.phase = 'waiting';
+    await page.reload();
+    await page.getByRole('heading', {name:'Waiting for the next candidate',exact:true}).waitFor();
+    assert.equal(await page.getByRole('heading', {name:'You’re in.',exact:true}).count(),0);
     // Start another candidate, save locally, and advance before final submission.
     state.currentCandidate = { id: 'candidate-two', name: 'Morgan Lee', context: '', order: 1, completed: false };
     state.ballotVersion = 'v2'; state.contextVisible = false;

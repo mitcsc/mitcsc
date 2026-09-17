@@ -57,14 +57,45 @@ function state(config: Settings, identity: Identity, s: Snapshot): VotingState {
   const found = s.candidates.find(c => c.id === s.runtime.candidate_id) || null;
   const current = found && s.runtime.ballot_version ? { ...found, name: s.runtime.candidate_name || found.name, context: s.runtime.candidate_context || "" } : found;
   const visible = s.runtime.context_visible === "true";
-  return { sessionId: config.sessionId, active: !!config.password, votingStarted: !!s.runtime.ballot_version || s.candidates.some(candidate => candidate.completed) || phase(s) !== "waiting", phase: phase(s), ballotVersion: s.runtime.ballot_version || "", currentCandidate: current ? { ...current, context: admin || visible ? current.context : "" } : null, criteria: ballotCriteria(s), contextVisible: visible, submittedCount: new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === current?.id && r[6] === s.runtime.ballot_version).map(r => r[4])).size, voter: { id: identity.id, name: identity.name }, isAdmin: admin, initialized: s.initialized, ...(admin ? { candidates: s.candidates, spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit` } : {}) };
+  return { sessionId: config.sessionId, active: !!config.password, votingStarted: s.ballots.length > 0 || !!s.runtime.ballot_version || s.candidates.some(candidate => candidate.completed) || phase(s) !== "waiting", phase: phase(s), ballotVersion: s.runtime.ballot_version || "", currentCandidate: current ? { ...current, context: admin || visible ? current.context : "" } : null, criteria: ballotCriteria(s), contextVisible: visible, submittedCount: new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === current?.id && r[6] === s.runtime.ballot_version).map(r => r[4])).size, voter: { id: identity.id, name: identity.name }, isAdmin: admin, initialized: s.initialized, ...(admin ? { candidates: s.candidates, spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit` } : {}) };
+}
+const INITIAL_TAB = "Initial submissions";
+const INITIAL_HEADERS = ["session_id", "candidate_id", "ballot_version", "voter_id", "submitted_at"];
+async function initialReceipts(config: Settings, fresh = false): Promise<string[][]> {
+  if (!(await tabNames(config.sheetId)).includes(INITIAL_TAB)) return [];
+  const [rows] = await readRanges(config.sheetId, [`'${INITIAL_TAB}'!A:E`], fresh);
+  if (INITIAL_HEADERS.some((header, index) => rows[0]?.[index] !== header)) throw new VotingError("The Initial submissions tab has unexpected columns.", 409);
+  return rows.slice(1);
+}
+async function ensureInitialTab(config: Settings) {
+    if (!(await tabNames(config.sheetId)).includes(INITIAL_TAB)) {
+      await sheets(config.sheetId, ":batchUpdate", "POST", {requests: [{addSheet: {properties: {title: INITIAL_TAB}}}]});
+      await writeRanges(config.sheetId, [{range: `'${INITIAL_TAB}'!A1`, values: [INITIAL_HEADERS]}]);
+    }
+}
+export async function submitInitial(config: Settings, identity: Identity, input: Record<string, unknown>) {
+  if (identity.role === "admin") throw new VotingError("Admins do not vote.", 403);
+  return serialize(async () => {
+    invalidate(config.sheetId);
+    const s = await snapshot(config, true);
+    state(config, identity, s);
+    if (input.sessionId !== config.sessionId) throw new VotingError("This ballot belongs to another session.", 409);
+    const receipts = await initialReceipts(config, true);
+    if (receipts.some(r => r[0] === config.sessionId && r[1] === input.candidateId && r[2] === input.ballotVersion && r[3] === identity.id)) return {ok: true};
+    if (!s.initialized || !config.password || phase(s) !== "initial" || !s.runtime.ballot_version || input.candidateId !== s.runtime.candidate_id || input.ballotVersion !== s.runtime.ballot_version) throw new VotingError("Initial ratings have closed for this candidate.", 409);
+    validateRatings(input.ratings, ballotCriteria(s));
+    await ensureInitialTab(config);
+    await sheets(config.sheetId, `/values/${encodeURIComponent(`'${INITIAL_TAB}'!A:E`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, "POST", {values: [[config.sessionId, input.candidateId, input.ballotVersion, identity.id, new Date().toISOString()]]});
+    return {ok: true};
+  });
 }
 export async function getState(config: Settings, identity: Identity) {
   const s = await snapshot(config);
   const result = state(config, identity, s);
   if (identity.role === "admin") {
     const submitted = new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === result.currentCandidate?.id && r[6] === result.ballotVersion).map(r => r[4]));
-    result.participants = (await sessionVoters(config)).map(voter => ({...voter, submitted: submitted.has(voter.id)}));
+    const initial = new Set((await initialReceipts(config)).filter(r => r[0] === config.sessionId && r[1] === result.currentCandidate?.id && r[2] === result.ballotVersion).map(r => r[3]));
+    result.participants = (await sessionVoters(config)).map(voter => ({...voter, submitted: submitted.has(voter.id), initialSubmitted: initial.has(voter.id)}));
   }
   return result;
 }
@@ -149,6 +180,7 @@ export async function adminAction(config: Settings, identity: Identity, input: R
         if (!saved || !s.candidates.some(c => c.id === input.candidateId)) throw new VotingError("That candidate has no saved ballot to reopen.", 409);
         await saveRuntime(config, { ...s.runtime, phase: "final", candidate_id: saved[0], ballot_version: saved[1], candidate_name: saved[2], candidate_context: saved[3], criteria_json: saved[4], context_visible: "true" });
       } else if (next === "initial") {
+        await ensureInitialTab(config);
         if (!["waiting", "locked"].includes(phase(s))) throw new VotingError("Lock the current candidate before opening another ballot.", 409);
         const selected = s.candidates.find(c => c.id === (input.candidateId || current?.id));
         if (!selected || selected.completed) throw new VotingError("Choose an unfinished candidate.", 409);

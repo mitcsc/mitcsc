@@ -15,7 +15,7 @@ export interface VotingState {
   voter: { id: string; name: string } | null;
   isAdmin: boolean;
   initialized: boolean;
-  participants?: { id: string; name: string; submitted: boolean }[];
+  participants?: { id: string; name: string; submitted: boolean; initialSubmitted?: boolean }[];
   candidates?: Candidate[];
   spreadsheetUrl?: string;
 }

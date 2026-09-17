@@ -110,7 +110,16 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   const ballot = {submissionId:'ballot-001',sessionId:config.sessionId,candidateId:'alex',ballotVersion:version,initialRatings:{reliability:2},finalRatings:{reliability:4}};
   await assert.rejects(service.submit(config, admin, ballot), {status:403});
   await assert.rejects(service.submit(config, voter, ballot), {status:409});
+  const initialReceipt = {sessionId:config.sessionId,candidateId:'alex',ballotVersion:version,ratings:{reliability:2}};
+  await service.submitInitial(config,voter,initialReceipt);
+  await service.submitInitial(config,voter,initialReceipt);
+  assert.equal(books.get(config.sheetId).get('Initial submissions').length,2,'Initial receipts are idempotent');
+  assert.equal((await service.getState(config,admin)).participants.find(v=>v.id===voter.id).initialSubmitted,true);
   await service.adminAction(config, admin, {action:'setPhase',phase:'deliberation'});
+  await service.submitInitial(config,voter,initialReceipt);
+  await assert.rejects(service.submitInitial(config,{...voter,id:'late-voter'},initialReceipt),{status:409});
+  assert.equal((await service.getState(config,admin)).participants.filter(v=>v.initialSubmitted).length,1,'Only initial submitters enter the final waiting list');
+
   await service.adminAction(config, admin, {action:'setContext',visible:true});
   assert.equal((await service.getState(config,voter)).currentCandidate.context, 'Private context');
   // External Sheet edits must not silently change an open ballot.

@@ -71,6 +71,7 @@ const landing=`<!doctype html><html><head><meta name="viewport" content="width=d
    const admitted=service.authorize(security.readIdentity(jar.csc_voting),config);const identity=await canonicalIdentity(config,admitted);
    if(path.endsWith('/state'))return json(res,await service.getState(config,identity));
    if(path.endsWith('/admin')){service.authorize(identity,config,true);return json(res,await service.adminAction(config,identity,payload));}
+   if(path.endsWith('/initial'))return json(res,await service.submitInitial(config,identity,payload));
    if(path.endsWith('/submit'))return json(res,await service.submit(config,identity,payload));
    return json(res,{error:'Not found'},404);
   }catch(error){json(res,{error:error.message},error.status||500);}
