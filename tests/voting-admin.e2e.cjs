@@ -98,6 +98,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.mouse.move(dividerBox.x, dividerBox.y + 50);
     await page.mouse.down();
     await page.mouse.move(dividerBox.x + 80, dividerBox.y + 50, {steps:8});
+    assert.equal(await page.locator('.voting-admin-edit-row').first().evaluate(el => getComputedStyle(el).transform), 'none', 'Column resizing must not stretch or translate candidate rows');
     await page.mouse.up();
     assert.ok(Number(await divider.getAttribute('aria-valuenow')) > 50, 'Divider drag should resize columns');
     await divider.focus();

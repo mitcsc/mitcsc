@@ -71,7 +71,7 @@ function CandidateRow({listRef, candidate, index, count, busy, onRename, onMove,
   onRename: (name: string) => void; onMove: (direction: number) => void; onRemove: () => void;
 }) {
   const controls = useDragControls();
-  return <Reorder.Item dragConstraints={listRef} dragElastic={0} dragMomentum={false} value={candidate} dragListener={false} dragControls={controls} className="voting-admin-edit-row" whileDrag={{backgroundColor: "#1b1b1d", boxShadow: "0 8px 24px #0006", zIndex: 2}} onPointerDown={(event: React.PointerEvent<HTMLLIElement>) => {
+  return <Reorder.Item layout="position" dragConstraints={listRef} dragElastic={0} dragMomentum={false} value={candidate} dragListener={false} dragControls={controls} className="voting-admin-edit-row" whileDrag={{backgroundColor: "#1b1b1d", boxShadow: "0 8px 24px #0006", zIndex: 2}} onPointerDown={(event: React.PointerEvent<HTMLLIElement>) => {
     if (!busy && !(event.target as HTMLElement).closest("input,button,textarea")) controls.start(event);
   }}>
     <button type="button" className="voting-drag-handle" aria-label={`Reorder ${candidate.name || "candidate"}`} title="Drag to reorder. Use arrow keys to move." disabled={busy} onPointerDown={event => { if (!busy) controls.start(event); }} onKeyDown={event => {
