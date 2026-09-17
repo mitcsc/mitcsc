@@ -30,6 +30,5 @@ export interface FinalBallot {
 export type AdminAction =
   | { action: "initialize" }
   | { action: "saveSetup"; candidates: Candidate[]; criteria: Criterion[] }
-  | { action: "shuffle" }
   | { action: "setPhase"; phase: VotingPhase; candidateId?: string }
   | { action: "setContext"; visible: boolean };

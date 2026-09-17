@@ -1,5 +1,5 @@
 import { sessionVoters } from "./admin-identity";
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { Identity, VotingError, text } from "./security";
 import { invalidate, readRanges, sheets, writeRanges } from "./sheets";
 import type { Candidate, Criterion, FinalBallot, Ratings, VotingPhase, VotingState } from "./types";
@@ -138,12 +138,6 @@ export async function adminAction(config: Settings, identity: Identity, input: R
         { range: "'Candidates'!A2:E101", values: [...candidates.map((c, i) => [c.id, c.name, c.context, i, false]), ...Array.from({ length: 100 - candidates.length }, () => ["", "", "", "", ""])] },
         { range: "'Criteria'!A2:F21", values: [...criteria.map(c => [c.id, c.label, c.description, c.min, c.max, c.required]), ...Array.from({ length: 20 - criteria.length }, () => ["", "", "", "", "", ""])] },
       ]);
-    } else if (input.action === "shuffle") {
-      const remaining = s.candidates.filter(c => !c.completed && c.id !== current?.id);
-      for (let i = remaining.length - 1; i > 0; i--) { const j = randomInt(i + 1); [remaining[i], remaining[j]] = [remaining[j], remaining[i]]; }
-      let index = 0;
-      const result = s.candidates.map(c => c.completed || c.id === current?.id ? c : remaining[index++]);
-      await writeRanges(config.sheetId, [{ range: "'Candidates'!A2", values: result.map((c, i) => [c.id, c.name, c.context, i, c.completed]) }]);
     } else if (input.action === "setContext") {
       if (typeof input.visible !== "boolean") throw new VotingError("Invalid context visibility.");
       await saveRuntime(config, { ...s.runtime, context_visible: String(input.visible) });

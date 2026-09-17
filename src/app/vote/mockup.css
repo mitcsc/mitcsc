@@ -325,3 +325,4 @@
 .voter-lobby-joined{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:#bababc;margin-top:27px;max-width:100%}
 .voter-lobby-joined svg{flex:none}
 .voter-lobby-joined span{overflow-wrap:anywhere;min-width:0}
+.voting-root .voting-admin .voting-candidate-add button[aria-label="Shuffle order"]{display:inline-flex;align-items:center;gap:7px;border-color:transparent;color:#ffffff80}

@@ -30,12 +30,20 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
     [next[index], next[index + direction]] = [next[index + direction], next[index]];
     updateCandidates(next);
   };
+  const shuffle = () => {
+    const next = [...candidates];
+    for (let i = next.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [next[i], next[j]] = [next[j], next[i]];
+    }
+    updateCandidates(next);
+  };
   const save = async () => {
     if (!candidates.length || candidates.some(c => !c.name.trim()) || !criteria.length || criteria.some(c => !c.label.trim() || !Number.isInteger(c.min) || !Number.isInteger(c.max) || c.min < 0 || c.max > 10 || c.min >= c.max)) {
       setMessage("Add at least one named candidate and criterion. Rating scales must use whole numbers from 0 to 10, with minimum below maximum.");
       return;
     }
-    if (await onSave(candidates, criteria)) { setMessage("Setup saved."); onContinue(); }
+    if (await onSave(candidates, criteria)) { setMessage(""); onContinue(); }
   };
   return <section ref={panelRef} style={{"--candidate-width": `${split}%`} as CSSProperties} aria-label="Ballot setup" className="voting-admin-card voting-setup-editor">
 
@@ -44,7 +52,7 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
         <ul ref={listRef} className="voting-candidate-editor-list" aria-label="Candidate order">
           {candidates.map((c, i) => <CandidateRow listRef={listRef} dragging={drag !== null} shift={drag && i !== drag.from ? (drag.from < drag.to && i > drag.from && i <= drag.to ? -drag.step : drag.from > drag.to && i >= drag.to && i < drag.from ? drag.step : 0) : 0} onDragChange={setDrag} key={c.id} candidate={c} index={i} count={candidates.length} busy={busy} onRename={name => updateCandidates(candidates.map(x => x.id === c.id ? {...x, name} : x))} onMove={direction => move(i, direction)} onMoveTo={target => { const next = [...candidates]; next.splice(i, 1); next.splice(target, 0, c); updateCandidates(next); }} onRemove={() => updateCandidates(candidates.filter(x => x.id !== c.id))}/>)}
         </ul>
-        <div className="voting-candidate-add"><button onClick={() => addNames([""])}>+ Add candidate</button><button aria-expanded={pasteOpen} aria-controls="paste-candidates" onClick={() => setPasteOpen(!pasteOpen)}>Paste names</button></div>
+        <div className="voting-candidate-add"><button onClick={() => addNames([""])}>+ Add candidate</button><button aria-expanded={pasteOpen} aria-controls="paste-candidates" onClick={() => setPasteOpen(!pasteOpen)}>Paste names</button><button aria-label="Shuffle order" disabled={candidates.length < 2} onClick={shuffle}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg>Shuffle</button></div>
         {pasteOpen && <div id="paste-candidates" className="voting-paste-panel"><label className="voting-admin-paste">Names, one per line<textarea autoFocus value={paste} onChange={e => setPaste(e.target.value)} rows={4} placeholder={"Name 1\nName 2\nName 3"}/></label><button disabled={!paste.trim()} onClick={() => {addNames(paste.split(/\r?\n/).map(n => n.trim()).filter(Boolean)); setPaste(""); setPasteOpen(false);}}>Add names</button></div>}
 
       </fieldset>

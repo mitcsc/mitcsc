@@ -137,7 +137,6 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   assert.equal(books.get(config.sheetId).get('Responses').length,2,'Setup rerun preserves ballots');
   await service.adminAction(config,admin,{action:'setPhase',phase:'locked'});
   assert.equal((await service.submit(config,voter,ballot)).ok,true,'Lost acknowledgements can retry after lock');
-  await service.adminAction(config,admin,{action:'shuffle'});
   state = await service.getState(config,admin);
   assert.equal(state.candidates.find(c=>c.id==='alex').completed,true);
   assert.equal(state.candidates[0].id,'alex');

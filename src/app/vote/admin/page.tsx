@@ -22,13 +22,27 @@ async function responseData(response: Response) {
 }
 
 export default function DeliberationsAdminPage() {
-  const [state, setState] = useState<VotingState | null>(null);
+  const [serverState, setState] = useState<VotingState | null>(null);
   const [loading, setLoading] = useState(true);
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [connectionError, setConnectionError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [displayOrder, setDisplayOrder] = useState<string[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    setSelectedId(null);
+    try {
+      const saved = JSON.parse(localStorage.getItem(`voting-order:${serverState?.sessionId}`) || "[]");
+      setDisplayOrder(Array.isArray(saved) ? saved.filter(id => typeof id === "string") : []);
+    } catch { setDisplayOrder([]); }
+  }, [serverState?.sessionId]);
+  const candidates = [...(serverState?.candidates || [])].sort((a, b) => {
+    const ai = displayOrder.indexOf(a.id), bi = displayOrder.indexOf(b.id);
+    return (ai < 0 ? displayOrder.length + a.order : ai) - (bi < 0 ? displayOrder.length + b.order : bi);
+  });
+  const started = !!serverState?.ballotVersion || candidates.some(c => c.completed) || (!!serverState && serverState.phase !== "waiting");
+  const state = serverState && !started ? {...serverState, currentCandidate: candidates.find(c => c.id === selectedId) || candidates[0] || null} : serverState;
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"setup" | "live">("setup");
   const [confirmClose, setConfirmClose] = useState(false);
@@ -64,14 +78,13 @@ export default function DeliberationsAdminPage() {
   }, [refresh]);
   const act = async (action: AdminAction) => {
     if (mutating.current) return false;
-    mutating.current = true; generation.current++; setBusy(true); setError(""); setNotice("");
+    mutating.current = true; generation.current++; setBusy(true); setError("");
     try {
       const next: VotingState = await responseData(await fetch("/api/voting/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(action)}));
       applyState(next);
       setConfirmClose(false);
       if (action.action === "initialize") setTab("setup");
-      if (action.action === "initialize" || action.action === "shuffle") setSetupRevision(x => x + 1);
-      if (action.action === "shuffle") setNotice("Remaining candidate order shuffled and saved to Sheets.");
+      if (action.action === "initialize") setSetupRevision(x => x + 1);
       return true;
     } catch (e) {setError(e instanceof Error ? e.message : "The change could not be saved."); return false;}
     finally {mutating.current = false; setBusy(false);}
@@ -85,16 +98,15 @@ export default function DeliberationsAdminPage() {
     } catch (e) {setError(e instanceof Error ? e.message : "Unable to sign in.");}
     finally {mutating.current = false; setBusy(false);}
   };
-  const candidates = [...(state?.candidates || [])].sort((a, b) => a.order - b.order);
-  const started = !!state?.ballotVersion || candidates.some(c => c.completed) || (!!state && state.phase !== "waiting");
   const editable = state?.initialized && !started && state.phase === "waiting";
   const showPreview = started || tab === "live";
   const changePhase = (phase: VotingPhase) => {
     if (phase === "locked" && !confirmClose) { setConfirmClose(true); return; }
-    void act({action: "setPhase", phase});
+    void act({action: "setPhase", phase, ...(phase === "initial" && state?.currentCandidate ? {candidateId: state.currentCandidate.id} : {})});
   };
   const selectCandidate = (id: string) => {
     if (state?.phase !== "waiting" && state?.phase !== "locked") return;
+    if (!started) { setSelectedId(id); return; }
     void act({action: "setPhase", phase: "waiting", candidateId: id});
   };
   const reopenCandidate = (id: string) => {
@@ -110,7 +122,6 @@ export default function DeliberationsAdminPage() {
 
     {error && <div className="voting-admin-alert" role="alert">{error}</div>}
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
-    {notice && <div className="voting-admin-notice" role="status">{notice}</div>}
     {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? <section className="voting-admin-card voting-admin-login">{state && <h2>Admin already assigned</h2>}{state ? <><p>Someone else has already joined as admin. You’re signed in and can participate on the voting page.</p><Link href="/vote">Go to voting →</Link><p className="voting-admin-muted">The admin should keep using the same browser for this session.</p></> : <><form onSubmit={join}><label><span className="voting-sr-only">Your name</span><input placeholder="Your name" value={name} onChange={e => setName(e.target.value)} maxLength={100} autoComplete="name" required/></label><label><span className="voting-sr-only">Session password</span><input placeholder="Session password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required/></label><button className="voting-admin-primary" disabled={busy || !password || !name.trim()}>{busy ? "Checking…" : "Join"}</button></form></>}</section> : <>
       {!state.active && <div className="voting-admin-notice">Voting is closed. Set a password in Settings to open the session.</div>}
       {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Create the voting tabs in your election spreadsheet.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
@@ -123,7 +134,7 @@ export default function DeliberationsAdminPage() {
               </button>
             </li>)}</ol>
             {!candidates.length ? <p className="voting-admin-muted">Add candidates below.</p> : !canChoose && <p className="voting-admin-muted">Close voting before changing candidates.</p>}
-            <div className="voting-sidebar-footer"><button aria-label="Shuffle order" title="Shuffle remaining candidates" disabled={busy || candidates.filter(c => !c.completed && c.id !== state.currentCandidate?.id).length < 2} onClick={() => {if (window.confirm("Shuffle the remaining candidates? Save any setup edits first.")) void act({action: "shuffle"});}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg><span>Shuffle remaining</span></button></div>
+
           </section>
           <section className="voting-round-controls" aria-label="Round controls">
             {!state.currentCandidate ? <div className="voting-round-empty"><h2>Choose a candidate to begin</h2><p>Select a name from the candidate list.</p></div> : <>
@@ -142,9 +153,14 @@ export default function DeliberationsAdminPage() {
           </section>
         </div>
         <div hidden={showPreview} className="voting-setup-tab">{editable ? <AdminSetup key={`${state.sessionId}-${setupRevision}`} candidates={candidates} criteria={state.criteria} busy={busy} onContinue={() => setTab("live")} onSave={async (nextCandidates, criteria) => {
-          if (!await act({action: "saveSetup", candidates: nextCandidates, criteria})) return false;
-          const first = [...nextCandidates].sort((a, b) => a.order - b.order)[0];
-          return first ? act({action: "setPhase", phase: "waiting", candidateId: first.id}) : false;
+          const originalOrder = new Map((serverState?.candidates || []).map(c => [c.id, c.order]));
+          const canonical = [...nextCandidates].sort((a, b) => (originalOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (originalOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER)).map((c, order) => ({...c, order}));
+          if (!await act({action: "saveSetup", candidates: canonical, criteria})) return false;
+          const order = nextCandidates.map(c => c.id);
+          setDisplayOrder(order);
+          try { localStorage.setItem(`voting-order:${state.sessionId}`, JSON.stringify(order)); } catch { /* Keep the order for this visit. */ }
+          setSelectedId(order[0] || null);
+          return true;
         }}/> : <section className="voting-admin-card"><h2>Criteria</h2><p className="voting-admin-muted">Setup is locked once voting begins.</p><div className="voting-admin-read-criteria">{state.criteria.map(c => <div key={c.id}><strong>{c.label}</strong><span>{c.min}–{c.max} · {c.required ? "Required" : "Optional"}</span><p>{c.description}</p></div>)}</div></section>}</div>
       </>}
     </>}
