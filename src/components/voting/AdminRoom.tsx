@@ -1,6 +1,5 @@
 "use client";
 
-import LoadingLabel from "./LoadingLabel";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminSetup from "@/components/voting/AdminSetup";
@@ -108,9 +107,9 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
 
     {error && <div className="voting-admin-alert" role="alert">{error}</div>}
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
-    {loading ? <section className="voting-admin-card"><p role="status"><LoadingLabel>Connecting to your election…</LoadingLabel></p></section> : !state?.isAdmin ? null : <>
+    {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? null : <>
       {!state.active && <div className="voting-admin-notice">Voting is closed. Set a password in Settings to open the session.</div>}
-      {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Create the voting tabs in your election spreadsheet.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? <LoadingLabel>Setting up…</LoadingLabel> : "Set up election"}</button></section> : <>
+      {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Create the voting tabs in your election spreadsheet.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
         <div className="voting-admin-controls" hidden={!showPreview}>
           <section className="voting-admin-candidates" aria-label="Candidate selection">
             {editable && <div className="voting-preview-back"><button onClick={() => setTab("setup")}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg><span>Back to setup</span></button></div>}
@@ -136,9 +135,9 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
                 })()}
               </div>}
 
-              {round && <button className="voting-admin-primary voting-round-next" disabled={busy || (!viewingLive && !liveIdle) || !state.active || (round.next === "initial" && state.currentCandidate.completed) || !state.criteria.length} onClick={() => changePhase(round.next)}>{busy ? <LoadingLabel>Updating…</LoadingLabel> : round.action}</button>}
+              {round && <button className="voting-admin-primary voting-round-next" disabled={busy || (!viewingLive && !liveIdle) || !state.active || (round.next === "initial" && state.currentCandidate.completed) || !state.criteria.length} onClick={() => changePhase(round.next)}>{busy ? "Updating…" : round.action}</button>}
               {state.phase === "locked" && liveIdle && nextCandidate && <button className="voting-admin-primary voting-round-next" disabled={busy} onClick={() => selectCandidate(nextCandidate.id)}>Next candidate: {nextCandidate.name}</button>}
-              {state.phase === "locked" && <button className="voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? <LoadingLabel>Reopening…</LoadingLabel> : "Reopen final submission"}</button>}
+              {state.phase === "locked" && <button className="voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? "Reopening…" : "Reopen final submission"}</button>}
               {!viewingLive && !liveIdle && <p className="voting-admin-muted">Another candidate is live. Close that round before opening this one.</p>}
               {state.phase === "locked" && !nextCandidate && <p className="voting-admin-muted">All candidates are complete.</p>}
             </>}
