@@ -32,7 +32,7 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
     }
     if (await onSave(candidates, criteria)) { setDirty(false); setMessage("Setup saved."); }
   };
-  return <section className="voting-admin-card">
+  return <section className={`voting-admin-card voting-setup-editor ${preview ? "is-preview" : ""}`}>
     <div className="voting-admin-heading"><div><h2>Build your ballot</h2></div><button type="button" onClick={() => setPreview(!preview)}>{preview ? "Edit setup" : "Preview ballot"}</button></div>
     {preview ? <div className="voting-admin-preview"><h3>{candidates[0]?.name || "Candidate name"}</h3>{criteria.map(c => <fieldset key={c.id}><legend>{c.label || "Untitled criterion"}{c.required ? " *" : ""}</legend><p>{c.description}</p><div className="voting-admin-ratings">{Array.from({length: Math.max(0, Math.min(11, c.max - c.min + 1))}, (_, i) => c.min + i).map(n => <label key={n}><input type="radio" name={`preview-${c.id}`} value={n}/><span>{n}</span></label>)}</div>{!c.required && <label><input type="radio" name={`preview-${c.id}`} value=""/> Not enough information</label>}</fieldset>)}</div> : <>
       <fieldset disabled={busy} className="voting-admin-editor"><legend>Candidates <span>{candidates.length}</span></legend>

@@ -1,0 +1,134 @@
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: normal;
+  font-display: swap;
+  src: url(/font/instrument-sans/400.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: normal;
+  font-display: swap;
+  src: url(/font/instrument-sans/500.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: normal;
+  font-display: swap;
+  src: url(/font/instrument-sans/600.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: normal;
+  font-display: swap;
+  src: url(/font/instrument-sans/700.ttf) format('truetype');
+}
+
+/* Adapted from the supplied CSC Voting mockup. */
+.voting-root{background:#0c0c0d;color:#f4f3f1;font-family:"Instrument Sans",Arial,system-ui,sans-serif;--voting-accent:oklch(.58 .22 25);padding:40px 24px}
+.voting-root [hidden]{display:none!important}
+.voting-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.voting-root .voting-admin{font-family:inherit;--va-red:oklch(.58 .22 25);max-width:1100px;padding:0}
+.voting-root .voting-admin h2,.voting-root .voting-admin h3,.voting-root .voter-room h2{font-family:inherit;font-weight:500;letter-spacing:-.02em}
+.voting-root .voting-console{border:1px solid #ffffff1f;border-radius:14px;overflow:hidden;min-height:680px}
+.voting-console-header{display:flex;justify-content:space-between;align-items:center;padding:18px 28px;border-bottom:1px solid #ffffff14}
+.voting-console-header>span{color:#ffffff73;font-size:13px}
+.voting-console-header [role=tablist]{display:flex;gap:4px}
+.voting-root .voting-console-header button{border:0;border-radius:999px;color:#ffffff80;padding:7px 14px;font-size:14px}
+.voting-root .voting-console-header button[aria-selected=true]{background:#ffffff1a;color:#f4f3f1}
+.voting-root .voting-admin-controls{grid-template-columns:300px minmax(0,1fr);gap:0;margin:0;min-height:600px}
+.voting-root .voting-admin-candidates{padding:20px 16px;border-right:1px solid #ffffff14}
+.voting-root .voting-admin-candidates .voting-admin-heading{margin:0 12px 16px}
+.voting-root .voting-admin-candidates .voting-admin-heading h2{font-size:13px;color:#ffffff73;font-weight:400}
+.voting-root .voting-candidate-list{gap:2px}
+.voting-root .voting-candidate-list button{border:0;padding:12px;min-height:48px;border-radius:10px;gap:12px}
+.voting-root .voting-candidate-list button.is-selected{background:#ffffff14}
+.voting-candidate-dot{width:8px;height:8px;border-radius:50%;border:1px solid #ffffff4d;flex:none}
+.voting-candidate-dot.is-now{background:oklch(.58 .22 25);border-color:transparent}
+.voting-candidate-dot.is-done{background:#ffffff59;border-color:transparent}
+.voting-root .voting-candidate-list button>span:nth-child(2){display:flex;justify-content:space-between;gap:10px;align-items:center;flex:1}
+.voting-root .voting-candidate-list strong{font-size:15px;font-weight:400}
+.voting-root .voting-candidate-list small,.voting-root .voting-candidate-list .is-selected small{color:#ffffff66;font-size:12px;margin:0}
+.voting-root .voting-candidate-marker{display:none}
+.voting-root .voting-round-controls{border:0;border-radius:0;padding:40px 44px;align-self:stretch;display:flex;flex-direction:column}
+.voting-root .voting-current-label{color:#ffffff73;font-size:13px;margin:0 0 8px}
+.voting-root h2.voting-current-name{font-size:52px;font-weight:500;line-height:1.1;margin:0 0 36px;letter-spacing:-.02em}
+.voting-root .voting-round-steps{gap:6px;margin:0 0 28px}
+.voting-root .voting-round-steps li{border-top-width:3px;font-size:11px;padding-top:8px}
+.voting-root .voting-round-status p{font-size:15px;line-height:1.6;color:#ffffff99;max-width:none}
+.voting-root button.voting-round-next{width:fit-content;max-width:100%;border-radius:999px;padding:14px 24px;font-size:15px;margin-top:auto;min-height:50px}
+.voting-root .voting-round-status{margin-bottom:32px}
+.voting-root .voting-submission-count{margin-bottom:32px}
+.voting-inline-confirm{margin-top:auto;display:flex;gap:12px;flex-wrap:wrap}
+.voting-inline-confirm p{width:100%;font-size:13px;color:#ffffff80}
+.voting-root .voting-inline-confirm button{border-radius:999px;padding:13px 20px}
+.voting-root .voting-admin-alert,.voting-root .voting-admin-notice{margin:16px}
+.voting-root .voting-setup-editor{padding:0;margin:0;border:0;display:grid;grid-template-columns:1fr 1fr}
+.voting-root .voting-setup-editor>.voting-admin-heading{grid-column:1/-1;padding:18px 28px;margin:0;border-bottom:1px solid #ffffff14}
+.voting-root .voting-setup-editor>.voting-admin-heading h2{font-size:15px;letter-spacing:0}
+.voting-root .voting-admin-editor{margin:0;padding:28px;border:0;min-width:0}
+.voting-root .voting-admin-editor:first-of-type{border-right:1px solid #ffffff14}
+.voting-root .voting-admin-editor>legend{float:left;width:100%;font:13px/1.5 Arial,sans-serif;color:#ffffff73;margin-bottom:16px}
+.voting-root .voting-admin-editor>legend+*{clear:both}
+.voting-root .voting-admin-edit-row{padding:8px 0;margin:0;border-color:#ffffff0f;align-items:center;gap:8px}
+.voting-root .voting-admin-edit-row label{font-size:0}
+.voting-root .voting-admin-edit-row input{border-color:transparent;background:none;padding:6px 8px;font-size:15px}
+.voting-root .voting-admin-row-actions button{border:0;padding:4px;color:#ffffff66;font-size:12px}
+.voting-root .voting-admin-number{font:12px Arial,sans-serif;color:#ffffff59}
+.voting-root .voting-admin-editor>button{margin-top:12px;border-radius:999px}
+.voting-root .voting-admin-criterion{border-color:#ffffff0f;padding-bottom:18px;margin-bottom:18px;gap:8px}
+.voting-root .voting-admin-save{grid-column:1/-1;padding:20px 28px;margin:0;border-color:#ffffff14}
+.voting-root .voting-admin-save button,.voting-root .voting-admin-heading>button{border-radius:999px}
+.voting-root .voting-admin-preview{margin:28px;grid-column:1/-1;background:transparent;max-width:none}
+.voting-root .voting-setup-tab>.voting-admin-card:not(.voting-setup-editor){padding:28px;margin:0;border:0}
+.voting-root .voter-room{font-family:inherit;--voter-red:oklch(.58 .22 25);max-width:480px;padding:0}
+.voting-root .voter-session-bar{display:none}
+.voting-root .voter-panel{border:0;padding:0;margin:0}
+.voting-root .voter-ballot{padding-bottom:100px}
+.voting-root .voter-ballot h2{font-size:34px;line-height:1.1;margin:6px 0 36px;font-weight:500}
+.voting-root .voter-phase{font-size:13px;color:#ffffff73}
+.voting-root .voter-criterion{padding:0;border:0;margin:0 0 28px}
+.voting-root .voter-criterion legend{font-size:16px;font-weight:400;margin-bottom:10px}
+.voting-root .voter-required{font-size:13px;color:#ffffff66;text-transform:none;letter-spacing:0}
+.voting-root .voter-scale{gap:6px}
+.voting-root .voter-rating{flex:1;min-width:44px;background:none;border-color:#ffffff26;border-radius:8px;font-size:16px;min-height:50px}
+.voting-root .voter-rating-selected{background:oklch(.58 .22 25)!important;border-color:transparent;color:white}
+.voting-root .voter-rating-na{flex-basis:100%;background:none;font-size:13px;min-height:36px;border-color:transparent;color:#ffffff80}
+.voting-root .voter-original{color:#ffffff73;font-size:13px;margin-top:8px}
+.voting-root .voter-ballot-actions{position:sticky;bottom:0;display:flex;flex-direction:column;gap:10px;background:linear-gradient(to top,#0c0c0d 75%,#0c0c0d00);padding:28px 0 12px;margin-top:32px;z-index:2}
+.voting-root .voter-primary{border-radius:999px;width:100%;font-size:15px;font-weight:500;background:oklch(.58 .22 25);border:0}
+.voting-root .voter-action-status{width:100%;text-align:center;padding:14px;background:#ffffff0a;border-radius:999px;font-size:15px!important}
+.voting-root .voter-footnote{text-align:center;margin-top:0!important;font-size:13px;color:#ffffff73}
+.voting-root .voter-wait,.voting-root .voter-submitted{min-height:calc(100svh - 80px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px}
+.voting-root .voter-wait h2{font-size:17px;color:#ffffffb3;font-weight:400;margin:0}
+.voter-wait-dot{width:8px;height:8px;border-radius:50%;background:#ffffff59}
+.voting-root .voter-submitted h2{font-size:22px;margin:0;letter-spacing:0}
+.voting-root .voter-submitted p{font-size:15px;color:#ffffff80;margin:0}
+.voting-root .voting-admin-login form,.voting-root .voter-join form{gap:12px}
+.voting-root .voting-admin-login label,.voting-root .voter-join label{gap:0}
+.voting-root .voting-admin-login input,.voting-root .voter-join input{background:none;border-color:#ffffff26;border-radius:10px;font-size:17px;padding:16px;min-height:56px}
+.voting-root .voting-admin-login button,.voting-root .voter-join button{background:#f4f3f1;color:#0c0c0d;border:0;border-radius:10px;font-size:17px;font-weight:500;min-height:56px}
+@media(max-width:760px){.voting-root{padding:24px 16px}.voting-root .voting-console{min-height:calc(100svh - 48px)}.voting-root .voting-console-header{padding:16px}.voting-root .voting-admin-controls{grid-template-columns:1fr;min-height:0}.voting-root .voting-admin-candidates{border-right:0;border-bottom:1px solid #ffffff14;padding:16px}.voting-root .voting-round-controls{padding:28px 20px;min-height:420px}.voting-root h2.voting-current-name{font-size:36px}.voting-root .voting-setup-editor{grid-template-columns:1fr}.voting-root .voting-admin-editor{padding:20px}.voting-root .voting-admin-editor:first-of-type{border-right:0;border-bottom:1px solid #ffffff14}.voting-root .voting-admin-save{padding:20px}.voting-root .voter-wait,.voting-root .voter-submitted{min-height:calc(100svh - 48px)}}
+.voting-root .voting-admin button.voting-round-next{width:fit-content;border-radius:999px;padding:14px 24px;font-size:15px;margin-top:auto;min-height:50px}
+.voting-root .voting-admin h2.voting-current-name{font-family:inherit;font-size:52px;font-weight:500;line-height:1.1;letter-spacing:-.02em;margin:0 0 36px}
+.voting-root .voting-admin .voting-round-controls{min-height:600px}
+.voting-root .voter-room .voter-primary{border-radius:999px;background:oklch(.58 .22 25)}
+.voting-root .voter-room .voter-join .voter-primary{border-radius:10px;background:#f4f3f1;color:#0c0c0d}
+@media(max-width:760px){.voting-root .voting-admin h2.voting-current-name{font-size:36px}.voting-root .voting-admin .voting-round-controls{min-height:420px}}
+.voting-root .voting-admin .voting-admin-edit-row input:not([type=checkbox]):not([type=radio]){background:none;border-color:transparent;padding:6px 8px}
+.voting-root .voting-admin .voting-admin-edit-row input:hover,.voting-root .voting-admin .voting-admin-criterion>label input:hover{border-color:#ffffff26}
+.voting-root .voting-admin .voting-admin-criterion>label{font-size:0;gap:0}
+.voting-root .voting-admin .voting-admin-criterion>label input,.voting-root .voting-admin .voting-admin-criterion>label textarea{background:none;border-color:transparent;padding:6px 0;font-size:15px}
+.voting-root .voting-admin .voting-admin-criterion>label textarea{font-size:13px;color:#ffffff99;min-height:36px;height:36px;resize:vertical}
+.voting-root .voting-admin .voting-setup-editor>p[role=status]{grid-column:1/-1;padding:12px 28px;margin:0;font-size:13px;color:#ffffff80}
+.voting-root .voter-room .voter-ballot-actions{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:calc(100% - 32px);max-width:480px;padding:24px 0 max(24px,env(safe-area-inset-bottom));margin:0;background:linear-gradient(to top,#0c0c0d 78%,#0c0c0d00)}
+.voting-root .voter-room .voter-ballot{padding-bottom:160px}
+.voting-root .voter-room .voter-rating-na.voter-rating-selected{background:#ffffff0d!important;border:1px solid #ffffff59;color:#f4f3f1}
+.voting-root .voter-room .voter-ballot-actions>.voter-footnote{font-size:13px;color:#ffffff73;max-width:none}

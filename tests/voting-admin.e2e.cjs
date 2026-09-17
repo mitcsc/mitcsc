@@ -60,10 +60,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.goto(`${process.env.VOTING_TEST_URL || 'http://127.0.0.1:3113'}/vote/admin`);
     await page.getByLabel('Your name').fill('Test President');
     await page.getByLabel('Session password').fill('wrong');
-    await button('Join session').click();
+    await button('Join').click();
     await page.getByRole('alert').filter({ hasText: 'Incorrect password' }).waitFor();
     await page.getByLabel('Session password').fill('test-admin');
-    await button('Join session').click();
+    await button('Join').click();
     await button('Set up election').click();
     await page.getByRole('heading', { name: 'Build your ballot' }).waitFor();
     await page.getByLabel('Or paste names, one per line').fill('Alex Chen\nJordan Lee\nMorgan Wu');
@@ -81,11 +81,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     assert.equal(state.candidates.length, 3);
     assert.equal(new Set(state.candidates.map(candidate => candidate.id)).size, 3);
     assert.equal(state.criteria[0].label, 'Reliability');
+    await page.screenshot({path:'/private/tmp/voting-setup-mockup.png'});
     await button('Preview ballot').click();
     await page.getByRole('heading', { name: 'Alex Chen', exact: true }).waitFor();
     await page.getByRole('radio', { name: '3', exact: true }).check();
     assert.equal(await page.getByRole('radio', { name: '3', exact: true }).isChecked(), true);
     await button('Edit setup').click();
+    await page.getByRole('tab', {name:'Live', exact:true}).click();
     await button('Shuffle order').click();
     await page.getByRole('status').filter({ hasText: 'Remaining candidate order shuffled' }).waitFor();
     assert.equal(state.candidates[0].name, 'Morgan Wu');
@@ -101,9 +103,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
         assert.equal(await page.getByRole('button', {name: /^Choose /}).first().isDisabled(), true, 'Cannot abandon an active candidate');
       }
     }
+    await page.getByRole('heading', {name:'Final submissions open',exact:true}).waitFor({state:'attached'});
+    await button('Close voting for this candidate').waitFor();
     await page.screenshot({path: '/private/tmp/voting-controls.png'});
     const originalVersion = state.ballotVersion;
     await page.getByRole('button', { name: 'Close voting for this candidate' }).click();
+    await button('Yes, close voting').click();
     await waitFor(() => state.phase === 'locked', 'Candidate did not lock');
     await page.getByRole('heading', {name: 'Voting closed', exact: true}).waitFor();
     await page.getByRole('button', {name: /^Choose /}).first().click();
@@ -121,7 +126,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.reload();
     await page.getByRole('heading', { name: 'Admin already assigned' }).waitFor();
     assert.equal(await page.getByRole('link', { name: 'Go to voting →' }).count(), 1);
-    assert.equal(await button('Join session').count(), 0, 'Later voters should not get trapped in a admin login loop');
+    assert.equal(await button('Join').count(), 0, 'Later voters should not get trapped in a admin login loop');
     assert.deepEqual(errors, []);
     console.log(`PASS: admin login, setup, polling draft preservation, preview, shuffle, phase flow, recovery and mobile layout (${actions.length} mutations mocked).`);
   } finally { await browser.close(); }
