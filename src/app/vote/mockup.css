@@ -326,3 +326,5 @@
 .voter-lobby-joined svg{flex:none}
 .voter-lobby-joined span{overflow-wrap:anywhere;min-width:0}
 .voting-root .voting-admin .voting-candidate-add button[aria-label="Shuffle order"]{display:inline-flex;align-items:center;gap:7px;border-color:transparent;color:#ffffff80}
+/* Keep Start as a simple action, without a separate footer band. */
+.voting-root .voting-admin .voting-admin-save{border:0;padding:12px 0 0;margin:0}
