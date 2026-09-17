@@ -75,9 +75,9 @@ async function main() {
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '3', exact: true }).isChecked(), true);
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '4', exact: true }).isDisabled(), true);
     await refreshPhase('deliberation');
-    state.contextVisible = true; state.currentCandidate.context = 'Discussion notes released by facilitator.';
+    state.contextVisible = true; state.currentCandidate.context = 'Discussion notes released by admin.';
     await refreshPhase('revision');
-    await waitText('Discussion notes released by facilitator.');
+    await waitText('Discussion notes released by admin.');
     await rate('Reliability', 5);
     await page.reload();
     await page.locator('.voter-phase').filter({ hasText: 'Revisions open' }).waitFor();
@@ -124,11 +124,11 @@ async function main() {
     await refreshPhase('final');
     await page.getByRole('status').filter({ hasText: 'No saved initial ratings were found' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Submit final ballot' }).count(), 0);
-    // A first-join facilitator uses the same cookie and voting flow.
-    state.isAdmin = true; state.currentCandidate = { id: 'candidate-admin', name: 'Facilitator Ballot', context: '', order: 3, completed: false }; state.ballotVersion = 'v4';
+    // A first-join admin uses the same cookie and voting flow.
+    state.isAdmin = true; state.currentCandidate = { id: 'candidate-admin', name: 'Admin Ballot', context: '', order: 3, completed: false }; state.ballotVersion = 'v4';
     await refreshPhase('initial');
-    await page.getByRole('status').filter({ hasText: 'You started this session and have facilitator controls.' }).waitFor();
-    await page.getByRole('link', { name: 'Facilitator controls' }).waitFor();
+    await page.getByRole('status').filter({ hasText: 'You started this session and have admin controls.' }).waitFor();
+    await page.getByRole('link', { name: 'Admin controls' }).waitFor();
     await rate('Reliability', 2);
     await page.getByRole('button', { name: 'Save initial ratings' }).click();
     await refreshPhase('final');
@@ -137,7 +137,7 @@ async function main() {
     assert.equal(submissions.length, 3);
     assert.equal(submissions[2].candidateId, 'candidate-admin');
     assert.deepEqual(errors, [], 'No uncaught browser errors');
-    console.log('PASS: join, polling, required/optional validation, local refresh persistence, original/revised separation, retry identity/payload, confirmed submission persistence, pending-ballot advance, and facilitator voting.');
+    console.log('PASS: join, polling, required/optional validation, local refresh persistence, original/revised separation, retry identity/payload, confirmed submission persistence, pending-ballot advance, and admin voting.');
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

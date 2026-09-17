@@ -12,12 +12,12 @@ type Draft = {
   submitted: boolean;
 };
 const phases: Record<VotingPhase, { label: string; description: string }> = {
-  waiting: { label: "Waiting to begin", description: "Your facilitator will open the next ballot. This page updates automatically." },
+  waiting: { label: "Waiting to begin", description: "Your admin will open the next ballot. This page updates automatically." },
   initial: { label: "Initial ratings", description: "Record your own first impression before the discussion begins." },
-  deliberation: { label: "Discussion", description: "Listen, share context, and consider your initial ratings. Revisions will open when the facilitator is ready." },
+  deliberation: { label: "Discussion", description: "Listen, share context, and consider your initial ratings. Revisions will open when the admin is ready." },
   revision: { label: "Revisions open", description: "You may revise your ratings after the discussion, or keep your original choices." },
   final: { label: "Submit your ballot", description: "Review your ratings and send your initial and final responses together." },
-  locked: { label: "Voting closed", description: "The facilitator has closed this ballot. Wait here for the next candidate." },
+  locked: { label: "Voting closed", description: "The admin has closed this ballot. Wait here for the next candidate." },
 };
 const prefix = "csc-voting-v1:";
 function draftKey(state: VotingState) {
@@ -120,12 +120,12 @@ export default function VoterRoom() {
     finally { setJoining(false); }
   }
   return <main className="voter-room">
-    <header className="voter-masthead"><Link href="/" className="voter-wordmark">MIT Chinese Students Club</Link>{state?.isAdmin && <Link href="/deliberations/admin" className="voter-admin-link">Facilitator controls ↗</Link>}</header>
+    <header className="voter-masthead"><Link href="/" className="voter-wordmark">MIT Chinese Students Club</Link>{state?.isAdmin && <Link href="/deliberations/admin" className="voter-admin-link">Admin controls ↗</Link>}</header>
     <div className="voter-intro"><p className="voter-eyebrow">A considered choice</p><h1>Deliberations</h1><p>First impressions. Open discussion. Your final say.</p></div>
     {checking && <div className="voter-panel voter-wait" role="status">Connecting to the voting room…</div>}
     {error && <div className="voter-alert" role="alert">{error} {!joining && !checking && <button className="voter-text-button" onClick={() => void refresh()}>Reconnect</button>}</div>}
     {!checking && needsJoin && <section className="voter-panel voter-join">
-      <p className="voter-eyebrow">The voting room</p><h2>Take your seat.</h2><p>Enter the session password shared by your facilitator.</p>
+      <p className="voter-eyebrow">The voting room</p><h2>Take your seat.</h2><p>Enter the session password shared by your admin.</p>
       <form onSubmit={join}>
         <label htmlFor="voter-name">Your name<input id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} placeholder="How should we identify your ballot?" /></label>
         <label htmlFor="voter-password">Session password<input id="voter-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
@@ -133,10 +133,10 @@ export default function VoterRoom() {
       </form><p className="voter-footnote">Use the same browser throughout the session. Draft ratings stay on this device until you submit your final ballot.</p>
     </section>}
     {!checking && state && <>
-      <div className="voter-session-bar"><span className={`voter-connection ${connected ? "voter-connected" : ""}`}><i />{connected ? "Connected · updates every few seconds" : "Connection interrupted"}</span><span>{state.voter?.name || "Facilitator account"}</span></div>
-      {state.isAdmin && <div className="voter-context" role="status">You started this session and have facilitator controls. <Link href="/deliberations/admin">Open controls →</Link> You can also vote below.</div>}
-        {pendingCount > 0 && <div className="voter-alert" role="status">{pendingCount} earlier {pendingCount === 1 ? "ballot remains" : "ballots remain"} unsubmitted on this browser. Tell your facilitator before leaving; advancing did not submit those ratings.</div>}
-        {!state.active ? <div className="voter-panel voter-wait"><p className="voter-eyebrow">Session closed</p><h2>Voting is paused.</h2><p>Your saved drafts remain on this browser. This page will update when the facilitator reopens the session.</p></div> : !state.currentCandidate || state.phase === "waiting" ? <div className="voter-panel voter-wait"><div className="voter-wait-symbol" aria-hidden="true">↗</div><p className="voter-eyebrow">You’re in</p><h2>Waiting for the next candidate.</h2><p>{phases.waiting.description}</p></div> : <VoterBallot key={draftKey(state)} state={state} connected={connected} onSubmitted={() => { countPending(); void refresh(); }} />}
+      <div className="voter-session-bar"><span className={`voter-connection ${connected ? "voter-connected" : ""}`}><i />{connected ? "Connected · updates every few seconds" : "Connection interrupted"}</span><span>{state.voter?.name || "Admin account"}</span></div>
+      {state.isAdmin && <div className="voter-context" role="status">You started this session and have admin controls. <Link href="/deliberations/admin">Open controls →</Link> You can also vote below.</div>}
+        {pendingCount > 0 && <div className="voter-alert" role="status">{pendingCount} earlier {pendingCount === 1 ? "ballot remains" : "ballots remain"} unsubmitted on this browser. Tell your admin before leaving; advancing did not submit those ratings.</div>}
+        {!state.active ? <div className="voter-panel voter-wait"><p className="voter-eyebrow">Session closed</p><h2>Voting is paused.</h2><p>Your saved drafts remain on this browser. This page will update when the admin reopens the session.</p></div> : !state.currentCandidate || state.phase === "waiting" ? <div className="voter-panel voter-wait"><div className="voter-wait-symbol" aria-hidden="true">↗</div><p className="voter-eyebrow">You’re in</p><h2>Waiting for the next candidate.</h2><p>{phases.waiting.description}</p></div> : <VoterBallot key={draftKey(state)} state={state} connected={connected} onSubmitted={() => { countPending(); void refresh(); }} />}
     </>}
     {!checking && !needsJoin && !state && !error && <div className="voter-panel">The voting room is not available yet.</div>}
     <footer className="voter-footer">Your ratings are private to you and the election organizers.</footer>
@@ -190,7 +190,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   }
   async function submit() {
     if (busy || !draft.initial || draft.submitted || state.phase !== "final" || !connected) return;
-    if (!validate(draft.final)) { setError("Your ballot does not match the current criteria. Ask the facilitator for help."); return; }
+    if (!validate(draft.final)) { setError("Your ballot does not match the current criteria. Ask the admin for help."); return; }
     setBusy(true); setError("");
     const next = { ...draft, submissionId: draft.submissionId || crypto.randomUUID() };
     persist(next);
@@ -210,7 +210,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     {storageError && <div className="voter-alert" role="alert">Browser storage is unavailable or unreadable. Ratings currently exist only in this open page; do not refresh or close it before submitting.</div>}
     {state.contextVisible && state.currentCandidate!.context && <aside className="voter-context"><p className="voter-eyebrow">Discussion context</p><p>{state.currentCandidate!.context}</p></aside>}
     {draft.submitted ? <div className="voter-success" role="status"><span aria-hidden="true">✓</span><h3>Ballot received.</h3><p>Your initial and final ratings were saved to the election spreadsheet. You’re ready for the next candidate.</p></div> : <>
-      {!draft.initial && state.phase !== "initial" && <div className="voter-alert" role="status">No saved initial ratings were found for this ballot on this browser. You cannot submit a final ballot yet. Tell your facilitator; if you voted in another browser, return to that browser.</div>}
+      {!draft.initial && state.phase !== "initial" && <div className="voter-alert" role="status">No saved initial ratings were found for this ballot on this browser. You cannot submit a final ballot yet. Tell your admin; if you voted in another browser, return to that browser.</div>}
       {draft.submissionId && <div className="voter-alert" role="status">A final submission was attempted but has not been confirmed on this browser. These ratings are preserved for retry when final submission is open.</div>}
       {draft.initial && <p className="voter-local-note">Initial ratings recorded {storageError ? "in this page" : "on this browser"}. {state.phase === "revision" ? "Changes below are saved locally." : "They have not been sent to the spreadsheet yet."}</p>}
     </>}
@@ -227,7 +227,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
       {state.phase === "deliberation" && draft.initial && <p className="voter-action-status">Your first impressions are preserved. Listen and discuss.</p>}
       {state.phase === "revision" && draft.initial && <p className="voter-action-status">{localSaved && !storageError ? "✓ Revisions saved on this browser." : "Your original ratings are carried forward. Revise any rating above."} Wait for final submission to open.</p>}
       {state.phase === "final" && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : "Submit final ballot →"}</button><p>Send both your initial and final ratings to the election spreadsheet.</p></>}
-      {state.phase === "locked" && draft.initial && <p className="voter-action-status">This ballot was not submitted. Your draft remains here; tell your facilitator.</p>}
+      {state.phase === "locked" && draft.initial && <p className="voter-action-status">This ballot was not submitted. Your draft remains here; tell your admin.</p>}
     </div>}
     <p className="voter-footnote">Keep this browser open through final submission. Refreshing preserves saved drafts when browser storage is available; switching devices does not.</p>
   </section>;
