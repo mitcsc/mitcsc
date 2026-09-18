@@ -4,7 +4,7 @@
 
 Redis is the authority for a running election. Sheets remains the durable report and per-candidate archive. No live database or spreadsheet was modified during this audit.
 
-- Redis sessions poll every two seconds for both voters and admins, instead of four/eight seconds. Hidden tabs pause polling; failed requests back off. Legacy Sheets-only sessions keep their slower intervals.
+- Redis sessions poll every three seconds for both voters and admins, instead of four/eight seconds. Hidden tabs pause polling; failed requests back off. Legacy Sheets-only sessions keep their slower intervals.
 - Settings refresh through a shared 30-second Redis cache and a five-second process cache. Refresh reads Settings only and bypasses the old additional two-minute Sheets cache. Concurrent refreshers recheck the shared cache after acquiring the lock.
 - Accepted initial ratings are stored in Redis, returned only to their authenticated voter through a recovery endpoint, and used as the original ratings at final submission. Browser recovery preserves unsent revisions. Initial receipts without a final vote also archive their ratings in Sheets when the candidate closes.
 - New elections reserve only the rows actually needed by accepted ballots. Allocation and round closure happen in one Redis transaction. Retrying an export writes identical addresses, while reopening allocates new addresses only for additional ballots. This avoids both blank blocks and append-on-retry duplicates.
@@ -32,7 +32,7 @@ These checks do not claim to reproduce Upstash outages, Google formula recalcula
 
 ## Remaining tradeoffs
 
-Polling is still used. A normal update appears within approximately two seconds plus network/server latency, not instantaneously. Faster polling consumes Redis commands and bandwidth; adding another realtime provider is unnecessary for this small, occasional session.
+Polling is still used. A normal update appears within approximately three seconds plus network/server latency, not instantaneously. Faster polling consumes Redis commands and bandwidth; adding another realtime provider is unnecessary for this small, occasional session.
 
 The full private election document is read and compared for mutations. This is practical for the tested 30-voter workload, but grows with election size and should not be extrapolated to the maximum input limits without testing. All accepted ballots require Redis availability; provider limits, backups and inactivity policy remain operational concerns.
 

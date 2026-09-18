@@ -49,7 +49,7 @@ Future presidents do not need Vercel access for routine elections.
 
 ## Storage and exports
 
-With Redis, voters and admins poll every two seconds. Hidden tabs stop polling.
+With Redis, voters and admins poll every three seconds. Hidden tabs stop polling.
 The legacy Sheets-only mode retains its four/eight-second intervals.
 They read a shared Redis status document containing no rating values.
 Settings are refreshed directly from Sheets into a shared Redis cache every 30 seconds,
