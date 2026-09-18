@@ -21,7 +21,6 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     const endpoint = new URL(route.request().url()).pathname.split('/').at(-1);
     const payload = route.request().method() === 'POST' ? route.request().postDataJSON() : null;
     const reply = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
-    if (endpoint === 'president') return reply({enabled:false});
     if (endpoint === 'join') {
       assert.match(payload.joinId, /^[0-9a-f-]{36}$/);
       assert.equal(payload.name, 'Test President');
@@ -58,7 +57,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     throw new Error(message);
   };
   try {
-    await page.goto(`${process.env.VOTING_TEST_URL || 'http://127.0.0.1:3113'}/vote/admin`);
+    await page.goto(`${process.env.VOTING_TEST_URL || 'http://127.0.0.1:3113'}/vote`);
     await page.getByLabel('Your name').fill('Test President');
     await page.getByLabel('Session password').fill('wrong');
     await button('Join').click();

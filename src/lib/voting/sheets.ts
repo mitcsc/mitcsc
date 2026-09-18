@@ -120,12 +120,3 @@ export async function writeRanges(id: string, data: { range: string; values: (st
   return sheets(id, "/values:batchUpdate", "POST", { valueInputOption: "RAW", data });
 }
 
-// Both consumers share one cache entry, but roster callers require a fresher copy.
-// This keeps the waiting list responsive without separate settings requests.
-export async function readControlSheet(id: string, fresh = false, maxAge = 30_000) {
-  const meta = await sheets<{sheets: {properties: {title: string}}[]}>(id, "?fields=sheets.properties.title");
-  const hasHistory = meta.sheets.some(sheet => sheet.properties.title === "Session History");
-  if (!hasHistory) invalidateMetadata(id);
-  const tables = await readRanges(id, ["'Settings'!A:B", ...(hasHistory ? ["'Session History'!A:F"] : [])], fresh, maxAge);
-  return {settings: tables[0], history: hasHistory ? tables[1] : undefined};
-}

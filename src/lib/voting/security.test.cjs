@@ -10,7 +10,7 @@ require.extensions['.ts'] = (module, filename) => {
 };
 process.env.VOTING_COOKIE_SECRET = 'unit-test-only-secret-that-is-at-least-32-characters';
 const { signIdentity, readIdentity, requireOrigin, limitJoin } = require('./security.ts');
-const { authorize, validateRatings, settings } = require('./service.ts');
+const { authorize, validateRatings } = require('./service.ts');
 const data = { role: 'voter', name: 'Alex', sessionId: 'fall', sheetId: 'election-sheet' };
 const config = { sessionId: 'fall', sheetId: 'election-sheet', password: 'new password' };
 test('signed cookies reject tampering and remain admitted after password rotation', () => {
@@ -43,66 +43,6 @@ test('successful joins on shared Wi-Fi do not consume failed-password budget', (
   assert.throws(() => limitJoin(request, true), /Too many/);
 });
 
-test('first concurrent join is sole admin; later joins vote and refresh preserves ownership', async () => {
-  const { GoogleAuth } = require('google-auth-library');
-  const { claimIdentity, canonicalIdentity } = require('./admin-identity.ts');
-  const originalClient = GoogleAuth.prototype.getClient;
-  const originalFetch = global.fetch;
-  const keys = ['VOTING_SETTINGS_SHEET_ID', 'GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY'];
-  const originalEnv = Object.fromEntries(keys.map(key => [key, process.env[key]]));
-  const rows = [['session_id', 'election_sheet_id', 'claim_id', 'voter_id', 'voter_name', 'claimed_at']];
-  try {
-    process.env.VOTING_SETTINGS_SHEET_ID = 'test-first-join-settings';
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL = 'test@example.invalid';
-    process.env.GOOGLE_PRIVATE_KEY = 'mock';
-    GoogleAuth.prototype.getClient = async () => ({ getAccessToken: async () => ({ token: 'mock' }) });
-    global.fetch = async (url, init) => {
-      if (url.includes('?fields=')) return Response.json({ sheets: [{ properties: { title: 'Session History' } }] });
-      if (url.includes(':batchGet')) return Response.json({ valueRanges: [{ values: [
-        ['session_id', 'fall'], ['session_password', 'shared-password'],
-        ['voting_sheet_url', 'https://docs.google.com/spreadsheets/d/test-election-sheet/edit'],
-        ['admin_password', 'malicious-sheet-password'],
-      ] }, {values: rows}] });
-      if (init.method === 'POST' && url.includes(':append')) {
-        rows.push(...JSON.parse(init.body).values);
-        return Response.json({ updates: { updatedRange: `Session History!A${rows.length}:F${rows.length}` } });
-      }
-      if (decodeURIComponent(url).includes('Session History')) return Response.json({ values: rows });
-      throw new Error(`Unexpected request ${url}`);
-    };
-    const config = await settings();
-    assert.equal(config.adminPassword, undefined, 'sheet cannot assign an admin password');
-    const joined = await Promise.all([claimIdentity(config, 'First', null), claimIdentity(config, 'Second', null)]);
-    assert.equal(joined.filter(person => person.role === 'admin').length, 1);
-    const owner = joined.find(person => person.role === 'admin');
-    const voter = joined.find(person => person.role === 'voter');
-    assert.equal(owner.claimId, rows[1][2]);
-    assert.equal((await canonicalIdentity(config, owner)).role, 'admin');
-    assert.equal((await canonicalIdentity(config, { ...voter, role: 'admin' })).role, 'voter');
-    const before = rows.length;
-    assert.equal((await claimIdentity(config, 'First', owner)).id, owner.id);
-    assert.equal(rows.length, before, 'same browser rejoin does not append');
-    const device = signIdentity(owner, { purpose: 'device', ttlMs: 365 * 24 * 3600_000 });
-    assert.equal(readIdentity(device), null, 'device token cannot authorize a session route');
-    assert.equal(readIdentity(signIdentity(owner), 'device'), null, 'cookie purposes are not interchangeable');
-    const restoredDevice = readIdentity(device, 'device');
-    const afterLogout = await claimIdentity(config, owner.name, restoredDevice);
-    assert.equal(afterLogout.id, owner.id);
-    assert.equal(afterLogout.role, 'admin');
-    assert.equal(rows.length, before, 'signing back in after logout does not orphan the original admin claim');
-    const voterDevice = readIdentity(signIdentity(voter, { purpose: 'device' }), 'device');
-    assert.equal((await claimIdentity(config, voter.name, voterDevice)).role, 'voter');
-    const nextSession = await claimIdentity({ ...config, sessionId: 'next-election' }, owner.name, restoredDevice);
-    assert.notEqual(nextSession.id, owner.id, 'new session gets its own voter identity');
-  } finally {
-    GoogleAuth.prototype.getClient = originalClient;
-    global.fetch = originalFetch;
-    for (const key of keys) {
-      if (originalEnv[key] === undefined) delete process.env[key];
-      else process.env[key] = originalEnv[key];
-    }
-  }
-});
 test('existing Google credential can sign session cookies without a new environment variable', () => {
   const oldSecret = process.env.VOTING_COOKIE_SECRET;
   const oldKey = process.env.GOOGLE_PRIVATE_KEY;

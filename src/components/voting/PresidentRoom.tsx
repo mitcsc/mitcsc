@@ -25,7 +25,6 @@ export default function PresidentRoom() {
   const refresh = useCallback(async () => {
     try {
       const next = await call<Overview>("president");
-      if (!next.enabled) {window.location.replace("/vote"); return;}
       setOverview(next); setLogin(false);
       setState(next.election?.open ? await call<VotingState>("state") : null);
     } catch (e) {

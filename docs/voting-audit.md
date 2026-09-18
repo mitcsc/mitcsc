@@ -1,3 +1,6 @@
+> Superseded setup paths: the settings-sheet fallback, its polling cache, first-join admin admission, and old demo/rehearsal scripts have since been removed.
+> All elections now require Redis and the president password; no existing data was deleted.
+
 # Voting audit, September 2026
 
 ## Changes

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* Run: node --test tests/voting-integration.test.cjs */
+/* Run: node --test tests/voting-redis.test.cjs */
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -12,7 +12,7 @@ GoogleAuth.prototype.getClient = async () => ({ getAccessToken: async () => ({ t
 process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL = 'test@example.invalid';
 process.env.GOOGLE_PRIVATE_KEY = 'test-only';
 process.env.VOTING_COOKIE_SECRET = 'test-secret-that-is-longer-than-thirty-two-characters';
-process.env.VOTING_SETTINGS_SHEET_ID = 'settings-test';
+process.env.VOTING_PRESIDENT_PASSWORD = 'isolated-president-password';
 const books = new Map();
 const requests = [];
 let failNextAppend = false;
@@ -129,20 +129,18 @@ before(async () => {
   for (let i=0; i<100 && !fs.existsSync(socket); i++) await new Promise(r=>setTimeout(r,20));
   assert.ok(fs.existsSync(socket), 'Redis server started');
   books.set(config.sheetId, new Map([['Sheet1',[]]]));
-  books.set(config.settingsSheetId, new Map([
-    ['Settings', [['session_id',config.sessionId],['session_password',config.password],['voting_sheet_url',config.sheetId]]],
-    ['Session History', [['session_id','election_sheet_id','claim_id','voter_id','voter_name','claimed_at']]],
-  ]));
+
 });
 after(async () => {await run('redis-cli',['-s',socket,'SHUTDOWN','NOSAVE']).catch(()=>{}); server.kill(); fs.rmSync(testDir,{recursive:true,force:true});});
 
 test('30 concurrent voters: atomic admission, no Sheets traffic while live, retryable exports', async () => {
+  const admin=await seedElection(config);
+  await redis.redisCommand('SET',redis.redisKey('president-active-election'),JSON.stringify(config));
   const configs = await Promise.all(Array.from({length:30},()=>service.settings()));
   assert.ok(configs.every(c=>c.sheetId===config.sheetId));
-  assert.ok(requests.length <= 3, 'Settings reads are shared across simultaneous requests');
-  const joined = await Promise.all(Array.from({length:31},(_,i)=>identity.claimIdentity(config,`Person ${i+1}`,null)));
-  assert.equal(joined.filter(m=>m.role==='admin').length,1);
-  const admin=joined.find(m=>m.role==='admin'), voters=joined.filter(m=>m.role==='voter');
+  assert.equal(requests.length,0,'Settings come only from Redis');
+  const voters = await Promise.all(Array.from({length:30},(_,i)=>identity.claimIdentity(config,`Person ${i+1}`,null)));
+  assert.ok(voters.every(m=>m.role==='voter'));
   assert.equal(new Set(voters.map(v=>v.voterSlot)).size,30);
   assert.equal((await identity.claimIdentity(config,admin.name,admin)).id,admin.id);
   const joinId = require('node:crypto').randomUUID();
@@ -202,7 +200,7 @@ test('30 concurrent voters: atomic admission, no Sheets traffic while live, retr
 async function election(suffix, count=3) {
   const cfg={...config,sessionId:`audit-${suffix}`,sheetId:`audit-election-${suffix}`};
   books.set(cfg.sheetId,new Map([['Sheet1',[]]]));
-  const admin=await identity.claimIdentity(cfg,'Admin',null);
+  const admin=await seedElection(cfg);
   const voters=await Promise.all(Array.from({length:count},(_,i)=>identity.claimIdentity(cfg,`Voter ${i}`,null)));
   await service.adminAction(cfg,admin,{action:'initialize'});
   await service.adminAction(cfg,admin,{action:'saveSetup',candidates,criteria});
@@ -286,22 +284,6 @@ test('existing election row addresses remain unchanged after upgrading',async()=
  assert.equal(requests.filter(r=>r.id===cfg.sheetId && r.suffix.endsWith(':clear')).length,0);
 });
 
-test('expired shared settings refresh bypasses old Sheets cache and coalesces concurrent readers',async()=>{
- const key=redis.redisKey('settings',config.settingsSheetId);
- await service.settings();
- books.get(config.settingsSheetId).get('Settings')[1][1]='changed-test-password';
- await redis.redisCommand('DEL',key);
- const now=Date.now; const later=now()+6000; Date.now=()=>later;
- const before=requests.length;
- try {
-   const values=await Promise.all(Array.from({length:30},()=>service.settings()));
-   assert.ok(values.every(v=>v.password==='changed-test-password'));
-   const reads=requests.slice(before).filter(r=>r.suffix==='/values:batchGet');
-   assert.equal(reads.length,1,'All instances share one refresh');
-   assert.ok((await redis.redisCommand('TTL',key))<=30);
- } finally {Date.now=now;}
-});
-
 test('president setup creates elections without a settings sheet and never grants admin to voters',async()=>{
  const backend=require('../src/lib/voting/redis-service.ts');
  const {randomUUID}=require('node:crypto');
@@ -311,6 +293,7 @@ test('president setup creates elections without a settings sheet and never grant
  const input={requestId:randomUUID(),name:'Test election',password:'voter-password',sheetUrl:`https://docs.google.com/spreadsheets/d/${sheetId}/edit`};
  const before=requests.length;
  try {
+   await redis.redisCommand('DEL',redis.redisKey('president-active-election'));
    const cfg=await backend.createElection(input);
    assert.deepEqual(await backend.createElection(input),cfg,'Lost creation response is retryable');
    assert.equal((await service.settings()).sheetId,sheetId);
@@ -329,4 +312,21 @@ test('president setup creates elections without a settings sheet and never grant
    await assert.rejects(service.adminAction(cfg,admin,{action:'setPhase',phase:'initial',candidateId:'b'}),e=>e.status===409,'Even stale open settings cannot restart an ended election');
    assert.equal((await service.getState(cfg,voter)).active,false);
  } finally {if(old===undefined) delete process.env.VOTING_PRESIDENT_PASSWORD;else process.env.VOTING_PRESIDENT_PASSWORD=old;}
+});
+
+async function seedElection(cfg) {
+ const admin={id:'test-admin',claimId:'test-admin-claim',name:'President',role:'admin',slot:-1};
+ const doc={schema:1,revision:0,marked:true,initialized:true,candidates:[],criteria:[],members:[admin],phase:'waiting',current:'',visible:false,rounds:{},exportRows:{nextResponse:2,nextReceipt:2,responses:{},receipts:{}}};
+ await redis.redisCommand('SET',redis.redisKey('session',cfg.settingsSheetId,cfg.sheetId,cfg.sessionId),JSON.stringify(doc));
+ return {...admin,sessionId:cfg.sessionId,sheetId:cfg.sheetId,exp:Date.now()+86400000};
+}
+
+test('missing Redis or president configuration never falls back to Google Sheets',async()=>{
+ const before=requests.length; const old=process.env.VOTING_PRESIDENT_PASSWORD;
+ delete process.env.VOTING_PRESIDENT_PASSWORD;
+ await assert.rejects(service.settings(),e=>e.status===503);
+ process.env.VOTING_PRESIDENT_PASSWORD=old;
+ await redis.redisCommand('DEL',redis.redisKey('president-active-election'));
+ await assert.rejects(service.settings(),e=>e.status===401);
+ assert.equal(requests.length,before);
 });

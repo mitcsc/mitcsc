@@ -1,11 +1,10 @@
-import { presidentEnabled } from "./president";
 import { polishElectionSheet, writeSummary } from "./sheet-layout";
 import { randomUUID, createHash } from "node:crypto";
 import { compareAndSet, redisCommand, redisKey, releaseLock } from "./redis";
 import { Identity, text, VotingError } from "./security";
-import { HEADERS, sheetSettings, snapshot, validateRatings, validateSetup } from "./service";
+import { HEADERS, validateRatings, validateSetup } from "./service";
 import type { Settings } from "./service";
-import { readControlSheet, readRanges, sheets, writeRanges } from "./sheets";
+import { readRanges, sheets, writeRanges } from "./sheets";
 import type { Candidate, Criterion, Ratings, VotingPhase, VotingState } from "./types";
 
 type Member = {id: string; name: string; claimId: string; role: "admin" | "voter"; slot: number};
@@ -36,33 +35,10 @@ interface Election {
 }
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const keyFor = (config: Settings) => redisKey("session", config.settingsSheetId, config.sheetId, config.sessionId);
-let localSettings: {value: Settings; until: number} | undefined;
-
 export async function redisSettings(): Promise<Settings> {
-  if (presidentEnabled()) { const config = await currentElection(); if (!config) throw new VotingError("No election is open yet.", 401); return config; }
-  if (localSettings && Date.now() < localSettings.until) return localSettings.value;
-  const key = redisKey("settings", process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ");
-  for (let i = 0; i < 40; i++) {
-    const cached = await redisCommand<string | null>("GET", key);
-    if (cached) {
-      const value = JSON.parse(cached) as Settings;
-      localSettings = {value, until: Date.now() + 5000};
-      return value;
-    }
-    const owner = randomUUID();
-    if (await redisCommand("SET", `${key}:lock`, owner, "NX", "EX", 30)) {
-      try {
-        const existing = await redisCommand<string | null>("GET", key);
-        if (existing) { const value = JSON.parse(existing) as Settings; localSettings = {value, until: Date.now() + 5000}; return value; }
-        const value = await sheetSettings(true);
-        await redisCommand("SET", key, JSON.stringify(value), "EX", 30);
-        localSettings = {value, until: Date.now() + 5000};
-        return value;
-      } finally { await releaseLock(`${key}:lock`, owner); }
-    }
-    await delay(150 + Math.random() * 100);
-  }
-  throw new VotingError("Session settings are loading. Please retry.", 503, 2);
+  const config = await currentElection();
+  if (!config) throw new VotingError("No election is open yet.", 401);
+  return config;
 }
 
 async function load(config: Settings): Promise<{raw: string; doc: Election}> {
@@ -85,30 +61,7 @@ async function load(config: Settings): Promise<{raw: string; doc: Election}> {
       }
       return {raw, doc};
     }
-    if (config.presidentManaged) throw new VotingError("Election data is missing. Restore Redis before continuing.", 503);
-    const owner = randomUUID();
-    if (await redisCommand("SET", `${key}:import`, owner, "NX", "EX", 90)) {
-      try {
-        if (await redisCommand("GET", key)) continue;
-        // Import only an unstarted election. Never silently replace an election or recover missing Redis votes from an older export.
-        const metadata = await sheets<{sheets: {properties: {title: string}}[]}>(config.sheetId, "?fields=sheets.properties.title", "GET", undefined, true);
-        if (metadata.sheets.some(s => s.properties.title === "Session")) {
-          const [rows] = await readRanges(config.sheetId, ["'Session'!A:B"], true);
-          if (rows.some(row => row[0] === "storage_backend" && row[1] === "redis")) throw new VotingError("The Redis election is missing. Restore the database before continuing.", 503);
-        }
-        const s = await snapshot(config, true);
-        if (s.runtime.storage_backend === "redis") throw new VotingError("The Redis election is missing. Restore the database before continuing.", 503);
-        if (s.runtime.session_id && s.runtime.session_id !== config.sessionId) throw new VotingError("Use a new election spreadsheet for this session.", 409);
-        if (s.ballots.length || s.responses.length || s.receipts.length || s.runtime.ballot_version || s.candidates.some(c => c.completed)) throw new VotingError("Start a new session and election spreadsheet to switch to Redis. Existing votes remain in Sheets.", 409);
-        const {history} = await readControlSheet(config.settingsSheetId, true);
-        const rows = (history || []).slice(1).filter(row => row[0] === config.sessionId && row[1] === config.sheetId);
-        const members: Member[] = [];
-        for (const row of rows) if (row[3] && !members.some(m => m.id === row[3])) members.push({id: row[3], name: row[4], claimId: row[2], role: members.length ? "voter" : "admin", slot: members.length - 1});
-        const doc: Election = {schema: 1, revision: 0, initialized: s.initialized, candidates: s.candidates, criteria: s.criteria, members, phase: "waiting", current: "", visible: false, rounds: {}, exportRows: {nextResponse: 2, nextReceipt: 2, responses: {}, receipts: {}}};
-        const encoded = JSON.stringify(doc);
-        await redisCommand("SET", key, encoded, "NX");
-      } finally { await releaseLock(`${key}:import`, owner); }
-    } else await delay(150 + Math.random() * 100);
+    throw new VotingError("Election data is missing. Restore Redis before continuing.", 503);
   }
   throw new VotingError("The election is loading. Please retry.", 503, 2);
 }
@@ -148,7 +101,7 @@ export async function redisClaim(config: Settings, name: string, existing: Ident
     const retry = doc.members.find(m => m.id === id && m.claimId === claimId);
     if (retry) return identityFor(config, retry);
     if (doc.members.length >= 129) throw new VotingError("This session has reached its 128-voter limit.", 409);
-    const m: Member = {id, claimId, name, role: config.presidentManaged || doc.members.length ? "voter" : "admin", slot: doc.members.length - 1};
+    const m: Member = {id, claimId, name, role: "voter", slot: doc.members.length - 1};
     doc.members.push(m);
     return identityFor(config, m);
   });

@@ -8,7 +8,6 @@ export const maxDuration = 60;
 const publicConfig = (config: Awaited<ReturnType<typeof currentElection>>) => config && ({sessionId: config.sessionId, name: config.name, open: !!config.password});
 export async function GET() {
   try {
-    if (!presidentEnabled()) return json({enabled: false});
     requirePresident((await cookies()).get(PRESIDENT_COOKIE)?.value);
     return json({enabled: true, election: publicConfig(await currentElection()), serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL});
   } catch (error) {return failure(error);}

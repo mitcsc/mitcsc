@@ -1,8 +1,7 @@
 # CSC voting
 
 The voting app uses Redis for live session state, registrations, initial submission receipts, and final ballots.
-With president login enabled, Redis holds session settings and Google Sheets receives results when the admin closes each candidate.
-The settings-sheet flow remains available only for legacy deployments.
+Redis holds session settings and Google Sheets receives results when the admin closes each candidate.
 Saving initial ratings stores them in Redis. Unsubmitted revisions remain in the browser; final submission stores them in Redis too.
 
 ## Deployment
@@ -15,25 +14,22 @@ Use the writable REST token, not the read-only token.
 Keep eviction disabled: ballots must not be removed to make room for other keys.
 
 The existing `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY` still authorize Sheets exports.
-`VOTING_SETTINGS_SHEET_ID` optionally overrides the permanent settings spreadsheet.
 `VOTING_COOKIE_SECRET` optionally overrides the signing secret derived from the Google private key.
 All instances must use the same signing secret.
 Never commit credentials or include them in logs.
 The existing `GOOGLE_SHEET_ID` remains dedicated to public links.
 
-When Redis credentials are configured, Redis errors never fall back to Sheets.
-The old Sheets implementation remains available for the isolated demo and elections that have not switched.
-A `storage_backend=redis` marker prevents the new code from reopening an exported election through the Sheets implementation.
-An election already started under the old implementation cannot be imported automatically.
-Finish that election there, or start a new election spreadsheet and session ID.
-An unstarted election imports its candidates, criteria, and existing Session History identities once.
+Redis is required; errors never fall back to Sheets.
+Missing Redis election data fails closed and must be restored, not reconstructed from an older export.
+The exec settings sheet and first-join admin workflow are no longer used.
 
 ## President-managed elections
 
 Set `VOTING_PRESIDENT_PASSWORD` in Vercel to a random password of at least 8 characters.
 Keep it in CSC's password manager or officer handoff records, not in a spreadsheet or source control.
-This enables the new mode and requires Redis; it does not import or replace the current legacy election.
-Enable it only after the existing election has finished exporting.
+Redis and the president password are required.
+Existing election data is not imported or replaced.
+Deploy this workflow only after the existing election has finished exporting.
 Changing the environment password and redeploying invalidates president logins.
 No in-app password change is provided; Vercel remains the source of this credential.
 
@@ -54,18 +50,10 @@ An already-used app-managed spreadsheet is rejected.
 A shared CSC Elections folder can simplify granting the service account access to new spreadsheets.
 Moving or renaming a spreadsheet does not change its ID; copying it does.
 
-If `VOTING_PRESIDENT_PASSWORD` is absent, the original settings-sheet flow and first-join admin behavior remain unchanged.
-Do not remove or edit legacy data to switch modes.
-
 ## Storage and exports
 
 With Redis, voters and admins poll every three seconds. Hidden tabs stop polling.
-The legacy Sheets-only mode retains its four/eight-second intervals.
-They read a shared Redis status document containing no rating values.
-In legacy settings-sheet mode, settings are refreshed directly from Sheets into a shared Redis cache every 30 seconds,
-with up to five seconds of additional per-process caching. There is no second Sheets cache delay.
-Allow roughly 35 seconds plus request latency for settings edits to propagate.
-Admin phase changes do not wait for that cache.
+Session settings live in Redis and require no periodic Sheets reads.
 
 Submitting a ballot saves it in Redis before the voter receives confirmation.
 An atomic compare-and-set validates the phase and stores the ballot together.
@@ -101,16 +89,14 @@ Setup changes are saved in Redis; Sheets receives the frozen definitions with th
 
 ## Verification and limits
 
-`npm run test:voting` runs the legacy Sheets and security tests.
+`npm run test:voting` runs security, president-login and health-check tests.
 `npm run test:voting:redis` requires `redis-server` and `redis-cli` on PATH.
 It starts an isolated local Redis server and simulates Sheets, with no external requests.
 It checks concurrent joins and submissions, phase races, retry recovery, export failure, and missing-database behavior.
 The test confirms zero Sheets calls during voting actions and status polling, excluding periodic settings refreshes.
 
-The separate local rehearsal script uses real Upstash and the explicitly designated test spreadsheet.
-It refuses a different spreadsheet, session ID, or already-started election.
-Its report excludes passwords, cookies, voter names, and ratings.
-A successful local rehearsal does not verify Vercel environment configuration; check the deployed join and submission flow separately.
+The obsolete Sheets-driven demo and live rehearsal scripts have been removed.
+Browser tests use mocked voting APIs; they never contact real Sheets or Redis.
 
 The app supports up to 128 voters, 100 candidates, and 20 criteria, with an 8 MB live-document ceiling.
 These input limits are not a promise that every combination fits a provider’s free allowance.

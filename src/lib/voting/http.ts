@@ -1,4 +1,4 @@
-import { PRESIDENT_COOKIE, presidentEnabled, requirePresident } from "./president";
+import { PRESIDENT_COOKIE, requirePresident } from "./president";
 import { presidentIdentity } from "./redis-service";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -10,7 +10,7 @@ export function json(value: unknown, status = 200) {
 }
 export async function session(admin = false) {
   const jar = await cookies();
-  if (presidentEnabled() && jar.get(PRESIDENT_COOKIE)) {
+  if (jar.get(PRESIDENT_COOKIE)) {
     requirePresident(jar.get(PRESIDENT_COOKIE)?.value);
     const config = await settings();
     return {config, identity: await presidentIdentity(config)};
@@ -18,7 +18,7 @@ export async function session(admin = false) {
   const raw = readIdentity(jar.get(COOKIE)?.value);
   if (!raw) throw new VotingError("Join the session.", 401);
   const config = await settings();
-  if (config.presidentManaged && raw.role === "admin") throw new VotingError("Enter the president password.", 401);
+  if (raw.role === "admin") throw new VotingError("Enter the president password.", 401);
   const admitted = authorize(raw, config);
   const identity = await canonicalIdentity(config, admitted);
   authorize(identity, config, admin);
