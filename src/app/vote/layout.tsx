@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./voting.css";
 import "./mockup.css";
+import "./join.css";
 
 export const metadata: Metadata = {
   title: "Voting | MIT CSC",

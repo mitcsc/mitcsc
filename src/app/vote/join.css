@@ -1,0 +1,120 @@
+/* Shared voter and president entry screens. Keep motion local to the form. */
+.voting-root .voter-room:has(.voter-join) {
+  padding: 32px 24px;
+  gap: 20px;
+  justify-content: safe center;
+}
+
+.voting-root .voter-room .voter-join {
+  width: 100%;
+  max-width: 360px;
+  margin: auto;
+  padding: 0;
+}
+
+.voting-root .voter-join .voter-join-logo {
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 32px;
+  object-fit: contain;
+  animation: voting-join-enter 650ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.voting-root .voter-room .voter-join form {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.voting-root .voter-join form > * {
+  animation: voting-join-enter 550ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: 60ms;
+}
+.voting-root .voter-join form > :nth-child(2) { animation-delay: 110ms; }
+.voting-root .voter-join form > :nth-child(n+3) { animation-delay: 160ms; }
+
+.voting-root .voter-room .voter-join input {
+  width: 100%;
+  height: 56px;
+  min-height: 56px;
+  padding: 0 18px;
+  border: 1px solid #ffffff17;
+  border-radius: 12px;
+  background: #ffffff04;
+  color: #f4f3f1;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.4;
+  caret-color: #ed2434;
+  box-shadow: inset 0 1px 0 #ffffff02;
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+.voting-root .voter-room .voter-join input::placeholder {
+  color: #77777d;
+  opacity: 1;
+  transition: color 180ms ease;
+}
+.voting-root .voter-room .voter-join input:hover { border-color: #ffffff2b; }
+.voting-root .voter-room .voter-join input:focus-visible {
+  outline: none;
+  border-color: #ffffff50;
+  background: #ffffff07;
+  box-shadow: 0 0 0 3px #ffffff04;
+}
+.voting-root .voter-room .voter-join input:focus-visible::placeholder { color: #929298; }
+.voting-root .voter-room .voter-join input:autofill {
+  -webkit-text-fill-color: #f4f3f1;
+  box-shadow: inset 0 0 0 100px #151516;
+}
+
+.voting-root .voter-room .voter-join .voter-primary {
+  min-height: 54px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px 20px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: #eeedeb;
+  color: #171718;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  opacity: 1;
+  box-shadow: 0 1px 2px #00000014;
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+.voting-root .voter-room .voter-join .voter-primary:disabled {
+  background: #ffffff09;
+  border-color: #ffffff06;
+  color: #68686d;
+  cursor: default;
+  box-shadow: none;
+}
+@media (hover: hover) {
+  .voting-root .voter-room .voter-join .voter-primary:hover:not(:disabled) {
+    background: #fff;
+    box-shadow: 0 3px 16px #ffffff0c;
+  }
+}
+.voting-root .voter-room .voter-join .voter-primary:active:not(:disabled) { background: #d7d6d4; }
+.voting-root .voter-room .voter-join .voter-primary:focus-visible {
+  outline: 2px solid #eee;
+  outline-offset: 4px;
+}
+.voting-root .voter-join .voter-alert { margin: 0 0 16px; }
+.voting-root .voter-join .president-help { margin: 2px 0 0; }
+
+@keyframes voting-join-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-height: 560px) {
+  .voting-root .voter-join .voter-join-logo { width: 80px; height: 80px; margin-bottom: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voting-root .voter-join .voter-join-logo,
+  .voting-root .voter-join form > * { animation: none; }
+  .voting-root .voter-room .voter-join input,
+  .voting-root .voter-room .voter-join input::placeholder,
+  .voting-root .voter-room .voter-join .voter-primary { transition: none; }
+}
