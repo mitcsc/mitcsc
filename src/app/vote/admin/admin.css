@@ -148,3 +148,8 @@
 .voting-submission-count strong{font-size:24px;color:white;margin-right:6px;font-weight:400}
 .voting-round-empty{padding:40px 0}
 @media(max-width:760px){.voting-admin-controls{grid-template-columns:1fr;gap:24px}.voting-round-controls{padding:24px 20px}.voting-round-steps{gap:8px}.voting-admin h2.voting-current-name{font-size:30px}.voting-round-empty{padding:16px 0}}
+
+.president-room {height:100%;min-height:0;display:flex;flex-direction:column;}
+.president-room > .voting-console {flex:1;min-height:0;height:auto;}
+.president-bar {display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:12px 24px;border-bottom:1px solid #242424;color:#aaa;font-size:14px;}
+.president-help {font-size:13px;line-height:1.5;color:#888;overflow-wrap:anywhere;}

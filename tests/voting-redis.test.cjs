@@ -301,3 +301,32 @@ test('expired shared settings refresh bypasses old Sheets cache and coalesces co
    assert.ok((await redis.redisCommand('TTL',key))<=30);
  } finally {Date.now=now;}
 });
+
+test('president setup creates elections without a settings sheet and never grants admin to voters',async()=>{
+ const backend=require('../src/lib/voting/redis-service.ts');
+ const {randomUUID}=require('node:crypto');
+ const old=process.env.VOTING_PRESIDENT_PASSWORD;
+ process.env.VOTING_PRESIDENT_PASSWORD='a-long-test-president-password';
+ const sheetId='president-election-test-12345'; books.set(sheetId,new Map([['Sheet1',[]]]));
+ const input={requestId:randomUUID(),name:'Test election',password:'voter-password',sheetUrl:`https://docs.google.com/spreadsheets/d/${sheetId}/edit`};
+ const before=requests.length;
+ try {
+   const cfg=await backend.createElection(input);
+   assert.deepEqual(await backend.createElection(input),cfg,'Lost creation response is retryable');
+   assert.equal((await service.settings()).sheetId,sheetId);
+   assert.ok(requests.slice(before).every(r=>r.id===sheetId),'No access to settings sheet');
+   const voter=await identity.claimIdentity(cfg,'First join',null);
+   assert.equal(voter.role,'voter');
+   const admin=await backend.presidentIdentity(cfg);
+   await assert.rejects(service.adminAction(cfg,voter,{action:'initialize'}),e=>e.status===403);
+   await assert.rejects(backend.createElection({...input,requestId:randomUUID()}),e=>e.status===409);
+   await service.adminAction(cfg,admin,{action:'saveSetup',candidates,criteria});
+   await service.adminAction(cfg,admin,{action:'setPhase',phase:'initial',candidateId:'a'});
+   await assert.rejects(backend.endElection(cfg.sessionId),e=>e.status===409);
+   await service.adminAction(cfg,admin,{action:'setPhase',phase:'locked'});
+   await backend.endElection(cfg.sessionId);
+   assert.equal((await backend.currentElection()).password,'');
+   await assert.rejects(service.adminAction(cfg,admin,{action:'setPhase',phase:'initial',candidateId:'b'}),e=>e.status===409,'Even stale open settings cannot restart an ended election');
+   assert.equal((await service.getState(cfg,voter)).active,false);
+ } finally {if(old===undefined) delete process.env.VOTING_PRESIDENT_PASSWORD;else process.env.VOTING_PRESIDENT_PASSWORD=old;}
+});

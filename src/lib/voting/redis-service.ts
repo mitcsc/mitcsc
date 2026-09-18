@@ -1,3 +1,4 @@
+import { presidentEnabled } from "./president";
 import { polishElectionSheet, writeSummary } from "./sheet-layout";
 import { randomUUID, createHash } from "node:crypto";
 import { compareAndSet, redisCommand, redisKey, releaseLock } from "./redis";
@@ -20,6 +21,7 @@ interface Election {
   schema: 1;
   revision: number;
   marked?: boolean;
+  ended?: boolean;
   initialized: boolean;
   candidates: Candidate[];
   criteria: Criterion[];
@@ -37,6 +39,7 @@ const keyFor = (config: Settings) => redisKey("session", config.settingsSheetId,
 let localSettings: {value: Settings; until: number} | undefined;
 
 export async function redisSettings(): Promise<Settings> {
+  if (presidentEnabled()) { const config = await currentElection(); if (!config) throw new VotingError("No election is open yet.", 401); return config; }
   if (localSettings && Date.now() < localSettings.until) return localSettings.value;
   const key = redisKey("settings", process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ");
   for (let i = 0; i < 40; i++) {
@@ -82,6 +85,7 @@ async function load(config: Settings): Promise<{raw: string; doc: Election}> {
       }
       return {raw, doc};
     }
+    if (config.presidentManaged) throw new VotingError("Election data is missing. Restore Redis before continuing.", 503);
     const owner = randomUUID();
     if (await redisCommand("SET", `${key}:import`, owner, "NX", "EX", 90)) {
       try {
@@ -144,7 +148,7 @@ export async function redisClaim(config: Settings, name: string, existing: Ident
     const retry = doc.members.find(m => m.id === id && m.claimId === claimId);
     if (retry) return identityFor(config, retry);
     if (doc.members.length >= 129) throw new VotingError("This session has reached its 128-voter limit.", 409);
-    const m: Member = {id, claimId, name, role: doc.members.length ? "voter" : "admin", slot: doc.members.length - 1};
+    const m: Member = {id, claimId, name, role: config.presidentManaged || doc.members.length ? "voter" : "admin", slot: doc.members.length - 1};
     doc.members.push(m);
     return identityFor(config, m);
   });
@@ -162,7 +166,7 @@ function present(config: Settings, identity: Identity, doc: Election): VotingSta
   const current = doc.candidates.find(c => c.id === doc.current) || null;
   const round = doc.rounds[doc.current];
   const participants = (r?: Round) => doc.members.filter(m => m.role === "voter" && (!(r?.roster || doc.roster) || (r?.roster || doc.roster)!.includes(m.id))).map(m => ({id: m.id, name: m.name, submitted: !!r?.votes[m.id], initialSubmitted: !!r?.initial[m.id]}));
-  return {pollIntervalMs: 3000, sessionId: config.sessionId, active: !!config.password, phase: doc.phase, votingStarted: Object.keys(doc.rounds).length > 0, ballotVersion: round?.version || "", currentCandidate: current && {...current, context: admin || doc.visible ? current.context : ""}, criteria: doc.criteria, contextVisible: doc.visible, submittedCount: Object.keys(round?.votes || {}).length, voter: {id: m.id, name: m.name}, isAdmin: admin, initialized: doc.initialized, ownBallot: {initialSubmitted: !!round?.initial[m.id], submitted: !!round?.votes[m.id]}, eligible: admin || !round || !(round.roster || doc.roster) || (round.roster || doc.roster)!.includes(m.id),
+  return {pollIntervalMs: 3000, sessionId: config.sessionId, active: !!config.password && !doc.ended, phase: doc.phase, votingStarted: Object.keys(doc.rounds).length > 0, ballotVersion: round?.version || "", currentCandidate: current && {...current, context: admin || doc.visible ? current.context : ""}, criteria: doc.criteria, contextVisible: doc.visible, submittedCount: Object.keys(round?.votes || {}).length, voter: {id: m.id, name: m.name}, isAdmin: admin, initialized: doc.initialized, ownBallot: {initialSubmitted: !!round?.initial[m.id], submitted: !!round?.votes[m.id]}, eligible: admin || !round || !(round.roster || doc.roster) || (round.roster || doc.roster)!.includes(m.id),
     ...(admin ? {candidates: doc.candidates, participants: participants(round), exportPending: !!doc.exportPending, candidateStates: doc.candidates.map(c => ({candidateId: c.id, phase: c.id === doc.current ? doc.phase : c.completed ? "locked" : "waiting", ballotVersion: doc.rounds[c.id]?.version || "", submittedCount: Object.keys(doc.rounds[c.id]?.votes || {}).length, participants: participants(doc.rounds[c.id])}))} : {})};
 }
 export async function redisState(config: Settings, identity: Identity) { return present(config, identity, await readView(config)); }
@@ -179,7 +183,7 @@ export async function redisSubmit(config: Settings, identity: Identity, input: R
     // A lost acknowledgement remains recoverable after closing or switching candidates.
     if (initial && r.initial[m.id]) return {ok: true};
     if (!initial && r.votes[m.id]) return {ok: true, submissionId: r.votes[m.id].id};
-    if (!config.password || doc.exportPending || candidateId !== doc.current || !(initial ? ["initial"] : ["revision", "final"]).includes(doc.phase)) throw new VotingError(initial ? "Initial ratings have closed for this candidate." : "Final submissions are not currently open.", 409);
+    if (doc.ended || !config.password || doc.exportPending || candidateId !== doc.current || !(initial ? ["initial"] : ["revision", "final"]).includes(doc.phase)) throw new VotingError(initial ? "Initial ratings have closed for this candidate." : "Final submissions are not currently open.", 409);
     if (!(r.roster || doc.roster)?.includes(m.id)) throw new VotingError("You joined after this candidate started.", 409);
     if (initial) {
       validateRatings(input.ratings, doc.criteria);
@@ -200,6 +204,7 @@ export async function redisAdminAction(config: Settings, identity: Identity, inp
   const exportId = randomUUID(), version = randomUUID();
   await change(config, doc => {
     member(doc, identity, true);
+    if (doc.ended) throw new VotingError("This election has ended.", 409);
     if (doc.exportPending) {
       if (input.action === "setPhase" && input.phase === "locked") return;
       throw new VotingError("Export this candidate to Sheets before continuing.", 409);
@@ -325,7 +330,7 @@ async function markRedis(config: Settings) {
   const [rows] = await readRanges(config.sheetId, ["'Session'!A1:B20"], true);
   if (rows.length && (rows[0]?.[0] !== "key" || rows[0]?.[1] !== "value")) throw new VotingError("Restore the Session tab headers.", 409);
   const runtime = Object.fromEntries(rows.slice(1).filter(r => r[0]).map(r => [r[0], r[1] || ""])) as Record<string, string>;
-  await writeRanges(config.sheetId, [{range: "'Session'!A1", values: [["key", "value"], ...Object.entries({...runtime, session_id: config.sessionId, storage_backend: "redis"})]}]);
+  await writeRanges(config.sheetId, [{range: "'Session'!A1", values: [["key", "value"], ...Object.entries({...runtime, session_id: config.sessionId, ...(config.name ? {name: config.name} : {}), storage_backend: "redis"})]}]);
 }
 
 function publicDocument(doc: Election) {
@@ -363,4 +368,62 @@ export async function redisRecoverBallot(config: Settings, identity: Identity, c
   if (!round || round.version !== version) throw new VotingError("This ballot is no longer available.", 409);
   const vote = round.votes[m.id];
   return {initialRatings: round.initialRatings?.[m.id] || vote?.initial || null, finalRatings: vote?.final || null, submissionId: vote?.id || null};
+}
+
+const activeElectionKey = () => redisKey("president-active-election");
+export async function currentElection(): Promise<Settings | null> {
+  const raw = await redisCommand<string | null>("GET", activeElectionKey());
+  return raw ? JSON.parse(raw) as Settings : null;
+}
+export async function presidentIdentity(config: Settings) {
+  const doc = await readView(config);
+  const admin = doc.members.find(m => m.role === "admin");
+  if (!admin) throw new VotingError("Election admin is missing.", 503);
+  return identityFor(config, admin);
+}
+export async function createElection(input: Record<string, unknown>) {
+  const sessionId = text(input.requestId, "request ID", 36);
+  if (!/^[a-f0-9-]{36}$/i.test(sessionId)) throw new VotingError("Invalid request ID.");
+  const name = text(input.name, "election name", 100);
+  const password = text(input.password, "voter password", 500);
+  const link = text(input.sheetUrl, "spreadsheet link", 1000);
+  const sheetId = link.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+  if (!sheetId) throw new VotingError("Paste a Google Sheets link.");
+  const config: Settings = {sessionId, name, password, sheetId, settingsSheetId: "president-v1", presidentManaged: true};
+  const owner = randomUUID(), lock = `${activeElectionKey()}:lock`;
+  if (!await redisCommand("SET", lock, owner, "NX", "EX", 120)) throw new VotingError("Election setup is busy. Retry shortly.", 503, 2);
+  try {
+    const raw = await redisCommand<string | null>("GET", activeElectionKey());
+    const active = raw ? JSON.parse(raw) as Settings : null;
+    if (active?.sessionId === sessionId) return active;
+    if (active?.password) throw new VotingError("End the current election before creating another.", 409);
+    const key = keyFor(config);
+    const reservation = redisKey("election-creation", sessionId);
+    const encoded = JSON.stringify(config);
+    const reserved = await redisCommand<string | null>("GET", reservation);
+    if (reserved && reserved !== encoded) throw new VotingError("Retry with the original setup values, or reload to start a new setup.", 409);
+    if (!reserved) await redisCommand("SET", reservation, encoded);
+    if (!await redisCommand("GET", key)) {
+      const meta = await sheets<{sheets: {properties: {title: string}}[]}>(sheetId, "?fields=sheets.properties.title", "GET", undefined, true);
+      if (meta.sheets.some(s => Object.hasOwn(HEADERS, s.properties.title))) throw new VotingError("Use a new spreadsheet for this election.", 409);
+      const admin: Member = {id: randomUUID(), claimId: randomUUID(), name: "President", role: "admin", slot: -1};
+      const doc: Election = {schema: 1, revision: 0, initialized: true, candidates: [], criteria: [], members: [admin], phase: "waiting", current: "", visible: false, rounds: {}, exportRows: {nextResponse: 2, nextReceipt: 2, responses: {}, receipts: {}}};
+      await redisCommand("SET", key, JSON.stringify(doc), "NX");
+    }
+    await load(config); // Writes the Session marker, verifying Sheets edit access before admission.
+    const ok = await redisCommand("EVAL", "if redis.call('GET',KEYS[1]) == ARGV[1] or (not redis.call('GET',KEYS[1]) and ARGV[1] == '') then redis.call('SET',KEYS[1],ARGV[2]); return 1 else return 0 end", 1, activeElectionKey(), raw || "", encoded);
+    if (!ok) throw new VotingError("The active election changed. Reload before continuing.", 409);
+    return config;
+  } finally { await releaseLock(lock, owner); }
+}
+export async function endElection(sessionId: string) {
+  const raw = await redisCommand<string | null>("GET", activeElectionKey());
+  if (!raw) throw new VotingError("No election is open.", 409);
+  const config = JSON.parse(raw) as Settings;
+  if (config.sessionId !== sessionId) throw new VotingError("The election changed. Reload before continuing.", 409);
+  await change(config, doc => {
+    if (doc.exportPending || !["waiting", "locked"].includes(doc.phase)) throw new VotingError("Close the current candidate and finish exporting before ending the election.", 409);
+    doc.ended = true;
+  });
+  if (!await redisCommand("EVAL", "if redis.call('GET',KEYS[1]) == ARGV[1] then redis.call('SET',KEYS[1],ARGV[2]); return 1 else return 0 end", 1, activeElectionKey(), raw, JSON.stringify({...config, password: ""}))) throw new VotingError("The election changed. Reload before continuing.", 409);
 }

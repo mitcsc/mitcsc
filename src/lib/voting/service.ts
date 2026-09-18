@@ -1,3 +1,4 @@
+import { presidentEnabled } from "./president";
 import { redisEnabled } from "./redis";
 import { redisSettings, redisState, redisAdminAction, redisSubmit, redisRecoverBallot } from "./redis-service";
 import { sessionVoters } from "./admin-identity";
@@ -15,7 +16,7 @@ export const HEADERS = {
   Summary: ["session_id", "candidate_id", "candidate_name", "criterion", "initial_average", "final_average", "ratings_count"],
 };
 const PHASES: VotingPhase[] = ["waiting", "initial", "deliberation", "revision", "final", "locked"];
-export interface Settings { sessionId: string; password: string; sheetId: string; settingsSheetId: string }
+export interface Settings { sessionId: string; password: string; sheetId: string; settingsSheetId: string; name?: string; presidentManaged?: boolean }
 export async function sheetSettings(fresh = false): Promise<Settings> {
   const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
@@ -333,7 +334,7 @@ export async function sheetSubmit(config: Settings, identity: Identity, input: R
 }
 
 // Keep the demo and pre-Redis deployments compatible. A configured Redis failure never falls back.
-export async function settings(): Promise<Settings> { return redisEnabled() ? redisSettings() : sheetSettings(); }
+export async function settings(): Promise<Settings> { if (presidentEnabled() && !redisEnabled()) throw new VotingError("Redis must be configured for president setup.", 503); return redisEnabled() ? redisSettings() : sheetSettings(); }
 export async function getState(config: Settings, identity: Identity) { return redisEnabled() ? redisState(config, identity) : sheetState(config, identity); }
 export async function adminAction(config: Settings, identity: Identity, input: Record<string, unknown>) { return redisEnabled() ? redisAdminAction(config, identity, input) : sheetAdminAction(config, identity, input); }
 export async function submitInitial(config: Settings, identity: Identity, input: Record<string, unknown>) { return redisEnabled() ? redisSubmit(config, identity, input, true) : sheetSubmitInitial(config, identity, input); }

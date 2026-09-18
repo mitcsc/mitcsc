@@ -1,3 +1,4 @@
+import { PRESIDENT_COOKIE } from "@/lib/voting/president";
 import { cookies } from "next/headers";
 import { cookieOptions, failure, json } from "@/lib/voting/http";
 import { body, COOKIE, DEVICE_COOKIE, equal, limitJoin, readIdentity, requireOrigin, signIdentity, text, VotingError } from "@/lib/voting/security";
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
     if (joinId && !/^[a-f0-9-]{36}$/i.test(joinId)) throw new VotingError("Invalid join ID.");
     const identity = await claimIdentity(config, name, existing, joinId);
     const response = json({ ok: true });
+    response.cookies.set(PRESIDENT_COOKIE, "", {...cookieOptions, maxAge: 0});
     response.cookies.set(COOKIE, signIdentity(identity), cookieOptions);
     const deviceSeconds = 365 * 24 * 3600;
     response.cookies.set(DEVICE_COOKIE, signIdentity(identity, { purpose: "device", ttlMs: deviceSeconds * 1000 }), { ...cookieOptions, maxAge: deviceSeconds });

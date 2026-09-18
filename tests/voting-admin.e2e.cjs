@@ -21,6 +21,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     const endpoint = new URL(route.request().url()).pathname.split('/').at(-1);
     const payload = route.request().method() === 'POST' ? route.request().postDataJSON() : null;
     const reply = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
+    if (endpoint === 'president') return reply({enabled:false});
     if (endpoint === 'join') {
       assert.match(payload.joinId, /^[0-9a-f-]{36}$/);
       assert.equal(payload.name, 'Test President');

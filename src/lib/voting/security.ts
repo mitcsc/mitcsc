@@ -20,12 +20,12 @@ export function equal(a: string, b: string) {
   const key = secret();
   return timingSafeEqual(createHmac("sha256", key).update(a).digest(), createHmac("sha256", key).update(b).digest());
 }
-export function signIdentity(data: Omit<Identity, "id" | "exp"> & { id?: string }, options: { purpose?: "session" | "device"; ttlMs?: number } = {}) {
+export function signIdentity(data: Omit<Identity, "id" | "exp"> & { id?: string }, options: { purpose?: "session" | "device" | "president"; ttlMs?: number } = {}) {
   const identity = { ...data, id: data.id || randomUUID(), purpose: options.purpose || "session", exp: Date.now() + (options.ttlMs ?? 24 * 3600_000) };
   const payload = Buffer.from(JSON.stringify(identity)).toString("base64url");
   return `${payload}.${createHmac("sha256", secret()).update(payload).digest("base64url")}`;
 }
-export function readIdentity(value?: string, purpose: "session" | "device" = "session"): Identity | null {
+export function readIdentity(value?: string, purpose: "session" | "device" | "president" = "session"): Identity | null {
   if (!value || value.length > 4096) return null;
   const [payload, signature, extra] = value.split(".");
   if (!payload || !signature || extra) return null;

@@ -1,7 +1,8 @@
 # CSC voting
 
 The voting app uses Redis for live session state, registrations, initial submission receipts, and final ballots.
-Google Sheets holds the session settings and receives results when the admin closes each candidate.
+With president login enabled, Redis holds session settings and Google Sheets receives results when the admin closes each candidate.
+The settings-sheet flow remains available only for legacy deployments.
 Saving initial ratings stores them in Redis. Unsubmitted revisions remain in the browser; final submission stores them in Redis too.
 
 ## Deployment
@@ -27,32 +28,41 @@ An election already started under the old implementation cannot be imported auto
 Finish that election there, or start a new election spreadsheet and session ID.
 An unstarted election imports its candidates, criteria, and existing Session History identities once.
 
-## Running an election
+## President-managed elections
 
-1. Create a blank private spreadsheet and share it as Editor with the Google service account.
-2. In the permanent settings sheet, enter its URL in `voting_sheet_url`, a unique `session_id`, and a shared `session_password`.
-3. The president joins `/vote` first to become admin, before sharing the password with exec.
-4. Set up the election and add candidates and criteria in the admin page.
-5. Wait for everyone to join, then start the first candidate.
-6. Collect initial ratings, lead discussion, and open submissions.
-7. Close the candidate after the expected voters submit.
-8. Clear `session_password` when finished.
+Set `VOTING_PRESIDENT_PASSWORD` in Vercel to a random password of at least 8 characters.
+Keep it in CSC's password manager or officer handoff records, not in a spreadsheet or source control.
+This enables the new mode and requires Redis; it does not import or replace the current legacy election.
+Enable it only after the existing election has finished exporting.
+Changing the environment password and redeploying invalidates president logins.
+No in-app password change is provided; Vercel remains the source of this credential.
 
-First-join ownership assumes a trusted group; it does not verify who is president.
-Admins cannot vote.
-Redis assigns the first admin atomically, even when joins arrive together.
-Existing Session History records are imported for an unstarted election, but new registrations live in Redis.
-Unhiding Session History does not grant admin access.
+1. The president opens `/vote/admin` and enters the president password.
+2. They enter an election name, voter password and new results spreadsheet link.
+3. The spreadsheet must already be shared as Editor with the Google service account.
+4. The app verifies edit access by creating its Session marker before admitting voters.
+5. The president adds candidates and criteria, while voters join `/vote` with their name and voter password.
+6. Closing each candidate exports results to Sheets.
+7. After the last export, **End session** closes access and allows creation of the next election.
+
+Election IDs are generated automatically.
+Voters never become admin by joining first in this mode.
+Ending a session is blocked during an active round or pending export.
+An ended election cannot be restarted; its Redis data and Sheets results remain preserved.
+Use a new spreadsheet for each election.
+An already-used app-managed spreadsheet is rejected.
+A shared CSC Elections folder can simplify granting the service account access to new spreadsheets.
 Moving or renaming a spreadsheet does not change its ID; copying it does.
-Use a new session ID and a new spreadsheet for each election.
-Future presidents do not need Vercel access for routine elections.
+
+If `VOTING_PRESIDENT_PASSWORD` is absent, the original settings-sheet flow and first-join admin behavior remain unchanged.
+Do not remove or edit legacy data to switch modes.
 
 ## Storage and exports
 
 With Redis, voters and admins poll every three seconds. Hidden tabs stop polling.
 The legacy Sheets-only mode retains its four/eight-second intervals.
 They read a shared Redis status document containing no rating values.
-Settings are refreshed directly from Sheets into a shared Redis cache every 30 seconds,
+In legacy settings-sheet mode, settings are refreshed directly from Sheets into a shared Redis cache every 30 seconds,
 with up to five seconds of additional per-process caching. There is no second Sheets cache delay.
 Allow roughly 35 seconds plus request latency for settings edits to propagate.
 Admin phase changes do not wait for that cache.

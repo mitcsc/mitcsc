@@ -20,7 +20,7 @@ async function responseData(response: Response) {
   return data;
 }
 
-export default function AdminRoom({initialState, onExit}: {initialState: VotingState; onExit: (state?: VotingState) => void}) {
+export default function AdminRoom({initialState, onExit, onStateChange}: {initialState: VotingState; onExit: (state?: VotingState) => void; onStateChange?: (state: VotingState) => void}) {
   const [serverState, setState] = useState<VotingState | null>(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -55,7 +55,8 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
   const controller = useRef<AbortController | null>(null);
   const applyState = useCallback((next: VotingState) => {
     setState(next);
-  }, []);
+    onStateChange?.(next);
+  }, [onStateChange]);
   const refresh = useCallback(async () => {
     if (pollInFlight.current || mutating.current || document.hidden || Date.now() < pollAfter.current) return;
     pollInFlight.current = true;
