@@ -3,8 +3,8 @@ import { Identity, VotingError } from "./security";
 import { readControlSheet, sheets } from "./sheets";
 import type { Settings } from "./service";
 const HEADERS = ["session_id", "election_sheet_id", "claim_id", "voter_id", "voter_name", "claimed_at"];
-async function claims(config: Settings, fresh = false): Promise<string[][]> {
-  const {history} = await readControlSheet(config.settingsSheetId, fresh, 5000);
+async function claims(config: Settings, fresh = false, maxAge = 5000): Promise<string[][]> {
+  const {history} = await readControlSheet(config.settingsSheetId, fresh, maxAge);
   const rows = history || [];
   if (HEADERS.some((header, i) => rows[0]?.[i] !== header)) throw new VotingError("Restore the Session History tab headers in the settings spreadsheet.", 409);
   return rows.slice(1).filter(row => row[0] === config.sessionId && row[1] === config.sheetId);
@@ -30,7 +30,7 @@ async function ensureClaims(config: Settings) {
 }
 export async function canonicalIdentity(config: Settings, identity: Identity): Promise<Identity> {
   if (identity.role !== "admin") return identity;
-  const first = (await claims(config))[0];
+  const first = (await claims(config, false, 120_000))[0];
   if (!first || first[2] !== identity.claimId || first[3] !== identity.id) return { ...identity, role: "voter" };
   return identity;
 }
@@ -51,8 +51,8 @@ export async function claimIdentity(config: Settings, name: string, existing: Id
   return { voterSlot, id, name: sameSession ? existing.name : name, sessionId: config.sessionId, sheetId: config.sheetId, role: first?.[2] === claimId && first?.[3] === id ? "admin" : "voter", claimId, exp: Date.now() + 24 * 3600_000 };
 }
 
-export async function sessionVoters(config: Settings): Promise<{id: string; name: string}[]> {
-  const rows = await claims(config);
+export async function sessionVoters(config: Settings, fresh = false): Promise<{id: string; name: string}[]> {
+  const rows = await claims(config, fresh);
   const adminId = rows[0]?.[3];
   const voters = new Map<string, {id: string; name: string}>();
   for (const row of rows) if (row[3] && row[3] !== adminId) voters.set(row[3], {id: row[3], name: row[4] || "Voter"});

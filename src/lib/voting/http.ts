@@ -15,7 +15,11 @@ export async function session(admin = false) {
   return { config, identity };
 }
 export function failure(error: unknown) {
-  if (error instanceof VotingError) return json({ error: error.message }, error.status);
+  if (error instanceof VotingError) {
+    const response = json({ error: error.message }, error.status);
+    if (error.retryAfter) response.headers.set("Retry-After", String(error.retryAfter));
+    return response;
+  }
   return json({ error: "Voting is temporarily unavailable. Please retry; your local draft is preserved." }, 503);
 }
 export const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" as const, path: "/api/voting", maxAge: 24 * 3600 };

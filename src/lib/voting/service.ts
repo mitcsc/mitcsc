@@ -1,7 +1,7 @@
 import { sessionVoters } from "./admin-identity";
 import { randomUUID } from "node:crypto";
 import { Identity, VotingError, text } from "./security";
-import { invalidate, readControlSheet, readRanges, sheets, writeRanges } from "./sheets";
+import { invalidate, invalidateMetadata, readControlSheet, readRanges, sheets, writeRanges } from "./sheets";
 import type { Candidate, Criterion, FinalBallot, Ratings, VotingPhase, VotingState } from "./types";
 
 const HEADERS = {
@@ -17,7 +17,7 @@ export interface Settings { sessionId: string; password: string; sheetId: string
 export async function settings(): Promise<Settings> {
   const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
-  const {settings: rows} = await readControlSheet(id);
+  const {settings: rows} = await readControlSheet(id, false, 120_000);
   const values = Object.fromEntries(rows.map(row => [row[0]?.trim(), row[1] || ""]));
   const raw = values.voting_sheet_url || "";
   const sheetId = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] || (/^[a-zA-Z0-9_-]{15,}$/.test(raw) ? raw : "");
@@ -38,12 +38,24 @@ function checkHeaders(name: keyof typeof HEADERS, rows: string[][]) {
   if (HEADERS[name].some((value, i) => rows[0]?.[i] !== value)) throw new VotingError(`The ${name} tab has unexpected columns. Restore its original headers before continuing.`, 409);
 }
 async function snapshot(config: Settings, fresh = false, admin = true): Promise<Snapshot> {
+  // Once initialized, the Session row contains everything a voter needs for an open ballot.
+  // A cold instance checks structure once; subsequent checks reuse metadata until a structural write.
   const names = await tabNames(config.sheetId);
+  if (!names.includes(INITIAL_TAB) || Object.keys(HEADERS).some(name => !names.includes(name))) invalidateMetadata(config.sheetId);
   if (Object.keys(HEADERS).some(name => !names.includes(name))) return { initialized: false, candidates: [], criteria: [], runtime: {}, responses: [], ballots: [], receipts: [] };
-  // Definitions change only through setup/admin actions. Voter polls never read responses or history.
+  if (!admin && !fresh) {
+    const [rows] = await readRanges(config.sheetId, ["'Session'!A1:B20"]);
+    checkHeaders("Session", rows);
+    const runtime = Object.fromEntries(rows.slice(1).filter(r => r[0]).map(r => [r[0], r[1] || ""]));
+    if (runtime.row_layout_json && runtime.ballot_version) {
+      const candidate: Candidate = {id: runtime.candidate_id, name: runtime.candidate_name || "", context: runtime.candidate_context || "", order: 0, completed: runtime.phase === "locked"};
+      return {initialized: true, runtime, candidates: runtime.candidate_id ? [candidate] : [], criteria: (JSON.parse(runtime.row_layout_json) as RowLayout).criteria, responses: [], ballots: [], receipts: []};
+    }
+  }
+  // Admin reads combine definitions and counts. Voters use frozen data once a ballot starts.
   const definitions = ["'Candidates'!A1:E102", "'Criteria'!A1:F22"];
   const ranges = ["'Session'!A1:B20", ...(admin ? ["'Responses'!A:L", "'Ballots'!A:E", ...(names.includes(INITIAL_TAB) ? [`'${INITIAL_TAB}'!A:E`] : [])] : [])];
-  const combined = fresh ? await readRanges(config.sheetId, [...definitions, ...ranges], true) : undefined;
+  const combined = fresh || admin ? await readRanges(config.sheetId, [...definitions, ...ranges], true) : undefined;
   const definition = combined ? combined.slice(0, 2) : await readRanges(config.sheetId, definitions, false, 60_000);
   // Admin polls every eight seconds. Read counts fresh so cache age does not add another delay.
   // Voter stage polls retain their shared five-second cache.
@@ -90,6 +102,7 @@ async function prepareFixedRows(config: Settings, s: Snapshot) {
   });
   if (requests.length) await sheets(config.sheetId, ":batchUpdate", "POST", {requests});
   s.runtime.row_layout_json = JSON.stringify({candidates: s.candidates.map(candidate => candidate.id), criteria: s.criteria} satisfies RowLayout);
+  s.runtime.voters_json = JSON.stringify(await sessionVoters(config, true));
 }
 
 async function writeAdmittedBallot(config: Settings, data: Parameters<typeof writeRanges>[1]) {
@@ -166,7 +179,8 @@ export async function getState(config: Settings, identity: Identity) {
   if (identity.role === "admin") {
     const submitted = new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === result.currentCandidate?.id && r[6] === result.ballotVersion).map(r => r[4]));
     const initial = new Set(s.receipts.filter(r => r[0] === config.sessionId && r[1] === result.currentCandidate?.id && r[2] === result.ballotVersion).map(r => r[3]));
-    const voters = await sessionVoters(config);
+    const frozenVoters: {id: string; name: string}[] | undefined = s.runtime.voters_json ? JSON.parse(s.runtime.voters_json) : undefined;
+    const voters = frozenVoters || await sessionVoters(config);
     result.participants = voters.map(voter => ({...voter, submitted: submitted.has(voter.id), initialSubmitted: initial.has(voter.id)}));
     const receipts = s.receipts;
     result.candidateStates = s.candidates.map(candidate => {

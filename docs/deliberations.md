@@ -155,7 +155,8 @@ Closing does not provide a global barrier that waits for every Vercel instance t
 Writes always target the original candidate's reserved rows, even if the admin moves on.
 
 Voter polling reads definitions and Session state without downloading response history.
-Definition reads are cached for 60 seconds, Settings for up to 30 seconds, and live reads for 5 seconds per process.
+Setup definition reads are cached for 60 seconds, settings for up to 120 seconds, and voter live reads for 5 seconds per process.
+After a ballot starts, voters use its saved definition from Session instead of separate definition reads.
 Writes invalidate only cached queries involving changed tabs.
 Admin polling batches Session, response history, saved ballots, and initial receipts.
 Background polling stops at the join screen after an authentication failure.
@@ -164,14 +165,42 @@ No shared cache provider, paid service, or additional credential is introduced.
 
 The automated 30-voter test enforces separate 60-read and 60-write budgets for each submission burst.
 Measured initial and final bursts each use 31 reads and 30 writes, including surrounding state checks, on one warm process.
-A separate simulated minute with 30 voters and an admin polling every eight seconds uses 51 reads and 30 writes.
+A separate simulated minute with 30 voters and an admin polling every eight seconds uses 44 reads and 30 writes.
 This does not establish a production guarantee: joins, ongoing polling, admin actions, and other Vercel instances add traffic.
 The test uses a simulated Sheets endpoint, not live Google quota enforcement.
 
 Settings and Session History are fetched together when the history tab exists.
-They share one cached response, with a 30-second maximum age for settings and a 5-second maximum age for roster checks.
-Roster refreshes also refresh settings, so settings can update sooner while an admin is active.
-The 30-voter simulated minute dropped from 55 to 50 reads with this change; submission writes remain 30.
+They share one cached response, with a 120-second maximum age for settings and a 5-second maximum age for setup roster checks.
+Setup roster refreshes also refresh settings, so settings can update sooner before voting starts.
 
-Eight-second admin polling with fresh counts measures 51 reads in that simulated minute.
-The earlier four-second admin poll already reused cached counts, so this timing change alone does not reduce total reads.
+
+### Reduced background reads and recovery
+
+Authenticated requests allow settings and admin ownership checks to reuse a response for two minutes.
+Clearing the password or changing the election link in Sheets can therefore take up to two minutes, plus polling and network time, to reach an existing browser.
+Normal admin stage controls still write the live Session row immediately.
+Voter polling stays at four seconds and its server cache stays at five seconds.
+Admin counts still refresh with a fresh read every eight seconds.
+
+Voters use the candidate name and frozen criteria already saved in Session after a ballot opens.
+Admin snapshots combine candidate data, criteria, Session, and counts into one read.
+Validated sheet metadata is cached for the session lifetime, capped at 24 hours, with local structural writes and access errors invalidating it.
+Incomplete sheet structures are not retained, so initialization on another instance can be detected.
+
+New elections capture their participant roster when the first ballot opens.
+The admin waiting lists use that roster without repeatedly fetching Session History.
+Everyone should join before the first ballot starts; late arrivals are not added to that election's waiting roster.
+Older elections without a frozen roster retain the prior registration lookup.
+
+Each server instance suppresses repeated reads or writes during a quota cooldown, with separate cooldowns for the two quota types.
+This is not a shared or global quota limit.
+Voter submissions retry rate-limit errors, temporary server failures, network errors, and timeouts, up to four retries with increasing delays and jitter.
+Retries preserve the complete serialized ballot payload.
+Validation and closed-stage errors do not retry automatically.
+The existing screen and local draft remain present during polling failures.
+
+The original synchronized 30-voter minute now measures 44 reads and 30 writes.
+A staggered minute measures 38 reads on one warm instance and 61 reads across three warm instances, with 30 writes in both cases.
+The three-cold-instance case measures 71 reads and 30 writes.
+These tests measure demand against mocked Google responses; the multi-instance diagnostic does not enforce a quota or prove production safety.
+Consecutive final and initial submission bursts remain a separate quota risk.

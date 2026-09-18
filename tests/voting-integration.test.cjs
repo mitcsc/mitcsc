@@ -374,3 +374,92 @@ test('admin refresh sees external submissions immediately while voter stage read
     assert.equal(requests.length,start,'Voter polls still reuse cached stage reads');
   }finally{books.get(cfg.sheetId).set('Responses',original);invalidate(cfg.sheetId);}
 });
+
+test('running elections reuse frozen ballot and roster data beyond the old metadata TTL',async()=>{
+  const cfg={...config,sheetId:'load-election',sessionId:'load-session'};
+  const owner={...admin,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const who={...voter,id:'load-0',voterSlot:0,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const before=await service.getState(cfg,owner);
+  await service.getState(cfg,who);
+  const start=requests.length;
+  const now=Date.now;const base=now();Date.now=()=>base+65_000;
+  const history=books.get(cfg.settingsSheetId).get('Session History');
+  history.push([cfg.sessionId,cfg.sheetId,'late-claim','unexpected-late-voter','Late Voter','']);
+  try{
+    const next=await service.getState(cfg,who);
+    assert.deepEqual(next.criteria,before.criteria);
+    const adminState=await service.getState(cfg,owner);
+    assert.deepEqual(adminState.participants.map(v=>v.id),before.participants.map(v=>v.id),'Roster remains fixed after the election starts');
+    const calls=requests.slice(start);
+    assert.equal(calls.length,2,'Only voter stage and fresh admin snapshot are read');
+    assert.ok(calls.every(r=>r.id===cfg.sheetId&&r.suffix==='/values:batchGet'),'No settings, roster, or metadata read');
+  }finally{Date.now=now;history.pop();invalidate(cfg.sheetId);}
+});
+
+test('settings changes are picked up within two minutes without per-request Sheets reads',async()=>{
+  const now=Date.now;const base=now();let elapsed=0;Date.now=()=>base+elapsed;
+  const rows=books.get(config.settingsSheetId).get('Settings');
+  const password=rows.find(row=>row[0]==='session_password');const original=password[1];
+  invalidate(config.settingsSheetId);
+  try{
+    await service.settings();const start=requests.length;password[1]='';
+    elapsed=119_000;assert.equal((await service.settings()).password,original);
+    assert.equal(requests.length,start);
+    elapsed=120_001;assert.equal((await service.settings()).password,'');
+    assert.equal(requests.length,start+1);
+  }finally{Date.now=now;password[1]=original;invalidate(config.settingsSheetId);}
+});
+
+test('quota cooldown suppresses additional Google requests and recovers after its deadline',async()=>{
+  const adapter=require('../src/lib/voting/sheets.ts');
+  const originalFetch=global.fetch;let attempts=0;let limited=true;
+  const now=Date.now;const base=now();let elapsed=0;Date.now=()=>base+elapsed;
+  global.fetch=async(...args)=>{attempts++;return limited?new Response('{}',{status:429}):originalFetch(...args);};
+  try{
+    await assert.rejects(adapter.readRanges(config.sheetId,["'Session'!A1:B20"],true),{status:429});
+    await assert.rejects(adapter.readRanges(config.sheetId,["'Session'!A1:B20"],true),{status:429});
+    assert.equal(attempts,1,'Cooldown should not send another Sheets read');
+    limited=false;elapsed=1001;
+    await adapter.readRanges(config.sheetId,["'Session'!A1:B20"],true);
+    assert.equal(attempts,2);
+  }finally{Date.now=now;global.fetch=originalFetch;}
+});
+
+// Demand measurement only: multiple-instance cases may exceed Google quota.
+test('capacity diagnostics: staggered voters across independent server caches',async()=>{
+  for (const mode of ['warm','discussion','cold']) for (const count of [1,3]) {
+    const cfg={...config,sheetId:`diagnostic-${mode}-${count}`,sessionId:`diagnostic-${mode}-${count}`};
+    const owner={...admin,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+    const voters=Array.from({length:30},(_,i)=>({...voter,id:`diag-${i}`,voterSlot:i,sheetId:cfg.sheetId,sessionId:cfg.sessionId}));
+    books.set(cfg.sheetId,new Map());
+    books.get(cfg.settingsSheetId).set('Settings',[['key','value'],['session_id',cfg.sessionId],['session_password',cfg.password],['voting_sheet_url',`https://docs.google.com/spreadsheets/d/${cfg.sheetId}/edit`]]);
+    books.get(cfg.settingsSheetId).get('Session History').push([cfg.sessionId,cfg.sheetId,'diag-admin',owner.id,owner.name,''],...voters.map(v=>[cfg.sessionId,cfg.sheetId,v.id,v.id,v.name,'']));
+    invalidate(cfg.settingsSheetId);
+    await service.adminAction(cfg,owner,{action:'initialize'});
+    await service.adminAction(cfg,owner,{action:'saveSetup',candidates,criteria});
+    const state=await service.adminAction(cfg,owner,{action:'setPhase',phase:'initial',candidateId:'alex'});
+    if(mode==='discussion') await service.adminAction(cfg,owner,{action:'setPhase',phase:'deliberation'});
+    const instances=[];
+    for(let i=0;i<count;i++){
+      for(const key of Object.keys(require.cache)) if(key.includes('/src/lib/voting/')) delete require.cache[key];
+      const instance=require('../src/lib/voting/service.ts');
+      if(mode!=='cold'){await instance.settings();await instance.getState(cfg,voters[i]);}instances.push(instance);
+    }
+    if(mode!=='cold') await instances[0].getState(cfg,owner);
+    const realNow=Date.now;const base=realNow();let elapsed=0;Date.now=()=>base+elapsed;
+    const events=[];
+    voters.forEach((v,i)=>{
+      const instance=instances[i%count];
+      for(let t=i*127;t<60000;t+=4000)events.push({t,run:async()=>{await instance.settings();await instance.getState(cfg,v);}});
+      if(mode!=='discussion') events.push({t:i*1900+500,run:async()=>{await instance.settings();await instance.submitInitial(cfg,v,{sessionId:cfg.sessionId,candidateId:'alex',ballotVersion:state.ballotVersion,ratings:{reliability:3}});}});
+    });
+    for(let t=1000;t<60000;t+=8000)events.push({t,run:async()=>{await instances[0].settings();if(mode!=='cold') await instances[0].getState(cfg,owner);}});
+    const start=requests.length;
+    try{for(const e of events.sort((a,b)=>a.t-b.t)){elapsed=e.t;await e.run();}}
+    finally{Date.now=realNow;}
+    const calls=requests.slice(start);
+    assert.equal(calls.filter(r=>r.method!=='GET').length,mode==='discussion'?0:30);
+    if(mode==='warm'&&count===1) assert.ok(calls.filter(r=>r.method==='GET').length<=45,'Single-instance read budget regressed');
+    console.log(`DIAGNOSTIC ${mode} ${count} instances, staggered polling: ${calls.filter(r=>r.method==='GET').length} reads / ${calls.filter(r=>r.method!=='GET').length} writes. Quota enforcement disabled to measure demand.`);
+  }
+});

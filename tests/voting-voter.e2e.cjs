@@ -19,6 +19,7 @@ async function main() {
   const joinRequests = [];
   const submissions = [];
   let rejectSubmission = true;
+  let transientFailures = 2;
   const state = {
     sessionId: 'ui-test-session', active: true, phase: 'waiting', votingStarted: false, ballotVersion: 'v1',
     currentCandidate: { id: 'candidate-one', name: 'Alex Chen', context: '', order: 0, completed: false },
@@ -43,7 +44,10 @@ async function main() {
     if (path.endsWith('/initial')) return reply(200, {ok:true});
     if (path.endsWith('/submit')) {
       const ballot = route.request().postDataJSON(); submissions.push(ballot);
-      return rejectSubmission ? reply(503, { error: 'Temporary spreadsheet failure.' }) : reply(200, { ok: true, submissionId: ballot.submissionId });
+      if (rejectSubmission) return reply(409, {error:'Submission is closed.'});
+      if (transientFailures-- === 2) return reply(503, {error:'Temporary spreadsheet failure.'});
+      if (transientFailures === 0) return route.abort('failed');
+      return reply(200, {ok:true, submissionId:ballot.submissionId});
     }
     throw new Error(`Unexpected voting API route: ${path}`);
   });
@@ -99,7 +103,7 @@ async function main() {
     assert.equal(await fieldset('Reliability').locator('.voter-rating-initial').innerText(),'3');
     assert.equal(await page.locator('.voter-footnote').count(),0);
     await page.getByRole('button', { name: 'Submit vote' }).click();
-    await page.getByRole('alert').filter({ hasText: 'Temporary spreadsheet failure.' }).waitFor();
+    await page.getByRole('alert').filter({ hasText: 'Submission is closed.' }).waitFor();
     assert.equal(submissions.length, 1);
     assert.deepEqual(submissions[0].initialRatings, { reliability: 3, experience: null });
     assert.deepEqual(submissions[0].finalRatings, { reliability: 5, experience: null });
@@ -112,11 +116,11 @@ async function main() {
     await page.reload();
     rejectSubmission = false;
     await page.getByRole('button', { name: 'Submit vote' }).click();
-    await page.getByRole('heading', { name: 'Vote submitted for Alex Chen' }).waitFor();
-    assert.equal(submissions.length, 2);
-    assert.deepEqual(submissions[1], submissions[0], 'A retry must preserve its ID and entire payload');
+    await page.getByRole('heading', { name: 'Vote submitted for Alex Chen' }).waitFor({timeout:35000});
+    assert.equal(submissions.length, 4);
+    for(const attempt of submissions.slice(1)) assert.deepEqual(attempt, submissions[0], 'Every automatic and manual retry must preserve its ID and entire payload');
     await page.reload();
-    await page.getByRole('heading', { name: 'Vote submitted for Alex Chen' }).waitFor();
+    await page.getByRole('heading', { name: 'Vote submitted for Alex Chen' }).waitFor({timeout:35000});
     assert.equal(await page.getByRole('button', { name: 'Submit vote' }).count(), 0);
     state.phase = 'waiting';
     await page.reload();
@@ -148,7 +152,7 @@ async function main() {
     await page.locator('.voting-console').waitFor();
     assert.equal(new URL(page.url()).pathname,'/vote');
     assert.equal(await page.getByRole('button', {name: 'Submit vote'}).count(), 0);
-    assert.equal(submissions.length, 2);
+    assert.equal(submissions.length, 4);
     assert.deepEqual(errors, [], 'No uncaught browser errors');
     console.log('PASS: join, polling, required/optional validation, local refresh persistence, original/revised separation, retry identity/payload, confirmed submission persistence, pending-ballot advance, and admin redirect.');
   } finally { await browser.close(); }

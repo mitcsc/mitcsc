@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 export class VotingError extends Error {
-  constructor(message: string, public status = 400) { super(message); }
+  constructor(message: string, public status = 400, public retryAfter?: number) { super(message); }
 }
 export const COOKIE = "csc_voting";
 export const DEVICE_COOKIE = "csc_voting_device";

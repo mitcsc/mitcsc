@@ -35,21 +35,29 @@ function parseDraft(raw: string | null): Draft {
   if (!validRatings(value.ratings) || !validRatings(value.final) || (value.initial !== null && !validRatings(value.initial)) || typeof value.submitted !== "boolean") throw new Error("Invalid local ballot");
   return value;
 }
-async function api<T>(path: string, body?: unknown, attempt = 0): Promise<T> {
-  const response = await fetch(`/api/voting/${path}`, {
-    signal: AbortSignal.timeout(["initial", "submit"].includes(path) ? 65000 : 20000),
-    method: body === undefined ? "GET" : "POST",
-    cache: "no-store",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (response.status === 429 && ["initial", "submit"].includes(path) && attempt < 3) {
-    await new Promise(resolve => setTimeout(resolve, 10_000 * (attempt + 1) + Math.random() * 2000));
-    return api<T>(path, body, attempt + 1);
+async function api<T>(path: string, body?: unknown): Promise<T> {
+  const ballot = ["initial", "submit"].includes(path);
+  // Freeze the payload across retries, including retries after an ambiguous timeout.
+  const payload = body === undefined ? undefined : JSON.stringify(body);
+  for (let attempt = 0; ; attempt++) {
+    let retryAfter = 0;
+    try {
+      const response = await fetch(`/api/voting/${path}`, {
+        signal: AbortSignal.timeout(ballot ? 65000 : 20000),
+        method: body === undefined ? "GET" : "POST", cache: "no-store",
+        headers: body === undefined ? undefined : { "Content-Type": "application/json" }, body: payload,
+      });
+      retryAfter = Number(response.headers.get("Retry-After")) || 0;
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw Object.assign(new Error(data.error || "Could not connect. Please try again."), {status: response.status});
+      return data as T;
+    } catch (error) {
+      const status = (error as Error & {status?: number}).status;
+      if (!ballot || attempt >= 4 || (status !== undefined && ![429, 502, 503, 504].includes(status))) throw error;
+      const delay = Math.max(Math.min(30_000, 5000 * 2 ** attempt), Math.min(60_000, retryAfter * 1000));
+      await new Promise(resolve => setTimeout(resolve, delay + Math.random() * 2000));
+    }
   }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(data.error || "Could not connect. Please try again."), { status: response.status });
-  return data as T;
 }
 
 export default function VoterRoom() {

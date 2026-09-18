@@ -4,8 +4,12 @@ import { VotingError } from "./security";
 let auth: GoogleAuth | undefined;
 const cache = new Map<string, { storedAt: number; value: unknown }>();
 const generations = new Map<string, number>();
+const cooldowns = new Map<string, {until: number; failures: number}>();
 const pending = new Map<string, Promise<unknown>>();
 function rangeTab(range: string) { return range.split("!")[0].replace(/^'|'$/g, ""); }
+export function invalidateMetadata(sheetId: string) {
+  for (const key of cache.keys()) if (key.startsWith(`${sheetId}?fields=`)) cache.delete(key);
+}
 export function invalidate(sheetId: string, tabs?: string[]) {
   generations.set(sheetId, (generations.get(sheetId) || 0) + 1);
   for (const key of cache.keys()) {
@@ -18,10 +22,13 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
   const key = `${sheetId}${suffix}`;
   if (method === "GET" && !fresh) {
     const hit = cache.get(key);
-    if (hit && Date.now() - hit.storedAt < (suffix.startsWith("?fields=") ? 60_000 : ttlMs)) return hit.value as T;
+    if (hit && Date.now() - hit.storedAt < (suffix.startsWith("?fields=") ? 24 * 3600_000 : ttlMs)) return hit.value as T;
     const running = pending.get(key);
     if (running) return running as Promise<T>;
   }
+  const kind = method === "GET" ? "read" : "write";
+  const cooldown = cooldowns.get(kind);
+  if (cooldown && cooldown.until > Date.now()) throw new VotingError("Google Sheets is busy. Retrying shortly.", 429, Math.ceil((cooldown.until - Date.now()) / 1000));
   const generation = generations.get(sheetId) || 0;
   const execute = async () => {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -37,7 +44,17 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
         ...(data === undefined ? {} : { body: JSON.stringify(data) }), cache: "no-store", signal: AbortSignal.timeout(15_000),
       });
     } catch { throw new VotingError("Google Sheets is unavailable. Your local ballot is safe; please retry.", 503); }
-    if (!response.ok) throw new VotingError(response.status === 429 ? "Google Sheets is busy. Please retry in a moment." : "Cannot access the election spreadsheet. Check its link, sharing permissions, and tab structure.", response.status === 429 ? 429 : 503);
+    if (response.status === 429) {
+      const failures = (cooldowns.get(kind)?.failures || 0) + 1;
+      const delay = Math.min(30_000, 1000 * 2 ** (failures - 1));
+      cooldowns.set(kind, {until: Date.now() + delay, failures});
+      throw new VotingError("Google Sheets is busy. Retrying shortly.", 429, Math.ceil(delay / 1000));
+    }
+    if (response.ok) cooldowns.delete(kind);
+    if (!response.ok) {
+      invalidateMetadata(sheetId);
+      throw new VotingError("Cannot access the election spreadsheet. Check its link, sharing permissions, and tab structure.", 503);
+    }
     const result = await response.json() as T;
     if (method === "GET") {
       if (cache.size > 100) cache.clear();
@@ -78,6 +95,7 @@ export async function writeRanges(id: string, data: { range: string; values: (st
 export async function readControlSheet(id: string, fresh = false, maxAge = 30_000) {
   const meta = await sheets<{sheets: {properties: {title: string}}[]}>(id, "?fields=sheets.properties.title");
   const hasHistory = meta.sheets.some(sheet => sheet.properties.title === "Session History");
+  if (!hasHistory) invalidateMetadata(id);
   const tables = await readRanges(id, ["'Settings'!A:B", ...(hasHistory ? ["'Session History'!A:F"] : [])], fresh, maxAge);
   return {settings: tables[0], history: hasHistory ? tables[1] : undefined};
 }
