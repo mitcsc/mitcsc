@@ -41,6 +41,7 @@ async function main() {
       joinRequests.push(route.request().postDataJSON()); authenticated = true;
       return reply(200, { ok: true });
     }
+    if (path.endsWith('/ballot')) return reply(200, {initialRatings:{reliability:2,experience:null}, finalRatings:state.ownBallot?.submitted ? {reliability:4,experience:null} : null, submissionId:state.ownBallot?.submitted ? 'recovered-vote' : null});
     if (path.endsWith('/initial')) return reply(200, {ok:true});
     if (path.endsWith('/submit')) {
       const ballot = route.request().postDataJSON(); submissions.push(ballot);
@@ -70,7 +71,10 @@ async function main() {
     state.votingStarted = true;
     await refreshPhase('initial');
     await page.getByRole('heading', { name: 'Alex Chen' }).waitFor();
-    assert.deepEqual(joinRequests, [{ name: 'Test Voter', password: 'private-test-password', role: 'voter' }]);
+    assert.equal(joinRequests.length, 1);
+    assert.equal(joinRequests[0].name, 'Test Voter');
+    assert.equal(joinRequests[0].password, 'private-test-password');
+    assert.match(joinRequests[0].joinId, /^[0-9a-f-]{36}$/);
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: 'Not enough information' }).count(), 0);
     assert.equal(await fieldset('Experience').getByRole('radio', { name: 'Not enough information' }).count(), 1);
     await page.getByRole('button', { name: 'Save ratings' }).click();
@@ -144,8 +148,20 @@ async function main() {
     assert.equal(await page.getByText('Morgan Lee', { exact: true }).count(), 0);
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '4', exact: true }).isChecked(), false);
     await refreshPhase('final');
-    await page.getByRole('status').filter({ hasText: 'No saved initial ratings were found' }).waitFor();
+    await page.getByRole('status').filter({ hasText: 'You did not submit initial ratings' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Submit vote' }).count(), 0);
+    // Recover accepted initial and final ballots after browser storage is cleared.
+    state.ownBallot = {initialSubmitted:true,submitted:false}; state.pollIntervalMs=2000;
+    await page.evaluate(()=>localStorage.clear()); await page.reload();
+    await page.getByRole('button',{name:'Submit vote'}).waitFor();
+    assert.equal(await fieldset('Reliability').getByRole('radio',{name:'2',exact:true}).isChecked(),true);
+    await rate('Reliability',5);
+    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+    assert.equal(await fieldset('Reliability').getByRole('radio',{name:'5',exact:true}).isChecked(),true,'Polling must preserve unsent revisions');
+    state.ownBallot.submitted=true;
+    await page.evaluate(()=>localStorage.clear()); await page.reload();
+    await page.getByRole('heading',{name:'Vote submitted for Jordan Wu'}).waitFor();
+    assert.equal(submissions.length,4,'Recovery does not resubmit a ballot');
     // Presidents are routed to controls and never receive a ballot.
     state.isAdmin = true;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));

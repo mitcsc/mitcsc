@@ -22,7 +22,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     const payload = route.request().method() === 'POST' ? route.request().postDataJSON() : null;
     const reply = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
     if (endpoint === 'join') {
-      assert.equal(payload.role, 'voter');
+      assert.match(payload.joinId, /^[0-9a-f-]{36}$/);
       assert.equal(payload.name, 'Test President');
       if (payload.password !== 'test-admin') return reply({ error: 'Incorrect password.' }, 401);
       authenticated = true;

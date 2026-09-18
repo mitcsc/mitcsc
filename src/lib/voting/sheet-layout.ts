@@ -1,5 +1,5 @@
 import type { Candidate, Criterion } from "./types";
-import { readRanges, sheets, writeRanges } from "./sheets";
+import { readRanges, sheets } from "./sheets";
 
 
 type Sheet = {properties: {sheetId: number; title: string}};
@@ -30,15 +30,21 @@ export async function polishElectionSheet(id: string, tabs: Sheet[], criterionCo
   await sheets(id, ":batchUpdate", "POST", {requests});
 }
 
-export async function writeSummary(id: string, candidates: Candidate[], criteria: Criterion[]) {
-  // Summary is a pivot: one candidate per row, one numeric final average per criterion.
-  // Clear only this app-managed report so older query spill results cannot remain underneath it.
-  await sheets(id, `/values/${encodeURIComponent("'Summary'!A1:V102")}:clear`, "POST", {});
-  await writeRanges(id, [{range: "'Summary'!A1", values: [["Candidate", ...criteria.map(c => c.label), "Votes"], ...candidates.map(c => [c.name])]}]);
+export async function writeSummary(id: string, candidates: Candidate[], criteria: Criterion[], sheetId: number) {
   const quoted = (value: string) => '"' + value.replace(/"/g, '""') + '"';
-  const values = candidates.map(candidate => [
-    ...criteria.map(c => `=IFERROR(AVERAGEIFS(Responses!$K$2:$K,Responses!$C$2:$C,${quoted(candidate.id)},Responses!$H$2:$H,${quoted(c.id)}),"")`),
-    `=COUNTUNIQUEIFS(Responses!$E$2:$E,Responses!$C$2:$C,${quoted(candidate.id)},Responses!$E$2:$E,"<>")`,
-  ]);
-  if (values.length) await sheets(id, "/values:batchUpdate", "POST", {valueInputOption: "USER_ENTERED", data: [{range: "'Summary'!B2", values}]});
+  const literal = (value: string) => ({userEnteredValue: {stringValue: value}});
+  const formula = (value: string) => ({userEnteredValue: {formulaValue: value}});
+  const rows = [
+    {values: ["Candidate", ...criteria.map(c => c.label), "Votes"].map(literal)},
+    ...candidates.map(candidate => ({values: [literal(candidate.name),
+      ...criteria.map(c => formula(`=IFERROR(AVERAGEIFS(Responses!$K$2:$K,Responses!$C$2:$C,${quoted(candidate.id)},Responses!$H$2:$H,${quoted(c.id)}),"")`)),
+      formula(`=COUNTUNIQUEIFS(Responses!$E$2:$E,Responses!$C$2:$C,${quoted(candidate.id)},Responses!$E$2:$E,"<>")`),
+    ]})),
+  ];
+  // One atomic replacement. Typed strings keep names beginning with '=' literal.
+  // Cells omitted within this app-owned range are cleared in the same request.
+  await sheets(id, ":batchUpdate", "POST", {requests: [{updateCells: {
+    range: {sheetId, startRowIndex: 0, endRowIndex: 102, startColumnIndex: 0, endColumnIndex: 22},
+    rows, fields: "userEnteredValue",
+  }}]});
 }

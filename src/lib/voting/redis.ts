@@ -29,7 +29,7 @@ export async function redisCommand<T>(...command: (string | number)[]): Promise<
 export function redisKey(...parts: string[]) {
   return `csc:voting:v1:${createHash("sha256").update(JSON.stringify(parts)).digest("hex")}`;
 }
-const CAS = `if redis.call('GET', KEYS[1]) == ARGV[1] then redis.call('SET', KEYS[1], ARGV[2]); if ARGV[3] then redis.call('SET', KEYS[2], ARGV[3]) end; return 1 else return 0 end`;
+const CAS = `if redis.call('GET', KEYS[1]) == ARGV[1] then if ARGV[3] then redis.call('MSET', KEYS[1], ARGV[2], KEYS[2], ARGV[3]) else redis.call('SET', KEYS[1], ARGV[2]) end; return 1 else return 0 end`;
 export async function compareAndSet(key: string, before: string, after: string, view?: string) {
   // Session data has no expiry. A successful vote remains stored until explicitly archived.
   return await redisCommand<number>("EVAL", CAS, 2, key, `${key}:view`, before, after, ...(view ? [view] : [])) === 1;

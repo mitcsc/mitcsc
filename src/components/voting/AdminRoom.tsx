@@ -62,7 +62,7 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
     const revision = generation.current;
     const abort = new AbortController(); controller.current = abort;
     try {
-      const response = await fetch("/api/voting/state", {cache: "no-store", signal: abort.signal});
+      const response = await fetch("/api/voting/state", {cache: "no-store", signal: AbortSignal.any([abort.signal, AbortSignal.timeout(20000)])});
       if (revision !== generation.current) return;
       if (response.status === 401) { onExit(); return; }
       const next: VotingState = await responseData(response);
@@ -78,16 +78,16 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
   }, [applyState, onExit]);
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => {void refresh();}, 8000);
+    const timer = window.setInterval(() => {void refresh();}, initialState.pollIntervalMs || 8000);
     const visible = () => {if (!document.hidden) void refresh();};
     document.addEventListener("visibilitychange", visible);
     return () => {window.clearInterval(timer); document.removeEventListener("visibilitychange", visible); controller.current?.abort();};
-  }, [refresh]);
+  }, [refresh, initialState.pollIntervalMs]);
   const act = async (action: AdminAction) => {
     if (mutating.current) return false;
     mutating.current = true; generation.current++; setBusy(true); setError("");
     try {
-      const next: VotingState = await responseData(await fetch("/api/voting/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(action)}));
+      const next: VotingState = await responseData(await fetch("/api/voting/admin", {signal: AbortSignal.timeout(65000), method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({...action, ...(action.action === "setPhase" ? {expected: {candidateId: serverState?.currentCandidate?.id || "", version: serverState?.ballotVersion || "", phase: serverState?.phase}} : {})})}));
       applyState(next);
       if (action.action === "setPhase") {
         const upcoming = action.phase === "locked" ? candidates.find(candidate => candidate.id !== next.currentCandidate?.id && next.candidates?.some(updated => updated.id === candidate.id && !updated.completed)) : undefined;

@@ -7,9 +7,11 @@ export function json(value: unknown, status = 200) {
   return NextResponse.json(value, { status, headers: { "Cache-Control": "private, no-store, max-age=0", "Vary": "Cookie", "X-Content-Type-Options": "nosniff" } });
 }
 export async function session(admin = false) {
-  const config = await settings();
   const jar = await cookies();
-  const admitted = authorize(readIdentity(jar.get(COOKIE)?.value), config);
+  const raw = readIdentity(jar.get(COOKIE)?.value);
+  if (!raw) throw new VotingError("Join the session.", 401);
+  const config = await settings();
+  const admitted = authorize(raw, config);
   const identity = await canonicalIdentity(config, admitted);
   authorize(identity, config, admin);
   return { config, identity };

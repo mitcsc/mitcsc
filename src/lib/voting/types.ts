@@ -16,6 +16,9 @@ export interface VotingState {
   isAdmin: boolean;
   initialized: boolean;
   exportPending?: boolean;
+  ownBallot?: {initialSubmitted: boolean; submitted: boolean};
+  eligible?: boolean;
+  pollIntervalMs?: number;
   participants?: { id: string; name: string; submitted: boolean; initialSubmitted?: boolean }[];
   candidateStates?: {candidateId: string; phase: VotingPhase; ballotVersion: string; submittedCount: number; participants: NonNullable<VotingState["participants"]>}[];
   candidates?: Candidate[];
@@ -34,3 +37,5 @@ export type AdminAction =
   | { action: "saveSetup"; candidates: Candidate[]; criteria: Criterion[] }
   | { action: "setPhase"; phase: VotingPhase; candidateId?: string }
   | { action: "setContext"; visible: boolean };
+
+export interface RecoveredBallot { initialRatings: Ratings | null; finalRatings: Ratings | null; submissionId: string | null }

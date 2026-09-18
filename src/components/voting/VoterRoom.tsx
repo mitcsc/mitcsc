@@ -5,7 +5,7 @@ import WaitingPanda from "./WaitingPanda";
 import AdminRoom from "./AdminRoom";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FinalBallot, Ratings, VotingPhase, VotingState } from "@/lib/voting/types";
+import type { FinalBallot, RecoveredBallot, Ratings, VotingPhase, VotingState } from "@/lib/voting/types";
 
 type Draft = {
   ratings: Ratings;
@@ -54,8 +54,8 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
     } catch (error) {
       const status = (error as Error & {status?: number}).status;
       if (!ballot || attempt >= 4 || (status !== undefined && ![429, 502, 503, 504].includes(status))) throw error;
-      const delay = Math.max(Math.min(30_000, 5000 * 2 ** attempt), Math.min(60_000, retryAfter * 1000));
-      await new Promise(resolve => setTimeout(resolve, delay + Math.random() * 2000));
+      const delay = Math.max(Math.min(30_000, 1000 * 2 ** attempt), Math.min(60_000, retryAfter * 1000));
+      await new Promise(resolve => setTimeout(resolve, delay + Math.random() * 500));
     }
   }
 }
@@ -74,6 +74,7 @@ export default function VoterRoom() {
   const pollAfter = useRef(0);
   const pollFailures = useRef(0);
   const joinRequired = useRef(false);
+  const joinToken = useRef<string | null>(null);
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -102,7 +103,7 @@ export default function VoterRoom() {
   useEffect(() => {
     if (state?.isAdmin) return;
     void refresh();
-    const timer = window.setInterval(() => { if (!document.hidden && !joinRequired.current && Date.now() >= pollAfter.current) void refresh(); }, 4000);
+    const timer = window.setInterval(() => { if (!document.hidden && !joinRequired.current && Date.now() >= pollAfter.current) void refresh(); }, state?.pollIntervalMs || 4000);
     const resume = () => { if (!document.hidden && !joinRequired.current && Date.now() >= pollAfter.current) void refresh(); };
     const offline = () => { setConnected(false); setError("You are offline. Local drafts stay on this browser; reconnect before submitting."); };
     window.addEventListener("focus", resume);
@@ -116,7 +117,7 @@ export default function VoterRoom() {
       window.removeEventListener("offline", offline);
       document.removeEventListener("visibilitychange", resume);
     };
-  }, [refresh, state?.isAdmin]);
+  }, [refresh, state?.isAdmin, state?.pollIntervalMs]);
   const countPending = useCallback(() => {
     if (!state?.voter) return;
     try {
@@ -141,8 +142,10 @@ export default function VoterRoom() {
     event.preventDefault();
     setJoining(true); setError("");
     try {
-      let joinId = sessionStorage.getItem("csc-voting-join-id");
-      if (!joinId) { joinId = crypto.randomUUID(); sessionStorage.setItem("csc-voting-join-id", joinId); }
+      let joinId = joinToken.current;
+      try { joinId ||= sessionStorage.getItem("csc-voting-join-id"); } catch { /* Storage can be disabled. */ }
+      joinId ||= crypto.randomUUID(); joinToken.current = joinId;
+      try { sessionStorage.setItem("csc-voting-join-id", joinId); } catch { /* Keep the retry identity in memory. */ }
       await api("join", { name: name.trim(), password, joinId });
       setPassword("");
       await refresh();
@@ -192,9 +195,33 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     try { localStorage.setItem(key, JSON.stringify(next)); setStorageError(false); }
     catch { setStorageError(true); }
   }
+  const [recovering, setRecovering] = useState(!!state.ownBallot?.initialSubmitted && !draft.initialConfirmed);
+  useEffect(() => {
+    if (!connected || !state.ownBallot?.initialSubmitted || (draftRef.current.initialConfirmed && (!state.ownBallot.submitted || draftRef.current.submitted))) return;
+    let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    setRecovering(true);
+    async function restore() {
+      try {
+        const saved = await api<RecoveredBallot>(`ballot?candidateId=${encodeURIComponent(state.currentCandidate!.id)}&version=${encodeURIComponent(state.ballotVersion)}`);
+        if (cancelled) return;
+        const current = draftRef.current;
+        if (saved.initialRatings) persist({...current, initial: saved.initialRatings, initialConfirmed: true,
+          final: saved.finalRatings || (current.initial ? current.final : saved.initialRatings),
+          submitted: !!saved.submissionId || current.submitted, submissionId: saved.submissionId || current.submissionId});
+        setRecovering(false);
+      } catch {
+        if (!cancelled) retry = setTimeout(() => void restore(), 2000);
+      }
+    }
+    void restore();
+    return () => { cancelled = true; clearTimeout(retry); };
+    // The ballot component remounts when candidate or version changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, state.ownBallot?.initialSubmitted, state.ownBallot?.submitted]);
   const initialOpen = state.phase === "initial" && !draft.initial;
   const revisionsOpen = ["revision", "final"].includes(state.phase) && !!draft.initial;
-  const editable = connected && !busy && !draft.submitted && !draft.submissionId && (initialOpen || revisionsOpen);
+  const editable = connected && !recovering && !busy && !draft.submitted && !draft.submissionId && (initialOpen || revisionsOpen);
   const values = draft.initial ? draft.final : draft.ratings;
   function validate(ratings: Ratings) {
     return state.criteria.every(c => {
@@ -239,13 +266,15 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   }
   const phase = phases[state.phase];
   if (state.phase === "deliberation") return <section className="voter-discussion" aria-label="Discussion"><WaitingPanda/><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer" role="status">Discussion in progress</p></section>;
-  if (draft.submitted) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>Vote submitted for {state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer">Waiting for the next candidate</p></section>;
+  if (draft.submitted || state.ownBallot?.submitted) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>Vote submitted for {state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer">Waiting for the next candidate</p></section>;
+  if (state.eligible === false) return <section className="voter-submitted" role="status"><WaitingPanda/><p className="voter-discussion-shimmer">Waiting for the next candidate</p></section>;
+  if (recovering) return <section className="voter-submitted" role="status"><p>Restoring your ratings…</p></section>;
   return <section className="voter-panel voter-ballot">
     <div className="voter-ballot-heading"><span className="voter-phase">{phase.label}</span><h2>{state.currentCandidate!.name}</h2></div>
 
-    {storageError && <div className="voter-alert" role="alert">Browser storage is unavailable or unreadable. Ratings currently exist only in this open page; do not refresh or close it before submitting.</div>}
+    {storageError && <div className="voter-alert" role="alert">Browser storage is unavailable or unreadable. Unsaved edits will be lost if you close this page. Accepted ratings can be restored from the server.</div>}
     {draft.submitted ? <div className="voter-success" role="status"><h3>Ballot received.</h3><p>Your ratings have been submitted.</p></div> : <>
-      {!draft.initial && state.phase !== "initial" && <div className="voter-alert" role="status">No saved initial ratings were found for this ballot on this browser. You cannot submit a final ballot yet. Tell your admin; if you voted in another browser, return to that browser.</div>}
+      {!draft.initial && state.phase !== "initial" && <div className="voter-alert" role="status">You did not submit initial ratings for this candidate. Wait for the next candidate.</div>}
       {draft.submissionId && <div className="voter-alert" role="status">A final submission was attempted but has not been confirmed on this browser. These ratings are preserved for retry when final submission is open.</div>}
 
     </>}

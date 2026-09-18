@@ -1,5 +1,5 @@
 import { redisEnabled } from "./redis";
-import { redisSettings, redisState, redisAdminAction, redisSubmit } from "./redis-service";
+import { redisSettings, redisState, redisAdminAction, redisSubmit, redisRecoverBallot } from "./redis-service";
 import { sessionVoters } from "./admin-identity";
 import { randomUUID } from "node:crypto";
 import { Identity, VotingError, text } from "./security";
@@ -16,10 +16,10 @@ export const HEADERS = {
 };
 const PHASES: VotingPhase[] = ["waiting", "initial", "deliberation", "revision", "final", "locked"];
 export interface Settings { sessionId: string; password: string; sheetId: string; settingsSheetId: string }
-export async function sheetSettings(): Promise<Settings> {
+export async function sheetSettings(fresh = false): Promise<Settings> {
   const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
-  const {settings: rows} = await readControlSheet(id, false, 120_000);
+  const rows = fresh ? (await readRanges(id, ["'Settings'!A:B"], true))[0] : (await readControlSheet(id, false, 120_000)).settings;
   const values = Object.fromEntries(rows.map(row => [row[0]?.trim(), row[1] || ""]));
   const raw = values.voting_sheet_url || "";
   const sheetId = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] || (/^[a-zA-Z0-9_-]{15,}$/.test(raw) ? raw : "");
@@ -338,3 +338,5 @@ export async function getState(config: Settings, identity: Identity) { return re
 export async function adminAction(config: Settings, identity: Identity, input: Record<string, unknown>) { return redisEnabled() ? redisAdminAction(config, identity, input) : sheetAdminAction(config, identity, input); }
 export async function submitInitial(config: Settings, identity: Identity, input: Record<string, unknown>) { return redisEnabled() ? redisSubmit(config, identity, input, true) : sheetSubmitInitial(config, identity, input); }
 export async function submit(config: Settings, identity: Identity, input: Record<string, unknown>) { return redisEnabled() ? redisSubmit(config, identity, input, false) : sheetSubmit(config, identity, input); }
+
+export async function recoverBallot(config: Settings, identity: Identity, candidateId: string, version: string) { return redisEnabled() ? redisRecoverBallot(config, identity, candidateId, version) : {initialRatings: null, finalRatings: null, submissionId: null}; }

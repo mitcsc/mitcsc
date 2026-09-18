@@ -68,6 +68,19 @@ const googleFetch = async (input, options = {}) => {
       assert.ok(!book.has(title), 'Duplicate tab creation');
       book.set(title, []);
     }
+    for (const request of data.requests) if (request.updateCells) {
+      const {range, rows, fields} = request.updateCells;
+      assert.equal(fields, 'userEnteredValue');
+      const title = [...book.keys()][range.sheetId];
+      const target = book.get(title);
+      for (let r=range.startRowIndex; r<range.endRowIndex; r++) {
+        target[r] ||= [];
+        for (let c=range.startColumnIndex; c<range.endColumnIndex; c++) {
+          const value = rows[r-range.startRowIndex]?.values[c-range.startColumnIndex]?.userEnteredValue;
+          target[r][c] = value?.stringValue ?? value?.formulaValue ?? '';
+        }
+      }
+    }
     return json({ replies: data.requests.map(() => ({})) });
   }
   if (suffix.endsWith(':append')) {
@@ -184,4 +197,107 @@ test('30 concurrent voters: atomic admission, no Sheets traffic while live, retr
   const key=redis.redisKey('session',config.settingsSheetId,config.sheetId,config.sessionId);
   await redis.redisCommand('DEL',key,`${key}:view`);
   await assert.rejects(service.getState(config,admin),e=>e.status===503 && /missing/.test(e.message),'Missing Redis cannot reset an election from stale Sheets');
+});
+
+async function election(suffix, count=3) {
+  const cfg={...config,sessionId:`audit-${suffix}`,sheetId:`audit-election-${suffix}`};
+  books.set(cfg.sheetId,new Map([['Sheet1',[]]]));
+  const admin=await identity.claimIdentity(cfg,'Admin',null);
+  const voters=await Promise.all(Array.from({length:count},(_,i)=>identity.claimIdentity(cfg,`Voter ${i}`,null)));
+  await service.adminAction(cfg,admin,{action:'initialize'});
+  await service.adminAction(cfg,admin,{action:'saveSetup',candidates,criteria});
+  return {cfg,admin,voters};
+}
+async function open(e,id) {return service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'initial',candidateId:id});}
+const initialPayload=s=>({sessionId:s.sessionId,candidateId:s.currentCandidate.id,ballotVersion:s.ballotVersion,ratings});
+const finalPayload=(s,v)=>({...initialPayload(s),submissionId:`vote-${v.id}`,initialRatings:ratings,finalRatings:{c1:4,c2:5,c3:3}});
+
+test('exports are compact when candidates run out of order and reopen',async()=>{
+ const e=await election('compact'); const {cfg,admin,voters}=e;
+ let s=await open(e,'b');
+ await Promise.all(voters.map(v=>service.submitInitial(cfg,v,initialPayload(s))));
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'revision'});
+ await Promise.all(voters.slice(0,2).map(v=>service.submit(cfg,v,finalPayload(s,v))));
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'locked'});
+ const rows=books.get(cfg.sheetId).get('Responses');
+ assert.equal(rows.length,7,'Two three-criterion ballots occupy six adjacent rows');
+ s=await open(e,'a');
+ await Promise.all(voters.map(v=>service.submitInitial(cfg,v,initialPayload(s))));
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'revision'});
+ await Promise.all(voters.map(v=>service.submit(cfg,v,finalPayload(s,v))));
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'locked'});
+ s=await service.adminAction(cfg,admin,{action:'setPhase',phase:'final',candidateId:'b'});
+ await service.submit(cfg,voters[2],finalPayload(s,voters[2]));
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'locked'});
+ assert.equal(rows.length,19);
+ assert.equal(rows.slice(1).filter(r=>r?.[0]).length,18);
+ assert.equal(new Set(rows.slice(1).map(r=>`${r[2]}:${r[4]}:${r[7]}`)).size,18);
+});
+
+test('Redis restores initial ratings and keeps the original values authoritative',async()=>{
+ const e=await election('recovery');const {cfg,admin,voters}=e;const s=await open(e,'a');
+ await service.submitInitial(cfg,voters[0],initialPayload(s));
+ assert.equal(typeof service.recoverBallot,'function');
+ const saved=await service.recoverBallot(cfg,voters[0],'a',s.ballotVersion);
+ assert.deepEqual(saved.initialRatings,ratings);
+ const other=await service.recoverBallot(cfg,voters[1],'a',s.ballotVersion);
+ assert.equal(other.initialRatings,null,'A voter cannot recover another person’s ratings');
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'revision'});
+ await service.submit(cfg,voters[0],{...finalPayload(s,voters[0]),initialRatings:{c1:1,c2:1,c3:1}});
+ const final=await service.recoverBallot(cfg,voters[0],'a',s.ballotVersion);
+ assert.deepEqual(final.initialRatings,ratings,'Final submission cannot rewrite the saved first impression');
+ await assert.rejects(service.submit(cfg,voters[1],finalPayload(s,voters[1])),e=>e.status===409);
+});
+
+test('late arrivals join the next round and stale admin controls cannot change the live round',async()=>{
+ const e=await election('late',1); const {cfg,admin}=e;
+ const a=await open(e,'a');
+ const late=await identity.claimIdentity(cfg,'Late voter',null);
+ assert.equal((await service.getState(cfg,late)).eligible,false);
+ await assert.rejects(service.submitInitial(cfg,late,initialPayload(a)),e=>e.status===409);
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'locked'});
+ const b=await open(e,'b');
+ assert.equal((await service.getState(cfg,late)).eligible,true);
+ await service.submitInitial(cfg,late,initialPayload(b));
+ await assert.rejects(service.adminAction(cfg,admin,{action:'setPhase',phase:'locked',expected:{candidateId:'a',version:a.ballotVersion,phase:'initial'}}),e=>e.status===409);
+ assert.equal((await service.getState(cfg,admin)).phase,'initial');
+ const key=redis.redisKey('session',cfg.settingsSheetId,cfg.sheetId,cfg.sessionId);
+ const view=JSON.parse(await redis.redisCommand('GET',`${key}:view`));
+ assert.equal(view.rounds.b.initialRatings,undefined,'Polling projection contains no rating values');
+});
+
+test('existing election row addresses remain unchanged after upgrading',async()=>{
+ const e=await election('legacy',1);const {cfg,admin,voters}=e;
+ const key=redis.redisKey('session',cfg.settingsSheetId,cfg.sheetId,cfg.sessionId);
+ const doc=JSON.parse(await redis.redisCommand('GET',key)); delete doc.exportRows;
+ await redis.redisCommand('SET',key,JSON.stringify(doc));
+ const s=await open(e,'b'); await service.submitInitial(cfg,voters[0],initialPayload(s));
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'revision'});
+ await service.submit(cfg,voters[0],finalPayload(s,voters[0]));
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'locked'});
+ const rows=books.get(cfg.sheetId).get('Responses');
+ assert.equal(rows[385][2],'b');
+ assert.equal(rows.filter(r=>r?.[0]===`vote-${voters[0].id}`).length,3);
+ const summary=books.get(cfg.sheetId).get('Summary');
+ assert.equal(summary[1][0],'Candidate 1'); assert.equal(summary[2][0],'Candidate 2');
+ assert.match(summary[2][1],/AVERAGEIFS.*"b".*"c1"/);
+ const updates=requests.filter(r=>r.id===cfg.sheetId && r.data?.requests?.some(x=>x.updateCells));
+ assert.equal(updates.length,1,'Summary names and formulas change atomically');
+ assert.equal(requests.filter(r=>r.id===cfg.sheetId && r.suffix.endsWith(':clear')).length,0);
+});
+
+test('expired shared settings refresh bypasses old Sheets cache and coalesces concurrent readers',async()=>{
+ const key=redis.redisKey('settings',config.settingsSheetId);
+ await service.settings();
+ books.get(config.settingsSheetId).get('Settings')[1][1]='changed-test-password';
+ await redis.redisCommand('DEL',key);
+ const now=Date.now; const later=now()+6000; Date.now=()=>later;
+ const before=requests.length;
+ try {
+   const values=await Promise.all(Array.from({length:30},()=>service.settings()));
+   assert.ok(values.every(v=>v.password==='changed-test-password'));
+   const reads=requests.slice(before).filter(r=>r.suffix==='/values:batchGet');
+   assert.equal(reads.length,1,'All instances share one refresh');
+   assert.ok((await redis.redisCommand('TTL',key))<=30);
+ } finally {Date.now=now;}
 });

@@ -2,7 +2,7 @@
 
 The voting app uses Redis for live session state, registrations, initial submission receipts, and final ballots.
 Google Sheets holds the session settings and receives results when the admin closes each candidate.
-Initial ratings and revisions stay in the voter’s browser until final submission.
+Saving initial ratings stores them in Redis. Unsubmitted revisions remain in the browser; final submission stores them in Redis too.
 
 ## Deployment
 
@@ -49,11 +49,12 @@ Future presidents do not need Vercel access for routine elections.
 
 ## Storage and exports
 
-Voters poll every four seconds; admins poll every eight seconds.
+With Redis, voters and admins poll every two seconds. Hidden tabs stop polling.
+The legacy Sheets-only mode retains its four/eight-second intervals.
 They read a shared Redis status document containing no rating values.
-Settings are shared through Redis for two minutes, with short per-process caching.
-The Sheets settings adapter can retain a previous value for another two minutes.
-Allow up to roughly four minutes for changes made directly in the settings sheet to take effect.
+Settings are refreshed directly from Sheets into a shared Redis cache every 30 seconds,
+with up to five seconds of additional per-process caching. There is no second Sheets cache delay.
+Allow roughly 35 seconds plus request latency for settings edits to propagate.
 Admin phase changes do not wait for that cache.
 
 Submitting a ballot saves it in Redis before the voter receives confirmation.
@@ -61,6 +62,9 @@ An atomic compare-and-set validates the phase and stores the ballot together.
 A simultaneous close cannot discard a submission that has already been acknowledged.
 Retries return the existing receipt instead of creating another ballot.
 The live documents have no expiry.
+Accepted initial ratings are authoritative; final submission cannot replace the original ratings.
+A signed-in voter can recover their own accepted ratings after losing browser drafts, but cannot retrieve another voter’s ratings.
+Late arrivals become eligible starting with the next candidate.
 
 Closing a candidate freezes submissions and exports their votes and initial receipts in one Sheets values batch.
 Tab creation, row allocation, and the summary formula can require additional setup calls.
@@ -68,13 +72,19 @@ The app marks the candidate complete only after Sheets acknowledges the export.
 If export fails, the admin sees **Retry export to Sheets**.
 The votes remain in Redis, and another candidate cannot start until export succeeds.
 Reopening preserves existing votes and the original ballot version.
-Exports use fixed cells, so a retry or delayed older export cannot duplicate or erase a newer vote.
+New elections allocate contiguous row addresses in Redis for actual ballots when a candidate closes.
+Retries reuse those addresses; late submissions after reopening receive the next unused rows.
+There are no reserved 128-voter gaps. Responses follows export order; Summary follows setup order.
+Candidate and criterion IDs keep ratings correctly associated regardless of voting order.
+Existing elections without compact allocation metadata retain their old addresses. Never compact a running election.
+Summary names and formulas update together in one request, rather than clearing the report first.
 
 The app manages Candidates, Criteria, Responses, Summary, Session, Ballots, and Initial submissions tabs.
 Summary and Responses remain visible; app-managed tabs are hidden automatically on export.
 The original Sheet1 is hidden only if it is empty.
 Summary shows one candidate per row, one final-average column per criterion, and a vote count.
-Averages display to two decimal places; initial ratings remain in Responses.
+Averages display to two decimal places; submitted initial/final ratings remain in Responses.
+Initial submissions also archives accepted initial ratings and voter names, including voters who never submitted a final ballot.
 Keep app-managed headers and IDs intact.
 The Summary formula computes averages from exported final ballots.
 Setup changes are saved in Redis; Sheets receives the frozen definitions with the first candidate export.
