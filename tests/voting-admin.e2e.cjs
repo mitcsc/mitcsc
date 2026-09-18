@@ -58,11 +58,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
   };
   try {
     await page.goto(`${process.env.VOTING_TEST_URL || 'http://127.0.0.1:3113'}/vote`);
-    await page.getByLabel('Your name').fill('Test President');
-    await page.getByLabel('Session password').fill('wrong');
+    await page.getByLabel('Name').fill('Test President');
+    await page.getByLabel('Code').fill('wrong');
     await button('Join').click();
     await page.getByRole('alert').filter({ hasText: 'Incorrect password' }).waitFor();
-    await page.getByLabel('Session password').fill('test-admin');
+    await page.getByLabel('Code').fill('test-admin');
     await button('Join').click();
     await button('Set up election').click();
     await page.getByRole('region', { name: 'Ballot setup' }).waitFor();

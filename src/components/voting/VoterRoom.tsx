@@ -161,8 +161,8 @@ export default function VoterRoom() {
       <Image className="voter-join-logo" src="/img/logo/logo.png" alt="MIT CSC" width={144} height={144} priority/>
 
       <form onSubmit={join}>
-        <label htmlFor="voter-name"><span className="voting-sr-only">Your name</span><input placeholder="Your name" id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} /></label>
-        <label htmlFor="voter-password"><span className="voting-sr-only">Session password</span><input placeholder="Session password" id="voter-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
+        <label htmlFor="voter-name"><span className="voting-sr-only">Name</span><input placeholder="Name" id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} /></label>
+        <label htmlFor="voter-password"><span className="voting-sr-only">Code</span><input placeholder="Code" id="voter-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
         <button className="voter-primary" disabled={joining || !name.trim() || !password}>{joining ? "Joining…" : "Join"}</button>
       </form>
     </section>}

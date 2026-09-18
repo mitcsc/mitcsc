@@ -22,10 +22,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
  });
  try {
   await page.goto(`${process.env.VOTING_TEST_URL}/vote/admin`);
-  await page.getByLabel('President password').fill('wrong');await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await page.getByLabel('Code').fill('wrong');await page.getByRole('button',{name:'Continue',exact:true}).click();
   await page.getByRole('alert').filter({hasText:'Incorrect password'}).waitFor();
-  await page.getByLabel('President password').fill('correct-password');await page.getByRole('button',{name:'Continue',exact:true}).click();
-  await page.getByLabel('Election name').fill('Exec election');await page.getByLabel('Voter password').fill('voters-only');await page.getByLabel('Results spreadsheet link').fill('https://docs.google.com/spreadsheets/d/test-sheet/edit');
+  await page.getByLabel('Code').fill('correct-password');await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await page.getByLabel('Name').fill('Exec election');await page.getByLabel('Code').fill('voters-only');await page.getByLabel('Results spreadsheet link').fill('https://docs.google.com/spreadsheets/d/test-sheet/edit');
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:'/private/tmp/voting-president-setup.png'});

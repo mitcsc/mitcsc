@@ -63,8 +63,8 @@ async function main() {
   };
   try {
     await page.goto(`${baseURL}/vote`);
-    await page.getByLabel('Your name').fill('Test Voter');
-    await page.getByLabel('Session password').fill('private-test-password');
+    await page.getByLabel('Name').fill('Test Voter');
+    await page.getByLabel('Code').fill('private-test-password');
     await page.getByRole('button', { name: 'Join' }).click();
     await page.getByRole('heading', { name: 'You’re in.' }).waitFor();
     await waitText('Joined as Test Voter');
