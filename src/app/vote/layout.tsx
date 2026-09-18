@@ -3,8 +3,8 @@ import "./voting.css";
 import "./mockup.css";
 
 export const metadata: Metadata = {
-  title: "Deliberations | MIT CSC",
-  description: "Private CSC executive deliberations.",
+  title: "Voting | MIT CSC",
+  description: "Private CSC executive voting.",
   robots: { index: false, follow: false },
 };
 
