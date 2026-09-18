@@ -16,6 +16,8 @@ process.env.VOTING_SETTINGS_SHEET_ID = 'settings-test';
 const books = new Map();
 const requests = [];
 let failNextAppend = false;
+let quota;
+let beforeFixedWrite;
 function rangeParts(range) {
   const [tab, a1] = range.split('!');
   const start = (a1 || 'A1').split(':')[0];
@@ -27,7 +29,7 @@ function rangeParts(range) {
 function getRows(book, range) {
   const {tab, row, column} = rangeParts(range);
   const match = range.split(':')[1]?.match(/\d+/);
-  return (book.get(tab) || []).slice(row, match ? Number(match[0]) : undefined).map(r => r.slice(column));
+  return (book.get(tab) || []).slice(row, match ? Number(match[0]) : undefined).map(r => (r || []).slice(column));
 }
 function putRows(book, range, values) {
   const {tab, row, column} = rangeParts(range);
@@ -45,12 +47,18 @@ global.fetch = async (input, options = {}) => {
   const [, id, suffix] = match;
   const book = books.get(id);
   assert.ok(book, `Unknown mock book ${id}`);
+  if (quota) {
+    const kind = (options.method || 'GET') === 'GET' ? 'reads' : 'writes';
+    if (++quota[kind] > 60) return new Response('{}', {status:429});
+  }
   const data = options.body ? JSON.parse(options.body) : undefined;
   requests.push({ id, suffix, method: options.method, data });
   const json = value => new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } });
   if (!suffix) return json({ sheets: [...book.keys()].map((title, sheetId) => ({ properties: { title, sheetId } })) });
   if (suffix === '/values:batchGet') return json({ valueRanges: url.searchParams.getAll('ranges').map(range => ({values: getRows(book, range)})) });
   if (suffix === '/values:batchUpdate') {
+    if (beforeFixedWrite && data.data.some(entry=>entry.range.startsWith("'Responses'!"))) await beforeFixedWrite();
+    if (failNextAppend) { failNextAppend = false; return new Response('{}', {status:429}); }
     for (const entry of data.data) putRows(book, entry.range, entry.values);
     return json({});
   }
@@ -131,8 +139,7 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   await assert.rejects(service.submit(config,voter,{...ballot,ballotVersion:'stale'}), {status:409});
   await assert.rejects(service.submit(config,voter,{...ballot,finalRatings:{reliability:9}}));
   failNextAppend = true;
-  await assert.rejects(service.submit(config,voter,ballot), {status:429});
-  assert.equal(books.get(config.sheetId).get('Responses').length, 1, 'Failed write must not appear saved');
+  assert.equal((await service.submit(config,voter,ballot)).ok,true,'429 writes retry automatically');
   assert.equal((await service.submit(config,voter,ballot)).ok,true);
   assert.equal((await service.submit(config,voter,ballot)).ok,true);
   assert.equal(books.get(config.sheetId).get('Responses').length,2,'Retries must not append duplicate ratings');
@@ -149,7 +156,10 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   state = await service.getState(config,admin);
   assert.equal(state.candidates.find(c=>c.id==='alex').completed,true);
   assert.equal(state.candidates[0].id,'alex');
+  await service.adminAction(config,admin,{action:'setPhase',phase:'waiting',candidateId:'sam'});
+  assert.equal((await service.getState(config,voter)).votingStarted,true,'Voter waiting screen stays in the started session without reading ballot history');
   state = await service.adminAction(config,admin,{action:'setPhase',phase:'initial',candidateId:'sam'});
+  assert.equal(state.criteria[0].max,5,'The session keeps its frozen rubric for later candidates');
   const historical = state.candidateStates.find(c=>c.candidateId==='alex');
   assert.equal(historical.phase,'locked');
   assert.equal(historical.submittedCount,1,'Historical candidate count is independent of the live round');
@@ -165,7 +175,7 @@ test('full election: safe setup, local ballot flow, immutable criteria, submissi
   const lateVoter={...voter,id:'late-voter'};
   await service.submit(config,lateVoter,{...ballot,submissionId:'late-ballot'});
   assert.equal((await service.getState(config,admin)).submittedCount,2);
-  assert.equal(books.get(config.sheetId).get('Responses').length,3);
+  assert.equal(books.get(config.sheetId).get('Responses').filter(row=>row?.[0]).length,3);
 
 });
 test('settings privacy, password rotation, session closure and session identity', async () => {
@@ -183,4 +193,139 @@ test('malformed reserved tab prevents setup without overwriting existing data', 
   await assert.rejects(service.adminAction({...config,sheetId}, {...admin,sheetId}, {action:'initialize'}),{status:409});
   assert.deepEqual([...books.get(sheetId).keys()],['Candidates']);
   assert.deepEqual(books.get(sheetId).get('Candidates'),[['human notes'],['Preserve me']]);
+});
+
+test('30 voters: fixed rows, bounded reads, polling and retries stay within a simulated minute quota', async () => {
+  const cfg = {...config, sheetId:'load-election', sessionId:'load-session'};
+  const owner = {...admin, sheetId:cfg.sheetId, sessionId:cfg.sessionId};
+  const voters = Array.from({length:30}, (_,i)=>({...voter,id:`load-${i}`,name:`Voter ${i+1}`,voterSlot:i,sheetId:cfg.sheetId,sessionId:cfg.sessionId}));
+  books.set(cfg.sheetId,new Map());
+  const history=books.get(cfg.settingsSheetId).get('Session History');
+  history.push([cfg.sessionId,cfg.sheetId,'load-admin',owner.id,owner.name,''],...voters.map(v=>[cfg.sessionId,cfg.sheetId,v.id,v.id,v.name,'']));
+  invalidate(cfg.settingsSheetId);
+  await service.adminAction(cfg,owner,{action:'initialize'});
+  await service.adminAction(cfg,owner,{action:'saveSetup',candidates,criteria});
+  let state=await service.adminAction(cfg,owner,{action:'setPhase',phase:'initial',candidateId:'alex'});
+  const version=state.ballotVersion;
+  const start=requests.length;
+  quota={reads:0,writes:0};
+  // Exercise the actual service and Sheets HTTP adapter, including cache misses.
+  await Promise.all(voters.map(v=>service.getState(cfg,v)));
+  await Promise.all(voters.map(v=>service.submitInitial(cfg,v,{sessionId:cfg.sessionId,candidateId:'alex',ballotVersion:version,ratings:{reliability:3}})));
+  await Promise.all(voters.map(v=>service.getState(cfg,v)));
+  state=await service.getState(cfg,owner);
+  assert.equal(state.participants.filter(v=>v.initialSubmitted).length,30);
+  const initialCalls=requests.slice(start);
+  const initialReads=initialCalls.filter(r=>r.method==='GET').length;
+  const initialWrites=initialCalls.filter(r=>r.method!=='GET').length;
+  assert.ok(initialReads<=40,`Initial burst used ${initialReads} reads`);
+  assert.equal(initialWrites,30);
+  const lastPollStart=requests.length;
+  await Promise.all(voters.map(v=>service.getState(cfg,v)));
+  assert.equal(requests.length,lastPollStart,'Warm voter polling does not read Sheets per voter');
+  quota=undefined;
+  await service.adminAction(cfg,owner,{action:'setPhase',phase:'deliberation'});
+  await service.adminAction(cfg,owner,{action:'setPhase',phase:'revision'});
+  const finalStart=requests.length;
+  quota={reads:0,writes:0};
+  const payload=v=>({sessionId:cfg.sessionId,candidateId:'alex',ballotVersion:version,submissionId:`submission-${v.id}`,initialRatings:{reliability:3},finalRatings:{reliability:4}});
+  await Promise.all(voters.map(v=>service.submit(cfg,v,payload(v))));
+  state=await service.getState(cfg,owner);
+  assert.equal(state.submittedCount,30);
+  const finalCalls=requests.slice(finalStart);
+  const finalReads=finalCalls.filter(r=>r.method==='GET').length;
+  assert.ok(finalReads<=40,`Final burst used ${finalReads} reads`);
+  assert.equal(finalCalls.filter(r=>r.method!=='GET').length,30);
+  quota=undefined;
+  await service.adminAction(cfg,owner,{action:'setPhase',phase:'locked'});
+  await Promise.all(voters.map(v=>service.submit(cfg,v,payload(v))));
+  assert.equal(books.get(cfg.sheetId).get('Responses').filter(r=>r?.[0]).length,31,'Retries after closing never add rows');
+  await assert.rejects(service.submit(cfg,{...voters[0],id:'unsubmitted',voterSlot:30},payload(voters[0])),{status:409});
+  console.log(`30-voter measured bursts: initial ${initialReads} reads / ${initialWrites} writes; final ${finalReads} reads / 30 writes (separate quota windows, one warm server).`);
+});
+
+test('separate server instances retry the same ballot into one fixed row',async()=>{
+  const cfg={...config,sheetId:'load-election',sessionId:'load-session'};
+  const owner={...admin,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const state=await service.adminAction(cfg,owner,{action:'setPhase',phase:'initial',candidateId:'sam'});
+  await service.adminAction(cfg,owner,{action:'setPhase',phase:'revision'});
+  const who={...voter,id:'load-0',voterSlot:0,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const payload={sessionId:cfg.sessionId,candidateId:'sam',ballotVersion:state.ballotVersion,submissionId:'parallel-retry',initialRatings:{reliability:3},finalRatings:{reliability:4}};
+  delete require.cache[require.resolve('../src/lib/voting/sheets.ts')];
+  delete require.cache[require.resolve('../src/lib/voting/service.ts')];
+  const other=require('../src/lib/voting/service.ts');
+  await Promise.all([service.submit(cfg,who,payload),other.submit(cfg,who,payload)]);
+  const matches=books.get(cfg.sheetId).get('Responses').filter(r=>r?.[2]==='sam'&&r[4]===who.id);
+  assert.equal(matches.length,1);
+});
+
+test('close rejects new admissions but lets an admitted write finish on another instance',async()=>{
+  const cfg={...config,sheetId:'load-election',sessionId:'load-session'};
+  const owner={...admin,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const other=require('../src/lib/voting/service.ts');
+  const state=await other.getState(cfg,owner);
+  const payload={sessionId:cfg.sessionId,candidateId:'sam',ballotVersion:state.ballotVersion,submissionId:'during-close',initialRatings:{reliability:3},finalRatings:{reliability:4}};
+  let release, arrived;
+  const gate=new Promise(resolve=>{release=resolve;});
+  const writing=new Promise(resolve=>{arrived=resolve;});
+  beforeFixedWrite=async()=>{beforeFixedWrite=undefined;arrived();await gate;};
+  const who={...voter,id:'load-1',voterSlot:1,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const pending=service.submit(cfg,who,payload);
+  await writing;
+  await other.adminAction(cfg,owner,{action:'setPhase',phase:'locked'});
+  release();
+  assert.equal((await pending).ok,true);
+  const closed=await other.getState(cfg,owner);
+  assert.equal(closed.phase,'locked');
+  await assert.rejects(other.submit(cfg,{...who,id:'load-2',voterSlot:2},payload),{status:409});
+  assert.equal((await other.submit(cfg,who,payload)).ok,true,'A lost acknowledgement can be recovered after closing');
+});
+
+test('one minute of 30-voter polling plus an initial burst stays under the mock quota on one warm instance',async()=>{
+  const cfg={...config,sheetId:'minute-election',sessionId:'minute-session'};
+  const owner={...admin,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const voters=Array.from({length:30},(_,i)=>({...voter,id:`minute-${i}`,voterSlot:i,sheetId:cfg.sheetId,sessionId:cfg.sessionId}));
+  books.set(cfg.sheetId,new Map());
+  books.get(cfg.settingsSheetId).get('Session History').push([cfg.sessionId,cfg.sheetId,'minute-admin',owner.id,owner.name,''],...voters.map(v=>[cfg.sessionId,cfg.sheetId,v.id,v.id,v.name,'']));
+  invalidate(cfg.settingsSheetId);
+  await service.adminAction(cfg,owner,{action:'initialize'});
+  await service.adminAction(cfg,owner,{action:'saveSetup',candidates,criteria});
+  const state=await service.adminAction(cfg,owner,{action:'setPhase',phase:'initial',candidateId:'alex'});
+  await service.getState(cfg,voters[0]);
+  const now=Date.now;
+  let elapsed=0;
+  const base=now();
+  Date.now=()=>base+elapsed;
+  quota={reads:0,writes:0};
+  try {
+    await Promise.all(voters.map(v=>service.submitInitial(cfg,v,{sessionId:cfg.sessionId,candidateId:'alex',ballotVersion:state.ballotVersion,ratings:{reliability:3}})));
+    for(elapsed=4000;elapsed<60000;elapsed+=4000){
+      await Promise.all(voters.map(async v=>{await service.settings();return service.getState(cfg,v);}));
+      await service.getState(cfg,owner);
+    }
+    assert.ok(quota.reads<=60,JSON.stringify(quota));
+    assert.equal(quota.writes,30);
+    console.log(`One simulated minute: ${quota.reads} reads / ${quota.writes} writes, 30 voters + admin polling, warm single instance.`);
+  } finally {Date.now=now;quota=undefined;invalidate(cfg.sheetId);invalidate(cfg.settingsSheetId);}
+});
+
+test('legacy elections retain append storage without moving existing ballots',async()=>{
+  const cfg={...config,sheetId:'legacy-election',sessionId:'legacy-session'};
+  const owner={...admin,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const who={...voter,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  books.set(cfg.sheetId,new Map());
+  await service.adminAction(cfg,owner,{action:'initialize'});
+  await service.adminAction(cfg,owner,{action:'saveSetup',candidates,criteria});
+  const state=await service.adminAction(cfg,owner,{action:'setPhase',phase:'initial',candidateId:'alex'});
+  books.get(cfg.sheetId).set('Session',books.get(cfg.sheetId).get('Session').filter(row=>row[0]!=='row_layout_json'));
+  invalidate(cfg.sheetId);
+  await service.submitInitial(cfg,who,{sessionId:cfg.sessionId,candidateId:'alex',ballotVersion:state.ballotVersion,ratings:{reliability:3}});
+  await service.adminAction(cfg,owner,{action:'setPhase',phase:'revision'});
+  const payload={sessionId:cfg.sessionId,candidateId:'alex',ballotVersion:state.ballotVersion,submissionId:'legacy-ballot',initialRatings:{reliability:3},finalRatings:{reliability:4}};
+  const start=requests.length;
+  await service.submit(cfg,who,payload);
+  await service.submit(cfg,who,payload);
+  assert.equal(requests.slice(start).filter(r=>r.suffix.endsWith(':append')).length,1);
+  assert.equal(books.get(cfg.sheetId).get('Responses')[1][0],'legacy-ballot');
+  assert.equal(books.get(cfg.sheetId).get('Session').some(row=>row[0]==='row_layout_json'),false);
 });

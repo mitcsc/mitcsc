@@ -5,7 +5,7 @@ export class VotingError extends Error {
 }
 export const COOKIE = "csc_voting";
 export const DEVICE_COOKIE = "csc_voting_device";
-export interface Identity { id: string; name: string; role: "admin" | "voter"; sessionId: string; sheetId: string; exp: number; claimId?: string }
+export interface Identity { id: string; name: string; role: "admin" | "voter"; sessionId: string; sheetId: string; exp: number; claimId?: string; voterSlot?: number }
 function secret() {
   const value = process.env.VOTING_COOKIE_SECRET;
   if (value) {

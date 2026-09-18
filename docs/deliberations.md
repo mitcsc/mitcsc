@@ -87,10 +87,10 @@ Initial ratings are an honor-system record, because voters control their browser
 State updates use polling and a short server cache.
 Allow a few seconds for changes to reach everyone.
 Each app instance has its own cache; Google API quotas still apply across instances.
-Avoid autoscaling many instances for a single small election.
+A large number of cold instances can still exceed the shared Google quota; the in-memory cache is not a global rate limiter.
 The app retries or reports quota failures instead of claiming a vote was saved.
 A unique submission ID lets repeated delivery be treated as one logical ballot.
-Sheets cannot provide a transaction spanning phase checks and an append.
+Sheets cannot provide a transaction spanning phase checks and a write.
 Run a short practice election before the meeting and leave final submissions open until expected ballots are confirmed.
 Do not let two admins change session controls simultaneously.
 
@@ -127,3 +127,41 @@ Receipt retries are idempotent, including after the stage closes.
 Everyone joins at `/vote` through the same name and password form.
 The first admitted participant sees the admin controls on that page; later participants see the voter interface.
 The legacy `/vote/admin` URL redirects to `/vote`.
+
+## Fixed ballot rows and quota handling
+
+New elections reserve fixed response and initial-receipt rows when the first candidate opens.
+The layout supports 128 voters, 100 candidates, and 20 criteria.
+The voter slot comes from the authenticated session registration order, not from client input.
+Late joiners use unused slots without moving existing ballots.
+Each voter has one receipt row and one response row per frozen criterion per candidate.
+The criteria are frozen for the entire election when its first candidate opens.
+Do not sort, insert, or delete rows in these app-managed tabs; use the Summary tab to view results.
+Existing elections with saved ballots retain their append-based storage and are not migrated automatically.
+
+A new initial or final submission reads the authoritative Session state and that voter's reserved cells in one bounded batch.
+Layout discovery may require an additional cached Session read, and old cookies may need a cached roster lookup.
+Retries target the same cells, so duplicate delivery cannot add another counted ballot.
+Already confirmed rows are returned without another write.
+Sheets does not offer compare-and-set: conflicting simultaneous payloads for the same voter remain last-write-wins.
+The voter UI freezes a pending final payload so its normal retries carry identical values.
+
+Submission admission occurs when the server reads an open stage, not when the browser button is clicked.
+A write admitted before closing can finish afterward, including a bounded retry on a Google 429 response.
+New admissions after the close see the closed stage and are rejected.
+Closing does not provide a global barrier that waits for every Vercel instance to drain.
+Writes always target the original candidate's reserved rows, even if the admin moves on.
+
+Voter polling reads definitions and Session state without downloading response history.
+Definition reads are cached for 60 seconds, Settings for 10 seconds, and live reads for 5 seconds per process.
+Writes invalidate only cached queries involving changed tabs.
+Admin polling batches Session, response history, saved ballots, and initial receipts.
+Background polling stops at the join screen after an authentication failure.
+Polling failures back off with jitter; ballot 429 responses retry with the same payload and increasing delays.
+No shared cache provider, paid service, or additional credential is introduced.
+
+The automated 30-voter test enforces separate 60-read and 60-write budgets for each submission burst.
+Measured initial and final bursts each use 31 reads and 30 writes, including surrounding state checks, on one warm process.
+A separate simulated minute with 30 voters and an admin polling uses 55 reads and 30 writes.
+This does not establish a production guarantee: joins, ongoing polling, admin actions, and other Vercel instances add traffic.
+The test uses a simulated Sheets endpoint, not live Google quota enforcement.

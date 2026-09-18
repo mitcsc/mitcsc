@@ -3,11 +3,18 @@ import { VotingError } from "./security";
 
 let auth: GoogleAuth | undefined;
 const cache = new Map<string, { until: number; value: unknown }>();
+const generations = new Map<string, number>();
 const pending = new Map<string, Promise<unknown>>();
-export function invalidate(sheetId: string) {
-  for (const key of cache.keys()) if (key.includes(sheetId) && key.includes("/values")) cache.delete(key);
+function rangeTab(range: string) { return range.split("!")[0].replace(/^'|'$/g, ""); }
+export function invalidate(sheetId: string, tabs?: string[]) {
+  generations.set(sheetId, (generations.get(sheetId) || 0) + 1);
+  for (const key of cache.keys()) {
+    if (!key.startsWith(sheetId) || !key.includes("/values")) continue;
+    const decoded = decodeURIComponent(key);
+    if (!tabs || tabs.some(tab => decoded.includes(`'${tab}'!`))) cache.delete(key);
+  }
 }
-export async function sheets<T>(sheetId: string, suffix = "", method = "GET", data?: unknown, fresh = false): Promise<T> {
+export async function sheets<T>(sheetId: string, suffix = "", method = "GET", data?: unknown, fresh = false, ttlMs = 5000): Promise<T> {
   const key = `${sheetId}${suffix}`;
   if (method === "GET" && !fresh) {
     const hit = cache.get(key);
@@ -15,6 +22,7 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
     const running = pending.get(key);
     if (running) return running as Promise<T>;
   }
+  const generation = generations.get(sheetId) || 0;
   const execute = async () => {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -33,9 +41,22 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
     const result = await response.json() as T;
     if (method === "GET") {
       if (cache.size > 100) cache.clear();
-      cache.set(key, { until: Date.now() + (suffix.startsWith("?fields=") ? 60_000 : 5000), value: result });
+      if (!fresh && generation === (generations.get(sheetId) || 0)) cache.set(key, { until: Date.now() + (suffix.startsWith("?fields=") ? 60_000 : ttlMs), value: result });
+      // Admin/ballot batches already fetched Session. Reuse that same read for voter polling.
+      // Admission still bypasses this cache, and a concurrent local mutation prevents stale priming.
+      if (suffix.startsWith("/values:batchGet?") && generation === (generations.get(sheetId) || 0)) {
+        const ranges = new URLSearchParams(suffix.split("?")[1]).getAll("ranges");
+        const index = ranges.indexOf("'Session'!A1:B20");
+        const valueRanges = (result as {valueRanges?: unknown[]}).valueRanges;
+        if (index >= 0 && valueRanges?.[index]) {
+          const sessionKey = `${sheetId}/values:batchGet?ranges=${encodeURIComponent(ranges[index])}&valueRenderOption=UNFORMATTED_VALUE`;
+          cache.set(sessionKey, {until: Date.now() + 5000, value: {valueRanges: [valueRanges[index]]}});
+        }
+      }
     } else {
-      invalidate(sheetId);
+      const ranges = (data as {data?: {range: string}[]})?.data?.map(entry => rangeTab(entry.range));
+      const appendRange = suffix.includes(":append") ? rangeTab(decodeURIComponent(suffix.slice(8).split(":append")[0])) : undefined;
+      invalidate(sheetId, ranges || (appendRange ? [appendRange] : undefined));
       if (suffix === ":batchUpdate") for (const k of cache.keys()) if (k.startsWith(sheetId)) cache.delete(k);
     }
     return result;
@@ -44,9 +65,9 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
   if (method === "GET" && !fresh) pending.set(key, promise);
   try { return await promise; } finally { if (method === "GET" && !fresh) pending.delete(key); }
 }
-export async function readRanges(id: string, ranges: string[], fresh = false) {
-  const result = await sheets<{ valueRanges: { values?: string[][] }[] }>(id, `/values:batchGet?${ranges.map(r => `ranges=${encodeURIComponent(r)}`).join("&")}&valueRenderOption=UNFORMATTED_VALUE`, "GET", undefined, fresh);
-  return result.valueRanges.map(range => (range.values || []).map(row => row.map(cell => String(cell))));
+export async function readRanges(id: string, ranges: string[], fresh = false, ttlMs = 5000) {
+  const result = await sheets<{ valueRanges: { values?: string[][] }[] }>(id, `/values:batchGet?${ranges.map(r => `ranges=${encodeURIComponent(r)}`).join("&")}&valueRenderOption=UNFORMATTED_VALUE`, "GET", undefined, fresh, ttlMs);
+  return result.valueRanges.map(range => Array.from(range.values || [], row => (row || []).map(cell => String(cell))));
 }
 export async function writeRanges(id: string, data: { range: string; values: (string | number | boolean)[][] }[]) {
   return sheets(id, "/values:batchUpdate", "POST", { valueInputOption: "RAW", data });

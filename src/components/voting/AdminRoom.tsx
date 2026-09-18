@@ -48,6 +48,8 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
   const [tab, setTab] = useState<"setup" | "live">("setup");
   const [setupRevision, setSetupRevision] = useState(0);
   const pollInFlight = useRef(false);
+  const pollAfter = useRef(0);
+  const pollFailures = useRef(0);
   const mutating = useRef(false);
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
@@ -55,7 +57,7 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
     setState(next);
   }, []);
   const refresh = useCallback(async () => {
-    if (pollInFlight.current || mutating.current || document.hidden) return;
+    if (pollInFlight.current || mutating.current || document.hidden || Date.now() < pollAfter.current) return;
     pollInFlight.current = true;
     const revision = generation.current;
     const abort = new AbortController(); controller.current = abort;
@@ -64,10 +66,14 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
       if (revision !== generation.current) return;
       if (response.status === 401) { onExit(); return; }
       const next: VotingState = await responseData(response);
+      pollFailures.current = 0; pollAfter.current = 0;
       if (!next.isAdmin) { onExit(next); return; }
       if (revision === generation.current) {applyState(next); setConnectionError("");}
     } catch (e) {
-      if (!abort.signal.aborted && revision === generation.current) setConnectionError(e instanceof Error ? e.message : "Connection lost. Retrying automatically.");
+      if (!abort.signal.aborted && revision === generation.current) {
+        pollAfter.current = Date.now() + Math.min(60_000, 4000 * 2 ** ++pollFailures.current) + Math.random() * 2000;
+        setConnectionError(e instanceof Error ? e.message : "Connection lost. Retrying automatically.");
+      }
     } finally {pollInFlight.current = false; setLoading(false);}
   }, [applyState, onExit]);
   useEffect(() => {

@@ -44,8 +44,11 @@ export async function claimIdentity(config: Settings, name: string, existing: Id
     values: [[config.sessionId, config.sheetId, claimId, id, name, new Date().toISOString()]],
   });
   // Google append order is authoritative, including simultaneous joins on separate app instances.
-  const first = (await claims(config, true))[0];
-  return { id, name: sameSession ? existing.name : name, sessionId: config.sessionId, sheetId: config.sheetId, role: first?.[2] === claimId && first?.[3] === id ? "admin" : "voter", claimId, exp: Date.now() + 24 * 3600_000 };
+  const registered = await claims(config, true);
+  const first = registered[0];
+  const voterSlot = [...new Set(registered.slice(1).map(row => row[3]))].indexOf(id);
+  if (voterSlot >= 128) throw new VotingError("This session has reached its 128-voter limit.", 409);
+  return { voterSlot, id, name: sameSession ? existing.name : name, sessionId: config.sessionId, sheetId: config.sheetId, role: first?.[2] === claimId && first?.[3] === id ? "admin" : "voter", claimId, exp: Date.now() + 24 * 3600_000 };
 }
 
 export async function sessionVoters(config: Settings): Promise<{id: string; name: string}[]> {

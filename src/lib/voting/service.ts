@@ -17,7 +17,7 @@ export interface Settings { sessionId: string; password: string; sheetId: string
 export async function settings(): Promise<Settings> {
   const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
-  const [rows] = await readRanges(id, ["'Settings'!A:B"]);
+  const [rows] = await readRanges(id, ["'Settings'!A:B"], false, 10_000);
   const values = Object.fromEntries(rows.map(row => [row[0]?.trim(), row[1] || ""]));
   const raw = values.voting_sheet_url || "";
   const sheetId = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] || (/^[a-zA-Z0-9_-]{15,}$/.test(raw) ? raw : "");
@@ -29,7 +29,7 @@ export function authorize(identity: Identity | null, config: Settings, admin = f
   if (admin && identity.role !== "admin") throw new VotingError("Admin access required.", 403);
   return identity;
 }
-interface Snapshot { initialized: boolean; candidates: Candidate[]; criteria: Criterion[]; runtime: Record<string, string>; responses: string[][]; ballots: string[][] }
+interface Snapshot { initialized: boolean; candidates: Candidate[]; criteria: Criterion[]; runtime: Record<string, string>; responses: string[][]; ballots: string[][]; receipts: string[][] }
 async function tabNames(id: string) {
   const meta = await sheets<{ sheets: { properties: { title: string } }[] }>(id, "?fields=sheets.properties.title");
   return meta.sheets.map(s => s.properties.title);
@@ -37,14 +37,24 @@ async function tabNames(id: string) {
 function checkHeaders(name: keyof typeof HEADERS, rows: string[][]) {
   if (HEADERS[name].some((value, i) => rows[0]?.[i] !== value)) throw new VotingError(`The ${name} tab has unexpected columns. Restore its original headers before continuing.`, 409);
 }
-async function snapshot(config: Settings, fresh = false): Promise<Snapshot> {
+async function snapshot(config: Settings, fresh = false, admin = true): Promise<Snapshot> {
   const names = await tabNames(config.sheetId);
-  if (Object.keys(HEADERS).some(name => !names.includes(name))) return { initialized: false, candidates: [], criteria: [], runtime: {}, responses: [], ballots: [] };
-  const tables = await readRanges(config.sheetId, ["'Candidates'!A1:E102", "'Criteria'!A1:F22", "'Session'!A1:B20", "'Responses'!A:L", "'Ballots'!A:E"], fresh);
-  (["Candidates", "Criteria", "Session", "Responses", "Ballots"] as const).forEach((name, i) => checkHeaders(name, tables[i]));
+  if (Object.keys(HEADERS).some(name => !names.includes(name))) return { initialized: false, candidates: [], criteria: [], runtime: {}, responses: [], ballots: [], receipts: [] };
+  // Definitions change only through setup/admin actions. Voter polls never read responses or history.
+  const definitions = ["'Candidates'!A1:E102", "'Criteria'!A1:F22"];
+  const ranges = ["'Session'!A1:B20", ...(admin ? ["'Responses'!A:L", "'Ballots'!A:E", ...(names.includes(INITIAL_TAB) ? [`'${INITIAL_TAB}'!A:E`] : [])] : [])];
+  const combined = fresh ? await readRanges(config.sheetId, [...definitions, ...ranges], true) : undefined;
+  const definition = combined ? combined.slice(0, 2) : await readRanges(config.sheetId, definitions, false, 60_000);
+  const live = combined ? combined.slice(2) : await readRanges(config.sheetId, ranges);
+  const tables = [...definition, ...live];
+  (["Candidates", "Criteria", "Session"] as const).forEach((name, i) => checkHeaders(name, tables[i]));
+  if (admin) {
+    checkHeaders("Responses", tables[3]); checkHeaders("Ballots", tables[4]);
+    if (tables[5] && INITIAL_HEADERS.some((header, i) => tables[5][0]?.[i] !== header)) throw new VotingError("The Initial submissions tab has unexpected columns.", 409);
+  }
   const candidates = tables[0].slice(1).filter(r => r[0]).map(r => ({ id: r[0], name: r[1] || "", context: r[2] || "", order: Number(r[3]), completed: r[4]?.toLowerCase() === "true" })).sort((a, b) => a.order - b.order);
   const criteria = tables[1].slice(1).filter(r => r[0]).map(r => ({ id: r[0], label: r[1] || "", description: r[2] || "", min: Number(r[3]), max: Number(r[4]), required: r[5]?.toLowerCase() !== "false" }));
-  return { initialized: true, candidates, criteria, runtime: Object.fromEntries(tables[2].slice(1).filter(r => r[0]).map(r => [r[0], r[1] || ""])), responses: tables[3].slice(1).filter(r => r[0]), ballots: tables[4].slice(1).filter(r => r[0]) };
+  return { initialized: true, candidates, criteria, runtime: Object.fromEntries(tables[2].slice(1).filter(r => r[0]).map(r => [r[0], r[1] || ""])), responses: tables[3]?.slice(1).filter(r => r[0]) || [], ballots: tables[4]?.slice(1).filter(r => r[0]) || [], receipts: tables[5]?.slice(1).filter(r => r[0]) || [] };
 }
 function phase(s: Snapshot): VotingPhase { return PHASES.includes(s.runtime.phase as VotingPhase) ? s.runtime.phase as VotingPhase : "waiting"; }
 function ballotCriteria(s: Snapshot): Criterion[] {
@@ -57,30 +67,89 @@ function state(config: Settings, identity: Identity, s: Snapshot): VotingState {
   const found = s.candidates.find(c => c.id === s.runtime.candidate_id) || null;
   const current = found && s.runtime.ballot_version ? { ...found, name: s.runtime.candidate_name || found.name, context: s.runtime.candidate_context || "" } : found;
   const visible = s.runtime.context_visible === "true";
-  return { sessionId: config.sessionId, active: !!config.password, votingStarted: s.ballots.length > 0 || !!s.runtime.ballot_version || s.candidates.some(candidate => candidate.completed) || phase(s) !== "waiting", phase: phase(s), ballotVersion: s.runtime.ballot_version || "", currentCandidate: current ? { ...current, context: admin || visible ? current.context : "" } : null, criteria: ballotCriteria(s), contextVisible: visible, submittedCount: new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === current?.id && r[6] === s.runtime.ballot_version).map(r => r[4])).size, voter: { id: identity.id, name: identity.name }, isAdmin: admin, initialized: s.initialized, ...(admin ? { candidates: s.candidates, spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit` } : {}) };
+  return { sessionId: config.sessionId, active: !!config.password, votingStarted: s.runtime.voting_started === "true" || s.ballots.length > 0 || !!s.runtime.ballot_version || s.candidates.some(candidate => candidate.completed) || phase(s) !== "waiting", phase: phase(s), ballotVersion: s.runtime.ballot_version || "", currentCandidate: current ? { ...current, context: admin || visible ? current.context : "" } : null, criteria: ballotCriteria(s), contextVisible: visible, submittedCount: new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === current?.id && r[6] === s.runtime.ballot_version).map(r => r[4])).size, voter: { id: identity.id, name: identity.name }, isAdmin: admin, initialized: s.initialized, ...(admin ? { candidates: s.candidates, spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit` } : {}) };
 }
 const INITIAL_TAB = "Initial submissions";
 const INITIAL_HEADERS = ["session_id", "candidate_id", "ballot_version", "voter_id", "submitted_at"];
-async function initialReceipts(config: Settings, fresh = false): Promise<string[][]> {
-  if (!(await tabNames(config.sheetId)).includes(INITIAL_TAB)) return [];
-  const [rows] = await readRanges(config.sheetId, [`'${INITIAL_TAB}'!A:E`], fresh);
-  if (INITIAL_HEADERS.some((header, index) => rows[0]?.[index] !== header)) throw new VotingError("The Initial submissions tab has unexpected columns.", 409);
-  return rows.slice(1);
-}
 async function ensureInitialTab(config: Settings) {
     if (!(await tabNames(config.sheetId)).includes(INITIAL_TAB)) {
       await sheets(config.sheetId, ":batchUpdate", "POST", {requests: [{addSheet: {properties: {title: INITIAL_TAB}}}]});
       await writeRanges(config.sheetId, [{range: `'${INITIAL_TAB}'!A1`, values: [INITIAL_HEADERS]}]);
     }
 }
+const VOTER_CAPACITY = 128;
+interface RowLayout { candidates: string[]; criteria: Criterion[] }
+async function prepareFixedRows(config: Settings, s: Snapshot) {
+  const meta = await sheets<{sheets: {properties: {sheetId: number; title: string; gridProperties: {rowCount: number}}}[]}>(config.sheetId, "?fields=sheets.properties(sheetId,title,gridProperties.rowCount)");
+  const requests = ["Responses", INITIAL_TAB].flatMap(title => {
+    const sheet = meta.sheets.find(sheet => sheet.properties.title === title)!;
+    const needed = 1 + s.candidates.length * VOTER_CAPACITY * (title === "Responses" ? s.criteria.length : 1);
+    return (sheet.properties.gridProperties?.rowCount || 0) < needed ? [{updateSheetProperties: {properties: {sheetId: sheet.properties.sheetId, gridProperties: {rowCount: needed}}, fields: "gridProperties.rowCount"}}] : [];
+  });
+  if (requests.length) await sheets(config.sheetId, ":batchUpdate", "POST", {requests});
+  s.runtime.row_layout_json = JSON.stringify({candidates: s.candidates.map(candidate => candidate.id), criteria: s.criteria} satisfies RowLayout);
+}
+
+async function writeAdmittedBallot(config: Settings, data: Parameters<typeof writeRanges>[1]) {
+  for (let attempt = 0; ; attempt++) {
+    try { return await writeRanges(config.sheetId, data); }
+    catch (error) {
+      if (!(error instanceof VotingError) || error.status !== 429 || attempt >= 3) throw error;
+      // Keep admission while the quota recovers. Closing does not cancel an accepted write.
+      await new Promise(resolve => setTimeout(resolve, (2 ** attempt * 1000) + Math.random() * 1000));
+    }
+  }
+}
+
+async function fixedSubmission(config: Settings, identity: Identity, input: Record<string, unknown>, initial: boolean) {
+  // Only layout discovery is cached. Admission always reads the authoritative stage.
+  const [cachedRuntime] = await readRanges(config.sheetId, ["'Session'!A1:B20"]);
+  const cached = Object.fromEntries(cachedRuntime.slice(1));
+  if (!cached.row_layout_json) return null; // Preserve existing elections in their original append format.
+  if (input.sessionId !== config.sessionId) throw new VotingError("This ballot belongs to another session.", 409);
+  const layout: RowLayout = JSON.parse(cached.row_layout_json);
+  const candidateIndex = layout.candidates.indexOf(String(input.candidateId));
+  const stride = layout.criteria.length;
+  const slot = identity.voterSlot ?? (await sessionVoters(config)).findIndex(voter => voter.id === identity.id);
+  if (candidateIndex < 0 || !Number.isInteger(slot) || slot < 0 || slot >= VOTER_CAPACITY) throw new VotingError("This voter has no ballot slot. Sessions support up to 128 voters.", 409);
+  const index = candidateIndex * VOTER_CAPACITY + slot;
+  const responseRow = 2 + index * stride;
+  const receiptRow = 2 + index;
+  // A single bounded read checks admission and recovers a lost acknowledgement.
+  const [runtimeRows, existingRows] = await readRanges(config.sheetId, ["'Session'!A1:B20", initial ? `'${INITIAL_TAB}'!A${receiptRow}:E${receiptRow}` : `'Responses'!A${responseRow}:L${responseRow + stride - 1}`], true);
+  const runtime = Object.fromEntries(runtimeRows.slice(1));
+  if (runtime.row_layout_json !== cached.row_layout_json) throw new VotingError("The ballot layout changed. Refresh before submitting.", 409);
+  if (runtime.session_id !== config.sessionId) throw new VotingError("This spreadsheet belongs to another session.", 409);
+  const existing = existingRows.find(row => initial ? row[0] === config.sessionId && row[1] === input.candidateId && row[2] === input.ballotVersion && row[3] === identity.id : row[1] === config.sessionId && row[2] === input.candidateId && row[4] === identity.id && row[6] === input.ballotVersion);
+  if (existing) return initial ? {ok: true} : {ok: true, submissionId: existing[0]};
+  if (existingRows.some(row => row.some(Boolean))) throw new VotingError("The reserved ballot rows were changed. Ask the admin to check the spreadsheet.", 409);
+  if (!config.password || runtime.candidate_id !== input.candidateId || runtime.ballot_version !== input.ballotVersion || !(initial ? ["initial"] : ["revision", "final"]).includes(runtime.phase)) throw new VotingError(initial ? "Initial ratings have closed for this candidate." : "Final submissions are not currently open.", 409);
+  const criteria = layout.criteria;
+  const submittedAt = new Date().toISOString();
+  if (initial) {
+    validateRatings(input.ratings, criteria);
+    await writeAdmittedBallot(config, [{range: `'${INITIAL_TAB}'!A${receiptRow}`, values: [[config.sessionId, String(input.candidateId), String(input.ballotVersion), identity.id, submittedAt]]}]);
+    return {ok: true};
+  }
+  const ballot = input as unknown as FinalBallot;
+  const id = text(ballot.submissionId, "submission ID", 100);
+  if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new VotingError("Invalid submission ID.");
+  validateRatings(ballot.initialRatings, criteria); validateRatings(ballot.finalRatings, criteria);
+  // Admission has succeeded. A close may happen while this write is in flight; it must finish.
+  // Repeating a write targets the same cells, so an ambiguous network result cannot add a second ballot.
+  await writeAdmittedBallot(config, [{range: `'Responses'!A${responseRow}`, values: criteria.map(c => [id, config.sessionId, ballot.candidateId, runtime.candidate_name || "", identity.id, identity.name, ballot.ballotVersion, c.id, c.label, ballot.initialRatings[c.id] ?? "", ballot.finalRatings[c.id] ?? "", submittedAt])}]);
+  return {ok: true, submissionId: id};
+}
+
 export async function submitInitial(config: Settings, identity: Identity, input: Record<string, unknown>) {
   if (identity.role === "admin") throw new VotingError("Admins do not vote.", 403);
   return serialize(async () => {
-    invalidate(config.sheetId);
+    const fixed = await fixedSubmission(config, identity, input, true);
+    if (fixed) return fixed;
     const s = await snapshot(config, true);
     state(config, identity, s);
     if (input.sessionId !== config.sessionId) throw new VotingError("This ballot belongs to another session.", 409);
-    const receipts = await initialReceipts(config, true);
+    const receipts = s.receipts;
     if (receipts.some(r => r[0] === config.sessionId && r[1] === input.candidateId && r[2] === input.ballotVersion && r[3] === identity.id)) return {ok: true};
     if (!s.initialized || !config.password || phase(s) !== "initial" || !s.runtime.ballot_version || input.candidateId !== s.runtime.candidate_id || input.ballotVersion !== s.runtime.ballot_version) throw new VotingError("Initial ratings have closed for this candidate.", 409);
     validateRatings(input.ratings, ballotCriteria(s));
@@ -90,14 +159,14 @@ export async function submitInitial(config: Settings, identity: Identity, input:
   });
 }
 export async function getState(config: Settings, identity: Identity) {
-  const s = await snapshot(config);
+  const s = await snapshot(config, false, identity.role === "admin");
   const result = state(config, identity, s);
   if (identity.role === "admin") {
     const submitted = new Set(s.responses.filter(r => r[1] === config.sessionId && r[2] === result.currentCandidate?.id && r[6] === result.ballotVersion).map(r => r[4]));
-    const initial = new Set((await initialReceipts(config)).filter(r => r[0] === config.sessionId && r[1] === result.currentCandidate?.id && r[2] === result.ballotVersion).map(r => r[3]));
+    const initial = new Set(s.receipts.filter(r => r[0] === config.sessionId && r[1] === result.currentCandidate?.id && r[2] === result.ballotVersion).map(r => r[3]));
     const voters = await sessionVoters(config);
     result.participants = voters.map(voter => ({...voter, submitted: submitted.has(voter.id), initialSubmitted: initial.has(voter.id)}));
-    const receipts = await initialReceipts(config);
+    const receipts = s.receipts;
     result.candidateStates = s.candidates.map(candidate => {
       const ballot = [...s.ballots].reverse().find(row => row[0] === candidate.id);
       const version = candidate.id === result.currentCandidate?.id ? result.ballotVersion : ballot?.[1] || "";
@@ -109,6 +178,7 @@ export async function getState(config: Settings, identity: Identity) {
   return result;
 }
 async function saveRuntime(config: Settings, runtime: Record<string, string>) {
+  if (runtime.ballot_version) runtime.voting_started = "true";
   await writeRanges(config.sheetId, [{ range: "'Session'!A1:B20", values: [HEADERS.Session, ...Object.entries(runtime), ...Array.from({ length: Math.max(0, 19 - Object.keys(runtime).length) }, () => ["", ""])] }]);
 }
 function validateSetup(candidates: Candidate[], criteria: Criterion[]) {
@@ -193,9 +263,13 @@ export async function adminAction(config: Settings, identity: Identity, input: R
         if (!["waiting", "locked"].includes(phase(s))) throw new VotingError("Lock the current candidate before opening another ballot.", 409);
         const selected = s.candidates.find(c => c.id === (input.candidateId || current?.id));
         if (!selected || selected.completed) throw new VotingError("Choose an unfinished candidate.", 409);
+        if (s.runtime.row_layout_json) s.criteria = (JSON.parse(s.runtime.row_layout_json) as RowLayout).criteria;
         validateSetup(s.candidates, s.criteria);
         if (!s.criteria.length) throw new VotingError("Add at least one criterion.");
         let saved = s.ballots.find(b => b[0] === selected.id);
+        if (!saved && !s.ballots.length && !s.responses.length) {
+          await prepareFixedRows(config, s);
+        }
         if (!saved) {
           saved = [selected.id, randomUUID(), selected.name, selected.context, JSON.stringify(s.criteria)];
           await sheets(config.sheetId, `/values/${encodeURIComponent("'Ballots'!A:E")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, "POST", { values: [saved] });
@@ -204,7 +278,7 @@ export async function adminAction(config: Settings, identity: Identity, input: R
       } else if (next === "waiting" && ["waiting", "locked"].includes(phase(s)) && input.candidateId) {
         const selected = s.candidates.find(c => c.id === input.candidateId);
         if (!selected || selected.completed) throw new VotingError("Choose an unfinished candidate.", 409);
-        await saveRuntime(config, { ...s.runtime, phase: "waiting", candidate_id: selected.id, candidate_name: "", candidate_context: "", ballot_version: "", criteria_json: "", context_visible: "false" });
+        await saveRuntime(config, { ...s.runtime, phase: "waiting", voting_started: String(s.ballots.length > 0 || s.runtime.voting_started === "true"), candidate_id: selected.id, candidate_name: "", candidate_context: "", ballot_version: "", criteria_json: "", context_visible: "false" });
       } else {
         const allowed: Record<VotingPhase, VotingPhase[]> = { waiting: [], initial: ["deliberation", "revision", "final", "locked"], deliberation: ["revision", "final", "locked"], revision: ["deliberation", "final", "locked"], final: ["locked"], locked: [] };
         if (next !== phase(s) && !allowed[phase(s)].includes(next)) throw new VotingError("That phase change is not available.", 409);
@@ -220,7 +294,8 @@ export async function submit(config: Settings, identity: Identity, input: Record
   return serialize(async () => {
     const id = text(input.submissionId, "submission ID", 100);
     if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new VotingError("Invalid submission ID.");
-    invalidate(config.sheetId);
+    const fixed = await fixedSubmission(config, identity, input, false);
+    if (fixed) return fixed;
     const s = await snapshot(config, true);
     state(config, identity, s);
     const ballot = input as unknown as FinalBallot;

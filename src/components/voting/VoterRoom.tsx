@@ -35,14 +35,18 @@ function parseDraft(raw: string | null): Draft {
   if (!validRatings(value.ratings) || !validRatings(value.final) || (value.initial !== null && !validRatings(value.initial)) || typeof value.submitted !== "boolean") throw new Error("Invalid local ballot");
   return value;
 }
-async function api<T>(path: string, body?: unknown): Promise<T> {
+async function api<T>(path: string, body?: unknown, attempt = 0): Promise<T> {
   const response = await fetch(`/api/voting/${path}`, {
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(["initial", "submit"].includes(path) ? 65000 : 20000),
     method: body === undefined ? "GET" : "POST",
     cache: "no-store",
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (response.status === 429 && ["initial", "submit"].includes(path) && attempt < 3) {
+    await new Promise(resolve => setTimeout(resolve, 10_000 * (attempt + 1) + Math.random() * 2000));
+    return api<T>(path, body, attempt + 1);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw Object.assign(new Error(data.error || "Could not connect. Please try again."), { status: response.status });
   return data as T;
@@ -59,11 +63,15 @@ export default function VoterRoom() {
   const [joining, setJoining] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const inFlight = useRef(false);
+  const pollAfter = useRef(0);
+  const pollFailures = useRef(0);
+  const joinRequired = useRef(false);
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
     try {
       const next = await api<VotingState>("state");
+      pollFailures.current = 0; pollAfter.current = 0; joinRequired.current = false;
       setState(next);
       setNeedsJoin(false);
       setConnected(true);
@@ -71,7 +79,9 @@ export default function VoterRoom() {
     } catch (e) {
       const failure = e as Error & { status?: number };
       setConnected(false);
+      pollAfter.current = Date.now() + Math.min(60_000, 4000 * 2 ** ++pollFailures.current) + Math.random() * 2000;
       if (failure.status === 401) {
+        joinRequired.current = true;
         setNeedsJoin(true);
         setState(null);
         setError("");
@@ -84,8 +94,8 @@ export default function VoterRoom() {
   useEffect(() => {
     if (state?.isAdmin) return;
     void refresh();
-    const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 4000);
-    const resume = () => { if (!document.hidden) void refresh(); };
+    const timer = window.setInterval(() => { if (!document.hidden && !joinRequired.current && Date.now() >= pollAfter.current) void refresh(); }, 4000);
+    const resume = () => { if (!document.hidden && !joinRequired.current && Date.now() >= pollAfter.current) void refresh(); };
     const offline = () => { setConnected(false); setError("You are offline. Local drafts stay on this browser; reconnect before submitting."); };
     window.addEventListener("focus", resume);
     window.addEventListener("online", resume);
@@ -117,6 +127,7 @@ export default function VoterRoom() {
   const exitAdmin = useCallback((next?: VotingState) => {
     setState(next || null);
     setNeedsJoin(!next);
+    joinRequired.current = !next;
   }, []);
   async function join(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
