@@ -1,3 +1,4 @@
+import { polishElectionSheet, writeSummary } from "./sheet-layout";
 import { randomUUID, createHash } from "node:crypto";
 import { compareAndSet, redisCommand, redisKey, releaseLock } from "./redis";
 import { Identity, text, VotingError } from "./security";
@@ -263,7 +264,7 @@ async function exportCandidate(config: Settings, doc: Election, candidateId: str
   if (existing.length) {
     const rows = await readRanges(config.sheetId, existing.map(title => `'${title}'!A1:L1`), true);
     rows.forEach((r, i) => {
-      if (r.length && headers[existing[i] as keyof typeof headers].some((h, col) => r[0]?.[col] !== h)) throw new VotingError("Restore the election spreadsheet headers before exporting.", 409);
+      if (r.length && (headers[existing[i] as keyof typeof headers].some((h, col) => r[0]?.[col] !== h) && !(existing[i] === "Summary" && ["Session", "Candidate"].includes(r[0]?.[0])))) throw new VotingError("Restore the election spreadsheet headers before exporting.", 409);
     });
   }
   const missing = Object.keys(headers).filter(title => !existing.includes(title));
@@ -281,7 +282,7 @@ async function exportCandidate(config: Settings, doc: Election, candidateId: str
     return needed > (p.gridProperties?.rowCount || 1000) ? [{updateSheetProperties: {properties: {sheetId: p.sheetId, gridProperties: {rowCount: needed}}, fields: "gridProperties.rowCount"}}] : [];
   });
   if (requests.length) await sheets(config.sheetId, ":batchUpdate", "POST", {requests});
-  const data: Parameters<typeof writeRanges>[1] = Object.entries(headers).map(([title, values]) => ({range: `'${title}'!A1`, values: [values]}));
+  const data: Parameters<typeof writeRanges>[1] = Object.entries(headers).filter(([title]) => title !== "Summary").map(([title, values]) => ({range: `'${title}'!A1`, values: [values]}));
   // All exports use deterministic cells. Previously accepted votes are immutable; retries only
   // rewrite identical values and never clear empty slots. Even a delayed older export is harmless.
   for (const m of doc.members.filter(m => m.role === "voter")) {
@@ -297,9 +298,9 @@ async function exportCandidate(config: Settings, doc: Election, candidateId: str
   data.push({range: `'Ballots'!A${candidateIndex + 2}`, values: [[candidateId, round.version, candidate.name, candidate.context, JSON.stringify(doc.criteria)]]});
   
   await writeRanges(config.sheetId, data);
-  // Keep the existing summary formula. RAW is used for all voter-controlled values above.
-  const [summary] = await readRanges(config.sheetId, ["'Summary'!A2:G2"], true);
-  if (!summary.length) await sheets(config.sheetId, "/values:batchUpdate", "POST", {valueInputOption: "USER_ENTERED", data: [{range: "'Summary'!A2", values: [[`=IFERROR(QUERY(UNIQUE(Responses!B2:K),"select Col1,Col2,Col3,Col8,avg(Col9),avg(Col10),count(Col10) where Col1 is not null group by Col1,Col2,Col3,Col8 label Col1 '',Col2 '',Col3 '',Col8 '',avg(Col9) '',avg(Col10) '',count(Col10) ''",0),"")`]]}]});
+  await writeSummary(config.sheetId, doc.candidates, doc.criteria);
+  await polishElectionSheet(config.sheetId, meta.sheets, doc.criteria.length);
+
 }
 
 async function markRedis(config: Settings) {

@@ -76,6 +76,7 @@ const googleFetch = async (input, options = {}) => {
     book.get(rangeParts(range).tab).push(...data.values);
     return json({updates:{updatedRows:data.values.length}});
   }
+  if (suffix.endsWith(':clear')) { book.set(rangeParts(decodeURIComponent(suffix.slice(8,-6))).tab, []); return json({}); }
   if (suffix.startsWith('/values/')) return json({values:getRows(book,decodeURIComponent(suffix.slice(8)))});
   throw new Error(`Unimplemented mock ${suffix}`);
 };

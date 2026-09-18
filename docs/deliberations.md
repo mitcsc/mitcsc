@@ -71,7 +71,11 @@ Reopening preserves existing votes and the original ballot version.
 Exports use fixed cells, so a retry or delayed older export cannot duplicate or erase a newer vote.
 
 The app manages Candidates, Criteria, Responses, Summary, Session, Ballots, and Initial submissions tabs.
-Keep their headers and IDs intact.
+Summary and Responses remain visible; app-managed tabs are hidden automatically on export.
+The original Sheet1 is hidden only if it is empty.
+Summary shows one candidate per row, one final-average column per criterion, and a vote count.
+Averages display to two decimal places; initial ratings remain in Responses.
+Keep app-managed headers and IDs intact.
 The Summary formula computes averages from exported final ballots.
 Setup changes are saved in Redis; Sheets receives the frozen definitions with the first candidate export.
 
