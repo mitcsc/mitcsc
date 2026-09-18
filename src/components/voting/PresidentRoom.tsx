@@ -81,10 +81,17 @@ export default function PresidentRoom() {
     catch (e) {setError((e as Error).message);}
     finally {setBusy(false);}
   }
-  if (state) return <div className="president-room"><div className="president-bar"><span>Live session</span><button className="voter-text-button" disabled={busy || !!state.exportPending || !["waiting","locked"].includes(state.phase)} onClick={() => void end()}>End session</button></div>{error && <div role="alert" className="voter-alert">{error}</div>}<AdminRoom key={state.sessionId} initialState={state} onExit={exit} onStateChange={setState} setupComplete={!!state.candidates?.length && !!state.criteria.length}/></div>;
+  if (state) return <div className="president-room">
+    <header className="president-live-header">
+      <div className="president-live-title"><span className="president-live-dot" aria-hidden="true"/><h1>Live session</h1><span className="president-live-progress">{state.candidates?.filter(candidate => candidate.completed).length || 0} / {state.candidates?.length || 0} complete</span></div>
+      <div className="president-live-actions"><span className="president-live-voters">{state.participants?.length || 0} {state.participants?.length === 1 ? "voter" : "voters"}</span><button disabled={busy || !!state.exportPending || !["waiting","locked"].includes(state.phase)} onClick={() => void end()}>End session</button></div>
+    </header>
+    {error && <div role="alert" className="voter-alert">{error}</div>}
+    <AdminRoom key={state.sessionId} initialState={state} onExit={exit} onStateChange={setState} setupComplete={!!state.candidates?.length && !!state.criteria.length}/>
+  </div>;
   return <div className="president-room">
     {!login && overview && <header className="president-setup-header">
-      <ol aria-label="Session setup progress"><li aria-current={step === "session" ? "step" : undefined}><span>{step === "ballot" ? "✓" : "1"}</span>Session details</li><li aria-current={step === "ballot" ? "step" : undefined}><span>2</span>Ballot</li><li><span>3</span>Live</li></ol>
+      <ol aria-label="Session setup progress"><li className={step === "ballot" ? "is-complete" : ""} aria-current={step === "session" ? "step" : undefined}><span>{step === "ballot" ? "✓" : "1"}</span>Session details</li><li aria-current={step === "ballot" ? "step" : undefined}><span>2</span>Ballot</li></ol>
       {step === "ballot" && <button type="button" className="voter-text-button" disabled={busy} onClick={() => {setError(""); setStep("session");}}>Back</button>}
     </header>}
     {!login && overview && step === "ballot" ? <div className="voting-admin voting-console president-ballot-setup">
@@ -109,7 +116,7 @@ export default function PresidentRoom() {
           <div className="president-sheet-help">
             <p id="session-sheet-help" className="president-help">Results will be saved here. Share a new spreadsheet as Editor with this service account:</p>
             <div className="president-service-account">
-              <span>{serviceAccount}</span>
+              <span title={serviceAccount}>{serviceAccount}</span>
               <button type="button" onClick={() => void copyServiceAccount()} aria-label={copied ? "Service account copied" : "Copy service account"}><span aria-live="polite">{copied ? "Copied" : "Copy"}</span></button>
             </div>
           </div>
