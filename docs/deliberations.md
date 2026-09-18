@@ -105,6 +105,15 @@ A successful local rehearsal does not verify Vercel environment configuration; c
 The app supports up to 128 voters, 100 candidates, and 20 criteria, with an 8 MB live-document ceiling.
 These input limits are not a promise that every combination fits a provider’s free allowance.
 Provider command, bandwidth, storage, and inactivity policies still apply.
-No inactivity cron is configured yet.
+A Redis health check is scheduled for Monday and Thursday at 07:00 UTC in `vercel.json`.
+Vercel Hobby may invoke it within that hour; the handler adds a random 0–5-second delay.
+Set a randomly generated `CRON_SECRET` of at least 32 characters in Vercel's Production environment before deploying.
+Vercel passes that secret as the Authorization bearer token; missing or incorrect credentials fail before any Redis access.
+Each successful invocation updates only a dedicated health-check timestamp, with no election or Sheets access.
+This adds roughly nine Redis commands per month.
+Cron runs only after production deployment; adding the files alone does not activate it.
+Check Vercel cron logs after deployment; failed runs return HTTP 503 and Vercel does not automatically retry them.
+Periodic requests should avoid inactivity under Upstash's published definition, but synthetic keep-alives are not expressly guaranteed.
+See [Vercel scheduling limits](https://vercel.com/docs/cron-jobs/usage-and-pricing) and [Upstash inactivity policy](https://upstash.com/docs/redis/help/faq#what-happens-if-my-database-is-not-used).
 Before an election, confirm the Redis database is available and run a short practice ballot.
 If Redis data is missing, restore the database instead of clearing the Sheets marker or starting over in the same election.
