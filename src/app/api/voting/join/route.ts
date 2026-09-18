@@ -15,7 +15,9 @@ export async function POST(request: Request) {
     const jar = await cookies();
     // Device identity is consulted only after password verification; it cannot authorize API access.
     const existing = readIdentity(jar.get(COOKIE)?.value) || readIdentity(jar.get(DEVICE_COOKIE)?.value, "device");
-    const identity = await claimIdentity(config, name, existing);
+    const joinId = data.joinId === undefined ? undefined : text(data.joinId, "join ID", 100);
+    if (joinId && !/^[a-f0-9-]{36}$/i.test(joinId)) throw new VotingError("Invalid join ID.");
+    const identity = await claimIdentity(config, name, existing, joinId);
     const response = json({ ok: true });
     response.cookies.set(COOKIE, signIdentity(identity), cookieOptions);
     const deviceSeconds = 365 * 24 * 3600;

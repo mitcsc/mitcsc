@@ -15,6 +15,7 @@ export interface VotingState {
   voter: { id: string; name: string } | null;
   isAdmin: boolean;
   initialized: boolean;
+  exportPending?: boolean;
   participants?: { id: string; name: string; submitted: boolean; initialSubmitted?: boolean }[];
   candidateStates?: {candidateId: string; phase: VotingPhase; ballotVersion: string; submittedCount: number; participants: NonNullable<VotingState["participants"]>}[];
   candidates?: Candidate[];

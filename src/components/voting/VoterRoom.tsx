@@ -141,7 +141,9 @@ export default function VoterRoom() {
     event.preventDefault();
     setJoining(true); setError("");
     try {
-      await api("join", { name: name.trim(), password, role: "voter" });
+      let joinId = sessionStorage.getItem("csc-voting-join-id");
+      if (!joinId) { joinId = crypto.randomUUID(); sessionStorage.setItem("csc-voting-join-id", joinId); }
+      await api("join", { name: name.trim(), password, joinId });
       setPassword("");
       await refresh();
     } catch (e) { setError((e as Error).message); }

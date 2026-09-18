@@ -118,7 +118,7 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
     {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? null : <>
       {!state.active && <div className="voting-admin-notice">Voting is closed. Set a password in Settings to open the session.</div>}
-      {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Create the voting tabs in your election spreadsheet.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
+      {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Add candidates and criteria to begin.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
         <div className="voting-admin-controls" hidden={!showPreview}>
           <section className="voting-admin-candidates" aria-label="Candidate selection">
             {editable && <div className="voting-preview-back"><button onClick={() => setTab("setup")}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg><span>Back to setup</span></button></div>}
@@ -134,7 +134,7 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
             {!state.currentCandidate ? <div className="voting-round-empty"><h2>Choose a candidate to begin</h2><p>Select a name from the candidate list.</p></div> : <>
               <p className="voting-current-label">{viewingLive && !liveIdle ? "Current candidate" : state.currentCandidate.completed ? "Completed candidate" : "Up next"}</p><h2 className="voting-current-name">{state.currentCandidate.name}</h2>
               <ol className="voting-round-steps" aria-label="Voting rounds">{steps.map((label, index) => <li key={label} aria-current={stepIndex === index ? "step" : undefined} className={stepIndex === index ? "is-current" : stepIndex > index ? "is-complete" : ""}><span className="voting-stage-marker" aria-hidden="true">{stepIndex > index ? <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 3 3 7-7"/></svg> : index + 1}</span><span className="voting-stage-label">{label}</span><span className="voting-sr-only">{stepIndex > index ? ": Completed" : stepIndex === index ? ": In progress" : ": Upcoming"}</span></li>)}</ol>
-              <div className="voting-round-status" aria-live="polite"><h3 className="voting-sr-only">{state.phase === "locked" ? "Voting closed" : round?.label}</h3><p>{state.phase === "locked" ? "This candidate is complete." : round?.description}</p></div>
+              <div className="voting-round-status" aria-live="polite"><h3 className="voting-sr-only">{state.phase === "locked" ? "Voting closed" : round?.label}</h3><p>{state.exportPending ? "Votes saved. Export to Sheets before continuing." : state.phase === "locked" ? "This candidate is complete." : round?.description}</p></div>
               {(state.phase === "locked") && <p className="voting-submission-count"><strong>{state.submittedCount}</strong> final ballots submitted</p>}
               {["initial", "revision", "final"].includes(state.phase) && state.participants && <div className="voting-waiting-on" aria-live="polite">
                 {(() => {
@@ -145,9 +145,10 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
               </div>}
 
               {round && <button className="voting-admin-primary voting-round-next" disabled={busy || (!viewingLive && !liveIdle) || !state.active || (round.next === "initial" && state.currentCandidate.completed) || !state.criteria.length} onClick={() => changePhase(round.next)}>{busy ? "Updating…" : round.action}</button>}
-              {state.phase === "locked" && <button className="voting-admin-primary voting-round-next voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? "Reopening…" : "Reopen final submission"}</button>}
+              {state.exportPending && <button className="voting-admin-primary voting-round-next" disabled={busy} onClick={() => void act({action: "setPhase", phase: "locked"})}>{busy ? "Exporting…" : "Retry export to Sheets"}</button>}
+              {state.phase === "locked" && !state.exportPending && <button className="voting-admin-primary voting-round-next voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? "Reopening…" : "Reopen final submission"}</button>}
               {!viewingLive && !liveIdle && <p className="voting-admin-muted">Another candidate is live. Close that round before opening this one.</p>}
-              {state.phase === "locked" && !nextCandidate && <p className="voting-admin-muted">All candidates are complete.</p>}
+              {state.phase === "locked" && !state.exportPending && !nextCandidate && <p className="voting-admin-muted">All candidates are complete.</p>}
             </>}
           </section>
         </div>

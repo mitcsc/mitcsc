@@ -1,225 +1,96 @@
-# CSC deliberations
+# CSC voting
 
-This feature uses Google Sheets for settings and final ballots.
-Initial ratings and revisions stay in each voter's browser until final submission.
-No separate database or voter accounts are required.
+The voting app uses Redis for live session state, registrations, initial submission receipts, and final ballots.
+Google Sheets holds the session settings and receives results when the admin closes each candidate.
+Initial ratings and revisions stay in the voter’s browser until final submission.
 
-## Website configuration (already wired for CSC)
+## Deployment
 
-The website reuses its existing Google service-account credentials.
-The permanent settings spreadsheet is already configured in code.
-Future presidents do not need Vercel access to run elections.
-Never commit private keys, passwords, or the cookie secret.
+Connect an Upstash Redis database to the Vercel project.
+Use the Free plan unless CSC explicitly approves a paid plan.
+The integration supplies `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
+The app also accepts `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+Use the writable REST token, not the read-only token.
+Keep eviction disabled: ballots must not be removed to make room for other keys.
 
-| Variable | Value |
-| --- | --- |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Existing service account email |
-| `GOOGLE_PRIVATE_KEY` | Existing service account private key |
-| `VOTING_SETTINGS_SHEET_ID` | Optional override of the permanent settings spreadsheet |
-| `VOTING_COOKIE_SECRET` | Optional random signing secret of at least 32 characters |
-
-Without an override, the app derives a separate signing key from the existing private key.
-If needed, generate an override locally with `node -e 'console.log(require("node:crypto").randomBytes(32).toString("hex"))'`.
-Keep the same secret across deployed instances.
-Changing it signs everyone out.
+The existing `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY` still authorize Sheets exports.
+`VOTING_SETTINGS_SHEET_ID` optionally overrides the permanent settings spreadsheet.
+`VOTING_COOKIE_SECRET` optionally overrides the signing secret derived from the Google private key.
+All instances must use the same signing secret.
+Never commit credentials or include them in logs.
 The existing `GOOGLE_SHEET_ID` remains dedicated to public links.
 
-## Permanent settings spreadsheet
+When Redis credentials are configured, Redis errors never fall back to Sheets.
+The old Sheets implementation remains available for the isolated demo and elections that have not switched.
+A `storage_backend=redis` marker prevents the new code from reopening an exported election through the Sheets implementation.
+An election already started under the old implementation cannot be imported automatically.
+Finish that election there, or start a new election spreadsheet and session ID.
+An unstarted election imports its candidates, criteria, and existing Session History identities once.
 
-The `Settings` tab can be shared with exec.
-Anyone who can edit it can change the session password and election spreadsheet link.
-First-join admin assignment assumes a trusted group; it does not verify who is president.
-Column A contains the keys below; column B contains their values.
-Headers and instructions can appear above the settings.
-Column C can contain instructions.
+## Running an election
 
-| Key | Meaning |
-| --- | --- |
-| `session_id` | A unique ID for each election, such as `exec-fall-2026` |
-| `session_password` | Shared voter password; blank closes voting |
-| `voting_sheet_url` | The current election spreadsheet's Google Sheets URL |
+1. Create a blank private spreadsheet and share it as Editor with the Google service account.
+2. In the permanent settings sheet, enter its URL in `voting_sheet_url`, a unique `session_id`, and a shared `session_password`.
+3. The president joins `/vote` first to become admin, before sharing the password with exec.
+4. Set up the election and add candidates and criteria in the admin page.
+5. Wait for everyone to join, then start the first candidate.
+6. Collect initial ratings, lead discussion, and open submissions.
+7. Close the candidate after the expected voters submit.
+8. Clear `session_password` when finished.
 
-The session password is checked by the server and never returned in the voter state.
-There is no separate admin password.
-The first person who joins claims admin access.
-Admins run the session and cannot submit ballots.
-Google Sheets appends an admin claim, and the earliest claim wins even if people join simultaneously.
-The hidden, protected `Session History` tab stores these records; do not edit it during voting.
-Unhiding it does not grant website admin access.
-The sheet owner and service account can edit its protected records.
-Changing the voter password affects new arrivals only.
-A new session ID or election spreadsheet invalidates old access.
-Moving or renaming a spreadsheet does not change its ID.
-Copying it creates a new ID.
+First-join ownership assumes a trusted group; it does not verify who is president.
+Admins cannot vote.
+Redis assigns the first admin atomically, even when joins arrive together.
+Existing Session History records are imported for an unstarted election, but new registrations live in Redis.
+Unhiding Session History does not grant admin access.
+Moving or renaming a spreadsheet does not change its ID; copying it does.
+Use a new session ID and a new spreadsheet for each election.
+Future presidents do not need Vercel access for routine elections.
 
-## Each election
+## Storage and exports
 
-1. Create a blank private spreadsheet and share it as Editor with the service account.
-2. Enter its URL, a new session ID, and the shared password in the permanent settings spreadsheet.
-3. Open `/vote` and enter your name and the shared password before distributing it to exec.
-4. Select **Set up election** to create the required tabs without deleting existing data.
-5. Add candidates and criteria, save, and choose a candidate order.
-6. Share `/vote` and the voter password with exec.
-7. Open initial ratings, lead discussion, then open voting.
-   Voters can revise and submit as soon as they are ready.
-8. Wait for confirmed submissions, lock the candidate, and move to the next one.
-9. Clear `session_password` when voting is finished.
+Voters poll every four seconds; admins poll every eight seconds.
+They read a shared Redis status document containing no rating values.
+Settings are shared through Redis for two minutes, with short per-process caching.
+The Sheets settings adapter can retain a previous value for another two minutes.
+Allow up to roughly four minutes for changes made directly in the settings sheet to take effect.
+Admin phase changes do not wait for that cache.
 
-Setup can run again without deleting responses.
-The election contains `Candidates`, `Criteria`, `Responses`, `Summary`, plus `Session` and `Ballots` tabs managed by the app.
-Leave app-managed IDs and headers intact.
-Use the admin page to edit setup before voting begins.
-Randomization is saved once, so refreshing does not change the order.
+Submitting a ballot saves it in Redis before the voter receives confirmation.
+An atomic compare-and-set validates the phase and stores the ballot together.
+A simultaneous close cannot discard a submission that has already been acknowledged.
+Retries return the existing receipt instead of creating another ballot.
+The live documents have no expiry.
 
-## What voters need to know
+Closing a candidate freezes submissions and exports their votes and initial receipts in one Sheets values batch.
+Tab creation, row allocation, and the summary formula can require additional setup calls.
+The app marks the candidate complete only after Sheets acknowledges the export.
+If export fails, the admin sees **Retry export to Sheets**.
+The votes remain in Redis, and another candidate cannot start until export succeeds.
+Reopening preserves existing votes and the original ballot version.
+Exports use fixed cells, so a retry or delayed older export cannot duplicate or erase a newer vote.
 
-Use the same browser throughout the session.
-Saving initial ratings keeps them on that device only.
-The first saved ratings remain separate from later revisions.
-Only **Submit vote** sends both versions to Sheets.
-Wait for the saved confirmation before leaving.
-Browser storage can be cleared or unavailable, especially in private browsing.
-The app reports storage failures and preserves pending submissions until confirmation.
-Initial ratings are an honor-system record, because voters control their browsers.
+The app manages Candidates, Criteria, Responses, Summary, Session, Ballots, and Initial submissions tabs.
+Keep their headers and IDs intact.
+The Summary formula computes averages from exported final ballots.
+Setup changes are saved in Redis; Sheets receives the frozen definitions with the first candidate export.
 
-## Operational limits
+## Verification and limits
 
-State updates use polling and a short server cache.
-Admin submission counts refresh every eight seconds using a fresh read, without adding cache delay.
-Voter stage polling remains every four seconds with the existing five-second server cache.
-Allow a few seconds for changes to reach everyone.
-Each app instance has its own cache; Google API quotas still apply across instances.
-A large number of cold instances can still exceed the shared Google quota; the in-memory cache is not a global rate limiter.
-The app retries or reports quota failures instead of claiming a vote was saved.
-A unique submission ID lets repeated delivery be treated as one logical ballot.
-Sheets cannot provide a transaction spanning phase checks and a write.
-Run a short practice election before the meeting and leave final submissions open until expected ballots are confirmed.
-Do not let two admins change session controls simultaneously.
+`npm run test:voting` runs the legacy Sheets and security tests.
+`npm run test:voting:redis` requires `redis-server` and `redis-cli` on PATH.
+It starts an isolated local Redis server and simulates Sheets, with no external requests.
+It checks concurrent joins and submissions, phase races, retry recovery, export failure, and missing-database behavior.
+The test confirms zero Sheets calls during voting actions and status polling, excluding periodic settings refreshes.
 
-## Ownership handoff
+The separate local rehearsal script uses real Upstash and the explicitly designated test spreadsheet.
+It refuses a different spreadsheet, session ID, or already-started election.
+Its report excludes passwords, cookies, voter names, and ratings.
+A successful local rehearsal does not verify Vercel environment configuration; check the deployed join and submission flow separately.
 
-Keep the settings sheet and election sheets under club-controlled ownership.
-Give incoming presidents access to the settings sheet and election spreadsheet.
-Keep website hosting access with the club's technical maintainers.
-Keep service-account credentials in the hosting environment, not in the spreadsheet.
-Future elections need no code or hosting-setting changes.
-The status cell `Settings!A1` follows whether the session password is filled; it does not verify the election setup is complete.
-
-## Returning to a completed candidate
-
-Use **Reopen submissions** to restore the saved ballot version for a completed candidate.
-Voters can then submit missing ballots from their original browser drafts.
-Already received ballots are not overwritten.
-
-## Admin access
-
-The president joins before sharing the password with exec.
-Use the same browser throughout the election.
-Signing out and signing back in with the password preserves the browser's admin identity.
-Clearing cookies or switching browsers loses that identity; there is no account-based recovery.
-
-The admin sees joined voters who have not submitted for the current candidate.
-This list excludes the admin and is not an online-presence indicator.
-
-Initial-rating participation is recorded in the automatically created `Initial submissions` tab.
-This stores a receipt per voter and ballot, without storing rating values.
-The admin sees everyone still pending during initial ratings; after that stage closes, the final waiting list includes only voters with an initial receipt.
-Receipt retries are idempotent, including after the stage closes.
-
-Everyone joins at `/vote` through the same name and password form.
-The first admitted participant sees the admin controls on that page; later participants see the voter interface.
-The legacy `/vote/admin` URL redirects to `/vote`.
-
-## Fixed ballot rows and quota handling
-
-New elections reserve fixed response and initial-receipt rows when the first candidate opens.
-The layout supports 128 voters, 100 candidates, and 20 criteria.
-The voter slot comes from the authenticated session registration order, not from client input.
-Late joiners use unused slots without moving existing ballots.
-Each voter has one receipt row and one response row per frozen criterion per candidate.
-The criteria are frozen for the entire election when its first candidate opens.
-Do not sort, insert, or delete rows in these app-managed tabs; use the Summary tab to view results.
-Existing elections with saved ballots retain their append-based storage and are not migrated automatically.
-
-A new initial or final submission reads the authoritative Session state and that voter's reserved cells in one bounded batch.
-Layout discovery may require an additional cached Session read, and old cookies may need a cached roster lookup.
-Retries target the same cells, so duplicate delivery cannot add another counted ballot.
-Already confirmed rows are returned without another write.
-Sheets does not offer compare-and-set: conflicting simultaneous payloads for the same voter remain last-write-wins.
-The voter UI freezes a pending final payload so its normal retries carry identical values.
-
-Submission admission occurs when the server reads an open stage, not when the browser button is clicked.
-A write admitted before closing can finish afterward, including a bounded retry on a Google 429 response.
-New admissions after the close see the closed stage and are rejected.
-Closing does not provide a global barrier that waits for every Vercel instance to drain.
-Writes always target the original candidate's reserved rows, even if the admin moves on.
-
-Voter polling reads definitions and Session state without downloading response history.
-Setup definition reads are cached for 60 seconds, settings for up to 120 seconds, and voter live reads for 5 seconds per process.
-After a ballot starts, voters use its saved definition from Session instead of separate definition reads.
-Writes invalidate only cached queries involving changed tabs.
-Admin polling batches Session, response history, saved ballots, and initial receipts.
-Background polling stops at the join screen after an authentication failure.
-Polling failures back off with jitter; ballot 429 responses retry with the same payload and increasing delays.
-No shared cache provider, paid service, or additional credential is introduced.
-
-The automated 30-voter test enforces separate 60-read and 60-write budgets for each submission burst.
-Measured initial and final bursts each use 31 reads and 30 writes, including surrounding state checks, on one warm process.
-A separate simulated minute with 30 voters and an admin polling every eight seconds uses 44 reads and 30 writes.
-This does not establish a production guarantee: joins, ongoing polling, admin actions, and other Vercel instances add traffic.
-The test uses a simulated Sheets endpoint, not live Google quota enforcement.
-
-Settings and Session History are fetched together when the history tab exists.
-They share one cached response, with a 120-second maximum age for settings and a 5-second maximum age for setup roster checks.
-Setup roster refreshes also refresh settings, so settings can update sooner before voting starts.
-
-
-### Reduced background reads and recovery
-
-Authenticated requests allow settings and admin ownership checks to reuse a response for two minutes.
-Clearing the password or changing the election link in Sheets can therefore take up to two minutes, plus polling and network time, to reach an existing browser.
-Normal admin stage controls still write the live Session row immediately.
-Voter polling stays at four seconds and its server cache stays at five seconds.
-Admin counts still refresh with a fresh read every eight seconds.
-
-Voters use the candidate name and frozen criteria already saved in Session after a ballot opens.
-Admin snapshots combine candidate data, criteria, Session, and counts into one read.
-Validated sheet metadata is cached for the session lifetime, capped at 24 hours, with local structural writes and access errors invalidating it.
-Incomplete sheet structures are not retained, so initialization on another instance can be detected.
-
-New elections capture their participant roster when the first ballot opens.
-The admin waiting lists use that roster without repeatedly fetching Session History.
-Everyone should join before the first ballot starts; late arrivals are not added to that election's waiting roster.
-Older elections without a frozen roster retain the prior registration lookup.
-
-Each server instance suppresses repeated reads or writes during a quota cooldown, with separate cooldowns for the two quota types.
-This is not a shared or global quota limit.
-Voter submissions retry rate-limit errors, temporary server failures, network errors, and timeouts, up to four retries with increasing delays and jitter.
-Retries preserve the complete serialized ballot payload.
-Validation and closed-stage errors do not retry automatically.
-The existing screen and local draft remain present during polling failures.
-
-The original synchronized 30-voter minute now measures 44 reads and 30 writes.
-A staggered minute measures 38 reads on one warm instance and 61 reads across three warm instances, with 30 writes in both cases.
-The three-cold-instance case measures 71 reads and 30 writes.
-These tests measure demand against mocked Google responses; the multi-instance diagnostic does not enforce a quota or prove production safety.
-Consecutive final and initial submission bursts remain a separate quota risk.
-
-### Request logs for a deployed rehearsal
-
-Vercel deployments automatically emit structured JSON logs with event `voting_sheets_request`.
-No extra environment setting or logging service is required on Vercel.
-For local diagnostics, set `VOTING_REQUEST_LOGS=1`.
-
-Open the deployment's Runtime Logs and filter for `voting_sheets_request` during the test.
-Each record describes one outbound Sheets attempt, including retries.
-Cache hits, callers sharing an in-flight request, and requests rejected by a local cooldown produce no outbound-request record.
-Group records by `startedAt` minute and `kind` to count reads and writes separately.
-Use `cacheId` and `sequence` together to distinguish attempts or deduplicate exported log records.
-A cache ID identifies an independent module cache, not a physical Vercel machine or necessarily a simultaneously running process.
-
-Records include the operation category, duration, HTTP status, and outcome.
-A null status means a transport failure, which does not establish whether Google received the request.
-Logs never include spreadsheet IDs, request URLs, cell ranges, names, passwords, ratings, request bodies, or raw error messages.
-Inspect 429 results and transport failures alongside successful attempts when assessing recovery.
-The logs measure this application's outbound attempts, not unrelated traffic from other applications using the same Google account.
+The app supports up to 128 voters, 100 candidates, and 20 criteria, with an 8 MB live-document ceiling.
+These input limits are not a promise that every combination fits a provider’s free allowance.
+Provider command, bandwidth, storage, and inactivity policies still apply.
+No inactivity cron is configured yet.
+Before an election, confirm the Redis database is available and run a short practice ballot.
+If Redis data is missing, restore the database instead of clearing the Sheets marker or starting over in the same election.

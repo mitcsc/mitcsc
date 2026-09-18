@@ -1,3 +1,5 @@
+import { redisEnabled } from "./redis";
+import { redisClaim, redisCanonical, redisVoters } from "./redis-service";
 import { randomUUID } from "node:crypto";
 import { Identity, VotingError } from "./security";
 import { readControlSheet, sheets } from "./sheets";
@@ -29,12 +31,14 @@ async function ensureClaims(config: Settings) {
   }
 }
 export async function canonicalIdentity(config: Settings, identity: Identity): Promise<Identity> {
+  if (redisEnabled()) return redisCanonical(config, identity);
   if (identity.role !== "admin") return identity;
   const first = (await claims(config, false, 120_000))[0];
   if (!first || first[2] !== identity.claimId || first[3] !== identity.id) return { ...identity, role: "voter" };
   return identity;
 }
-export async function claimIdentity(config: Settings, name: string, existing: Identity | null): Promise<Identity> {
+export async function claimIdentity(config: Settings, name: string, existing: Identity | null, joinId?: string): Promise<Identity> {
+  if (redisEnabled()) return redisClaim(config, name, existing, joinId);
   const sameSession = existing && existing.sessionId === config.sessionId && existing.sheetId === config.sheetId;
   if (sameSession) return canonicalIdentity(config, existing);
   await ensureClaims(config);
@@ -52,6 +56,7 @@ export async function claimIdentity(config: Settings, name: string, existing: Id
 }
 
 export async function sessionVoters(config: Settings, fresh = false): Promise<{id: string; name: string}[]> {
+  if (redisEnabled()) return redisVoters(config);
   const rows = await claims(config, fresh);
   const adminId = rows[0]?.[3];
   const voters = new Map<string, {id: string; name: string}>();

@@ -1,10 +1,12 @@
+import { redisEnabled } from "./redis";
+import { redisSettings, redisState, redisAdminAction, redisSubmit } from "./redis-service";
 import { sessionVoters } from "./admin-identity";
 import { randomUUID } from "node:crypto";
 import { Identity, VotingError, text } from "./security";
 import { invalidate, invalidateMetadata, readControlSheet, readRanges, sheets, writeRanges } from "./sheets";
 import type { Candidate, Criterion, FinalBallot, Ratings, VotingPhase, VotingState } from "./types";
 
-const HEADERS = {
+export const HEADERS = {
   Candidates: ["id", "name", "context", "order", "completed"],
   Criteria: ["id", "label", "description", "min", "max", "required"],
   Responses: ["submission_id", "session_id", "candidate_id", "candidate_name", "voter_id", "voter_name", "ballot_version", "criterion_id", "criterion_label", "initial_rating", "final_rating", "submitted_at"],
@@ -14,7 +16,7 @@ const HEADERS = {
 };
 const PHASES: VotingPhase[] = ["waiting", "initial", "deliberation", "revision", "final", "locked"];
 export interface Settings { sessionId: string; password: string; sheetId: string; settingsSheetId: string }
-export async function settings(): Promise<Settings> {
+export async function sheetSettings(): Promise<Settings> {
   const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
   const {settings: rows} = await readControlSheet(id, false, 120_000);
@@ -37,7 +39,7 @@ async function tabNames(id: string) {
 function checkHeaders(name: keyof typeof HEADERS, rows: string[][]) {
   if (HEADERS[name].some((value, i) => rows[0]?.[i] !== value)) throw new VotingError(`The ${name} tab has unexpected columns. Restore its original headers before continuing.`, 409);
 }
-async function snapshot(config: Settings, fresh = false, admin = true): Promise<Snapshot> {
+export async function snapshot(config: Settings, fresh = false, admin = true): Promise<Snapshot> {
   // Once initialized, the Session row contains everything a voter needs for an open ballot.
   // A cold instance checks structure once; subsequent checks reuse metadata until a structural write.
   const names = await tabNames(config.sheetId);
@@ -76,6 +78,7 @@ function ballotCriteria(s: Snapshot): Criterion[] {
   try { return JSON.parse(s.runtime.criteria_json); } catch { throw new VotingError("The saved ballot is damaged. Contact the admin.", 409); }
 }
 function state(config: Settings, identity: Identity, s: Snapshot): VotingState {
+  if (s.runtime.storage_backend === "redis") throw new VotingError("This election uses Redis. Restore its Redis connection before continuing.", 503);
   if (s.runtime.session_id && s.runtime.session_id !== config.sessionId) throw new VotingError("This spreadsheet belongs to another session. Use a new election spreadsheet or restore its session ID.", 409);
   const admin = identity.role === "admin";
   const found = s.candidates.find(c => c.id === s.runtime.candidate_id) || null;
@@ -156,7 +159,7 @@ async function fixedSubmission(config: Settings, identity: Identity, input: Reco
   return {ok: true, submissionId: id};
 }
 
-export async function submitInitial(config: Settings, identity: Identity, input: Record<string, unknown>) {
+export async function sheetSubmitInitial(config: Settings, identity: Identity, input: Record<string, unknown>) {
   if (identity.role === "admin") throw new VotingError("Admins do not vote.", 403);
   return serialize(async () => {
     const fixed = await fixedSubmission(config, identity, input, true);
@@ -173,7 +176,7 @@ export async function submitInitial(config: Settings, identity: Identity, input:
     return {ok: true};
   });
 }
-export async function getState(config: Settings, identity: Identity) {
+export async function sheetState(config: Settings, identity: Identity) {
   const s = await snapshot(config, false, identity.role === "admin");
   const result = state(config, identity, s);
   if (identity.role === "admin") {
@@ -197,11 +200,12 @@ async function saveRuntime(config: Settings, runtime: Record<string, string>) {
   if (runtime.ballot_version) runtime.voting_started = "true";
   await writeRanges(config.sheetId, [{ range: "'Session'!A1:B20", values: [HEADERS.Session, ...Object.entries(runtime), ...Array.from({ length: Math.max(0, 19 - Object.keys(runtime).length) }, () => ["", ""])] }]);
 }
-function validateSetup(candidates: Candidate[], criteria: Criterion[]) {
+export function validateSetup(candidates: Candidate[], criteria: Criterion[]) {
   if (!Array.isArray(candidates) || candidates.length > 100 || !Array.isArray(criteria) || criteria.length > 20) throw new VotingError("Use at most 100 candidates and 20 criteria.");
   for (const c of candidates) {
     if (!c || typeof c !== "object") throw new VotingError("Invalid candidate details.");
-    text(c.id, "candidate ID", 100); text(c.name, "candidate name", 150);
+    text(c.id, "candidate ID", 100);
+    if (["__proto__", "constructor", "prototype"].includes(c.id)) throw new VotingError("Invalid candidate ID."); text(c.name, "candidate name", 150);
     if (typeof c.context !== "string" || c.context.length > 5000 || !Number.isFinite(c.order) || typeof c.completed !== "boolean") throw new VotingError("Invalid candidate details.");
   }
   for (const c of criteria) {
@@ -228,7 +232,7 @@ export async function serialize<T>(operation: () => Promise<T>): Promise<T> {
   mutation = next.then(() => undefined, () => undefined);
   return next;
 }
-export async function adminAction(config: Settings, identity: Identity, input: Record<string, unknown>) {
+export async function sheetAdminAction(config: Settings, identity: Identity, input: Record<string, unknown>) {
   return serialize(async () => {
     invalidate(config.sheetId);
     if (input.action === "initialize") {
@@ -250,7 +254,7 @@ export async function adminAction(config: Settings, identity: Identity, input: R
       // Formula stays in Summary only; all user-controlled values use RAW writes.
       const [summary] = await readRanges(config.sheetId, ["'Summary'!A2:G2"]);
       if (!summary.length) await sheets(config.sheetId, "/values:batchUpdate", "POST", { valueInputOption: "USER_ENTERED", data: [{ range: "'Summary'!A2", values: [[`=IFERROR(QUERY(UNIQUE(Responses!B2:K),"select Col1,Col2,Col3,Col8,avg(Col9),avg(Col10),count(Col10) where Col1 is not null group by Col1,Col2,Col3,Col8 label Col1 '',Col2 '',Col3 '',Col8 '',avg(Col9) '',avg(Col10) '',count(Col10) ''",0),"")`]] }] });
-      return getState(config, identity);
+      return sheetState(config, identity);
     }
     const s = await snapshot(config, true);
     state(config, identity, s);
@@ -302,10 +306,10 @@ export async function adminAction(config: Settings, identity: Identity, input: R
         await saveRuntime(config, { ...s.runtime, phase: next });
       }
     } else throw new VotingError("Unknown admin action.");
-    return getState(config, identity);
+    return sheetState(config, identity);
   });
 }
-export async function submit(config: Settings, identity: Identity, input: Record<string, unknown>) {
+export async function sheetSubmit(config: Settings, identity: Identity, input: Record<string, unknown>) {
   if (identity.role === "admin") throw new VotingError("Admins do not vote.", 403);
   return serialize(async () => {
     const id = text(input.submissionId, "submission ID", 100);
@@ -327,3 +331,10 @@ export async function submit(config: Settings, identity: Identity, input: Record
     return { ok: true, submissionId: id };
   });
 }
+
+// Keep the demo and pre-Redis deployments compatible. A configured Redis failure never falls back.
+export async function settings(): Promise<Settings> { return redisEnabled() ? redisSettings() : sheetSettings(); }
+export async function getState(config: Settings, identity: Identity) { return redisEnabled() ? redisState(config, identity) : sheetState(config, identity); }
+export async function adminAction(config: Settings, identity: Identity, input: Record<string, unknown>) { return redisEnabled() ? redisAdminAction(config, identity, input) : sheetAdminAction(config, identity, input); }
+export async function submitInitial(config: Settings, identity: Identity, input: Record<string, unknown>) { return redisEnabled() ? redisSubmit(config, identity, input, true) : sheetSubmitInitial(config, identity, input); }
+export async function submit(config: Settings, identity: Identity, input: Record<string, unknown>) { return redisEnabled() ? redisSubmit(config, identity, input, false) : sheetSubmit(config, identity, input); }

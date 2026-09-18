@@ -7,7 +7,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "test:voting": "node --test src/lib/voting/security.test.cjs tests/voting-integration.test.cjs"
+    "test:voting": "node --test src/lib/voting/security.test.cjs tests/voting-integration.test.cjs",
+    "test:voting:redis": "node --test tests/voting-redis.test.cjs"
   },
   "dependencies": {
     "framer-motion": "^12.23.12",
