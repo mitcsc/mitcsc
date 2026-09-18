@@ -204,3 +204,22 @@ A staggered minute measures 38 reads on one warm instance and 61 reads across th
 The three-cold-instance case measures 71 reads and 30 writes.
 These tests measure demand against mocked Google responses; the multi-instance diagnostic does not enforce a quota or prove production safety.
 Consecutive final and initial submission bursts remain a separate quota risk.
+
+### Request logs for a deployed rehearsal
+
+Vercel deployments automatically emit structured JSON logs with event `voting_sheets_request`.
+No extra environment setting or logging service is required on Vercel.
+For local diagnostics, set `VOTING_REQUEST_LOGS=1`.
+
+Open the deployment's Runtime Logs and filter for `voting_sheets_request` during the test.
+Each record describes one outbound Sheets attempt, including retries.
+Cache hits, callers sharing an in-flight request, and requests rejected by a local cooldown produce no outbound-request record.
+Group records by `startedAt` minute and `kind` to count reads and writes separately.
+Use `cacheId` and `sequence` together to distinguish attempts or deduplicate exported log records.
+A cache ID identifies an independent module cache, not a physical Vercel machine or necessarily a simultaneously running process.
+
+Records include the operation category, duration, HTTP status, and outcome.
+A null status means a transport failure, which does not establish whether Google received the request.
+Logs never include spreadsheet IDs, request URLs, cell ranges, names, passwords, ratings, request bodies, or raw error messages.
+Inspect 429 results and transport failures alongside successful attempts when assessing recovery.
+The logs measure this application's outbound attempts, not unrelated traffic from other applications using the same Google account.

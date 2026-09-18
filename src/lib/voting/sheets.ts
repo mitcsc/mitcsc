@@ -1,6 +1,18 @@
+import { randomUUID } from "node:crypto";
 import { GoogleAuth } from "google-auth-library";
 import { VotingError } from "./security";
 
+// This ID identifies this module's cache, not a physical Vercel machine.
+const cacheId = randomUUID();
+let requestSequence = 0;
+function operationName(suffix: string) {
+  if (suffix.startsWith("?fields=")) return "metadata";
+  if (suffix.startsWith("/values:batchGet")) return "read_batch";
+  if (suffix.startsWith("/values:batchUpdate")) return "write_batch";
+  if (suffix.startsWith(":batchUpdate")) return "structure_write";
+  if (suffix.includes(":append")) return "append";
+  return "values";
+}
 let auth: GoogleAuth | undefined;
 const cache = new Map<string, { storedAt: number; value: unknown }>();
 const generations = new Map<string, number>();
@@ -39,10 +51,28 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
     try {
       const client = await auth.getClient();
       const token = await client.getAccessToken();
-      response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}${suffix}`, {
-        method, headers: { Authorization: `Bearer ${token.token}`, "Content-Type": "application/json" },
-        ...(data === undefined ? {} : { body: JSON.stringify(data) }), cache: "no-store", signal: AbortSignal.timeout(15_000),
-      });
+      const sequence = ++requestSequence;
+      const startedAt = new Date().toISOString();
+      const started = performance.now();
+      let status: number | null = null;
+      try {
+        response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}${suffix}`, {
+          method, headers: { Authorization: `Bearer ${token.token}`, "Content-Type": "application/json" },
+          ...(data === undefined ? {} : { body: JSON.stringify(data) }), cache: "no-store", signal: AbortSignal.timeout(15_000),
+        });
+        status = response.status;
+      } finally {
+        // One record per outbound attempt. Cache hits, deduplicated callers, and cooldowns do not count.
+        // Never pass request URLs, spreadsheet IDs, payloads, credentials, or error messages to the logger.
+        if (process.env.VERCEL === "1" || process.env.VOTING_REQUEST_LOGS === "1") {
+          try {
+            console.log(JSON.stringify({event: "voting_sheets_request", cacheId, sequence, startedAt,
+              kind, operation: operationName(suffix), fresh, status,
+              outcome: status === null ? "transport_error" : status >= 200 && status < 300 ? "ok" : "http_error",
+              durationMs: Math.round(performance.now() - started)}));
+          } catch { /* Logging must never interrupt voting. */ }
+        }
+      }
     } catch { throw new VotingError("Google Sheets is unavailable. Your local ballot is safe; please retry.", 503); }
     if (response.status === 429) {
       const failures = (cooldowns.get(kind)?.failures || 0) + 1;

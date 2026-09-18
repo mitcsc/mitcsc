@@ -463,3 +463,38 @@ test('capacity diagnostics: staggered voters across independent server caches',a
     console.log(`DIAGNOSTIC ${mode} ${count} instances, staggered polling: ${calls.filter(r=>r.method==='GET').length} reads / ${calls.filter(r=>r.method!=='GET').length} writes. Quota enforcement disabled to measure demand.`);
   }
 });
+
+test('request logs count outbound attempts only and exclude sensitive data',async()=>{
+  const adapter=require('../src/lib/voting/sheets.ts');
+  const originalLog=console.log, originalFetch=global.fetch, originalEnv=process.env.VOTING_REQUEST_LOGS;
+  const logs=[];console.log=entry=>logs.push(JSON.parse(entry));process.env.VOTING_REQUEST_LOGS='1';
+  const id='private-sheet-identifier';books.set(id,new Map([['Private tab',[['private-name','private-password','private-rating']]]]));
+  const range="'Private tab'!A1:C1";
+  try{
+    await Promise.all([adapter.readRanges(id,[range]),adapter.readRanges(id,[range])]);
+    await adapter.readRanges(id,[range]);
+    assert.equal(logs.length,1,'Cache hits and coalesced callers are not outbound requests');
+    await adapter.writeRanges(id,[{range,values:[['sensitive-write']]}]);
+    global.fetch=async()=>new Response('{}',{status:429});
+    await assert.rejects(adapter.readRanges(id,[range],true),{status:429});
+    await assert.rejects(adapter.readRanges(id,[range],true),{status:429});
+    assert.equal(logs.length,3,'Cooldown rejections are not outbound requests');
+    global.fetch=async()=>{throw new Error('secret-token-in-transport-error');};
+    await assert.rejects(adapter.writeRanges(id,[{range,values:[['secret-ballot']]}]),{status:503});
+    assert.equal(logs.length,4);
+    assert.deepEqual(logs.map(r=>[r.kind,r.status,r.outcome]),[['read',200,'ok'],['write',200,'ok'],['read',429,'http_error'],['write',null,'transport_error']]);
+    assert.equal(new Set(logs.map(r=>r.cacheId)).size,1);
+    assert.equal(new Set(logs.map(r=>r.sequence)).size,4);
+    for(const entry of logs){
+      assert.equal(entry.event,'voting_sheets_request');
+      assert.ok(Number.isFinite(Date.parse(entry.startedAt)));
+      assert.ok(entry.durationMs>=0);
+      assert.deepEqual(Object.keys(entry).sort(),['event','cacheId','sequence','startedAt','kind','operation','fresh','status','outcome','durationMs'].sort());
+    }
+    const output=JSON.stringify(logs);
+    for(const secret of [id,'Private tab','private-name','private-password','private-rating','sensitive-write','secret-token','secret-ballot'])assert.ok(!output.includes(secret));
+  }finally{
+    console.log=originalLog;global.fetch=originalFetch;
+    if(originalEnv===undefined)delete process.env.VOTING_REQUEST_LOGS;else process.env.VOTING_REQUEST_LOGS=originalEnv;
+  }
+});
