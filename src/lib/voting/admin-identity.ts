@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Identity, VotingError } from "./security";
-import { sheets } from "./sheets";
+import { readControlSheet, sheets } from "./sheets";
 import type { Settings } from "./service";
 const HEADERS = ["session_id", "election_sheet_id", "claim_id", "voter_id", "voter_name", "claimed_at"];
 async function claims(config: Settings, fresh = false): Promise<string[][]> {
-  const result = await sheets<{ values?: string[][] }>(config.settingsSheetId, `/values/${encodeURIComponent("'Session History'!A:F")}`, "GET", undefined, fresh);
-  const rows = (result.values || []).map(row => row.map(String));
+  const {history} = await readControlSheet(config.settingsSheetId, fresh, 5000);
+  const rows = history || [];
   if (HEADERS.some((header, i) => rows[0]?.[i] !== header)) throw new VotingError("Restore the Session History tab headers in the settings spreadsheet.", 409);
   return rows.slice(1).filter(row => row[0] === config.sessionId && row[1] === config.sheetId);
 }

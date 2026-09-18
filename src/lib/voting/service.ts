@@ -1,7 +1,7 @@
 import { sessionVoters } from "./admin-identity";
 import { randomUUID } from "node:crypto";
 import { Identity, VotingError, text } from "./security";
-import { invalidate, readRanges, sheets, writeRanges } from "./sheets";
+import { invalidate, readControlSheet, readRanges, sheets, writeRanges } from "./sheets";
 import type { Candidate, Criterion, FinalBallot, Ratings, VotingPhase, VotingState } from "./types";
 
 const HEADERS = {
@@ -17,7 +17,7 @@ export interface Settings { sessionId: string; password: string; sheetId: string
 export async function settings(): Promise<Settings> {
   const id = process.env.VOTING_SETTINGS_SHEET_ID || "1CRZtuOwF7iouzHrj_n5TCofcNtCtzfBQvsa8Ez9wLXQ";
   if (!id) throw new VotingError("Voting is not configured. Set VOTING_SETTINGS_SHEET_ID and share the settings sheet with the service account.", 503);
-  const [rows] = await readRanges(id, ["'Settings'!A:B"], false, 10_000);
+  const {settings: rows} = await readControlSheet(id);
   const values = Object.fromEntries(rows.map(row => [row[0]?.trim(), row[1] || ""]));
   const raw = values.voting_sheet_url || "";
   const sheetId = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] || (/^[a-zA-Z0-9_-]{15,}$/.test(raw) ? raw : "");

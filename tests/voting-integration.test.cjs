@@ -329,3 +329,29 @@ test('legacy elections retain append storage without moving existing ballots',as
   assert.equal(books.get(cfg.sheetId).get('Responses')[1][0],'legacy-ballot');
   assert.equal(books.get(cfg.sheetId).get('Session').some(row=>row[0]==='row_layout_json'),false);
 });
+
+test('combined settings/history reads share cache while honoring each consumer freshness',async()=>{
+  const {readControlSheet}=require('../src/lib/voting/sheets.ts');
+  const id='control-cache-test';
+  books.set(id,new Map([['Settings',[['session_password','before']]],['Session History',[['header']]]]));
+  const realNow=Date.now;const base=realNow();let elapsed=0;Date.now=()=>base+elapsed;
+  try {
+    const start=requests.length;
+    await readControlSheet(id);
+    await readControlSheet(id,false,5000);
+    assert.equal(requests.slice(start).filter(r=>r.suffix==='/values:batchGet').length,1);
+    books.get(id).get('Settings')[0][1]='after';
+    elapsed=6000;
+    assert.equal((await readControlSheet(id)).settings[0][1],'before','Settings allow a 30-second cached value');
+    assert.equal((await readControlSheet(id,false,5000)).settings[0][1],'after','Roster forces a refresh after five seconds');
+    const refreshed=requests.length;
+    await readControlSheet(id);
+    assert.equal(requests.length,refreshed,'Settings reuse the roster refresh');
+    elapsed=35000;await readControlSheet(id);
+    assert.equal(requests.length,refreshed);
+    elapsed=37000;await readControlSheet(id);
+    assert.equal(requests.length,refreshed+1);
+    books.set('control-no-history',new Map([['Settings',[['session_password','value']]]]));
+    assert.equal((await readControlSheet('control-no-history')).history,undefined,'First-use settings do not require an existing history tab');
+  }finally{Date.now=realNow;}
+});

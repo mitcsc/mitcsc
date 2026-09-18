@@ -2,7 +2,7 @@ import { GoogleAuth } from "google-auth-library";
 import { VotingError } from "./security";
 
 let auth: GoogleAuth | undefined;
-const cache = new Map<string, { until: number; value: unknown }>();
+const cache = new Map<string, { storedAt: number; value: unknown }>();
 const generations = new Map<string, number>();
 const pending = new Map<string, Promise<unknown>>();
 function rangeTab(range: string) { return range.split("!")[0].replace(/^'|'$/g, ""); }
@@ -18,7 +18,7 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
   const key = `${sheetId}${suffix}`;
   if (method === "GET" && !fresh) {
     const hit = cache.get(key);
-    if (hit && hit.until > Date.now()) return hit.value as T;
+    if (hit && Date.now() - hit.storedAt < (suffix.startsWith("?fields=") ? 60_000 : ttlMs)) return hit.value as T;
     const running = pending.get(key);
     if (running) return running as Promise<T>;
   }
@@ -41,7 +41,7 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
     const result = await response.json() as T;
     if (method === "GET") {
       if (cache.size > 100) cache.clear();
-      if (!fresh && generation === (generations.get(sheetId) || 0)) cache.set(key, { until: Date.now() + (suffix.startsWith("?fields=") ? 60_000 : ttlMs), value: result });
+      if (!fresh && generation === (generations.get(sheetId) || 0)) cache.set(key, { storedAt: Date.now(), value: result });
       // Admin/ballot batches already fetched Session. Reuse that same read for voter polling.
       // Admission still bypasses this cache, and a concurrent local mutation prevents stale priming.
       if (suffix.startsWith("/values:batchGet?") && generation === (generations.get(sheetId) || 0)) {
@@ -50,7 +50,7 @@ export async function sheets<T>(sheetId: string, suffix = "", method = "GET", da
         const valueRanges = (result as {valueRanges?: unknown[]}).valueRanges;
         if (index >= 0 && valueRanges?.[index]) {
           const sessionKey = `${sheetId}/values:batchGet?ranges=${encodeURIComponent(ranges[index])}&valueRenderOption=UNFORMATTED_VALUE`;
-          cache.set(sessionKey, {until: Date.now() + 5000, value: {valueRanges: [valueRanges[index]]}});
+          cache.set(sessionKey, {storedAt: Date.now(), value: {valueRanges: [valueRanges[index]]}});
         }
       }
     } else {
@@ -71,4 +71,13 @@ export async function readRanges(id: string, ranges: string[], fresh = false, tt
 }
 export async function writeRanges(id: string, data: { range: string; values: (string | number | boolean)[][] }[]) {
   return sheets(id, "/values:batchUpdate", "POST", { valueInputOption: "RAW", data });
+}
+
+// Both consumers share one cache entry, but roster callers require a fresher copy.
+// This keeps the waiting list responsive without separate settings requests.
+export async function readControlSheet(id: string, fresh = false, maxAge = 30_000) {
+  const meta = await sheets<{sheets: {properties: {title: string}}[]}>(id, "?fields=sheets.properties.title");
+  const hasHistory = meta.sheets.some(sheet => sheet.properties.title === "Session History");
+  const tables = await readRanges(id, ["'Settings'!A:B", ...(hasHistory ? ["'Session History'!A:F"] : [])], fresh, maxAge);
+  return {settings: tables[0], history: hasHistory ? tables[1] : undefined};
 }

@@ -62,7 +62,7 @@ test('first concurrent join is sole admin; later joins vote and refresh preserve
         ['session_id', 'fall'], ['session_password', 'shared-password'],
         ['voting_sheet_url', 'https://docs.google.com/spreadsheets/d/test-election-sheet/edit'],
         ['admin_password', 'malicious-sheet-password'],
-      ] }] });
+      ] }, {values: rows}] });
       if (init.method === 'POST' && url.includes(':append')) {
         rows.push(...JSON.parse(init.body).values);
         return Response.json({ updates: { updatedRange: `Session History!A${rows.length}:F${rows.length}` } });

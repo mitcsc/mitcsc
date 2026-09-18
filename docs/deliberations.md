@@ -153,7 +153,7 @@ Closing does not provide a global barrier that waits for every Vercel instance t
 Writes always target the original candidate's reserved rows, even if the admin moves on.
 
 Voter polling reads definitions and Session state without downloading response history.
-Definition reads are cached for 60 seconds, Settings for 10 seconds, and live reads for 5 seconds per process.
+Definition reads are cached for 60 seconds, Settings for up to 30 seconds, and live reads for 5 seconds per process.
 Writes invalidate only cached queries involving changed tabs.
 Admin polling batches Session, response history, saved ballots, and initial receipts.
 Background polling stops at the join screen after an authentication failure.
@@ -162,6 +162,11 @@ No shared cache provider, paid service, or additional credential is introduced.
 
 The automated 30-voter test enforces separate 60-read and 60-write budgets for each submission burst.
 Measured initial and final bursts each use 31 reads and 30 writes, including surrounding state checks, on one warm process.
-A separate simulated minute with 30 voters and an admin polling uses 55 reads and 30 writes.
+A separate simulated minute with 30 voters and an admin polling uses 50 reads and 30 writes.
 This does not establish a production guarantee: joins, ongoing polling, admin actions, and other Vercel instances add traffic.
 The test uses a simulated Sheets endpoint, not live Google quota enforcement.
+
+Settings and Session History are fetched together when the history tab exists.
+They share one cached response, with a 30-second maximum age for settings and a 5-second maximum age for roster checks.
+Roster refreshes also refresh settings, so settings can update sooner while an admin is active.
+The 30-voter simulated minute dropped from 55 to 50 reads with this change; submission writes remain 30.
