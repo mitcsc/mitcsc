@@ -337,7 +337,12 @@ export async function presidentIdentity(config: Settings) {
 export async function createElection(input: Record<string, unknown>) {
   const sessionId = text(input.requestId, "request ID", 36);
   if (!/^[a-f0-9-]{36}$/i.test(sessionId)) throw new VotingError("Invalid request ID.");
-  const name = text(input.name, "election name", 100);
+  const name = input.name ? text(input.name, "election name", 100) : `Election ${new Date().toISOString().slice(0, 10)}`;
+  const setup = input.candidates !== undefined || input.criteria !== undefined;
+  const candidates = (input.candidates || []) as Candidate[];
+  const criteria = (input.criteria || []) as Criterion[];
+  validateSetup(candidates, criteria);
+  if (setup && (!candidates.length || !criteria.length)) throw new VotingError("Add candidates and criteria before opening the session.");
   const password = text(input.password, "voter password", 500);
   const link = text(input.sheetUrl, "spreadsheet link", 1000);
   const sheetId = link.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
@@ -352,15 +357,22 @@ export async function createElection(input: Record<string, unknown>) {
     if (active?.password) throw new VotingError("End the current election before creating another.", 409);
     const key = keyFor(config);
     const reservation = redisKey("election-creation", sessionId);
-    const encoded = JSON.stringify(config);
     const reserved = await redisCommand<string | null>("GET", reservation);
+    // Preserve the generated date label if a creation retry crosses midnight.
+    if (reserved && !input.name) config.name = JSON.parse(reserved).name;
+    const encoded = JSON.stringify(config);
+    const setupKey = `${reservation}:ballot`;
+    const ballot = JSON.stringify({candidates, criteria});
+    const reservedBallot = await redisCommand<string | null>("GET", setupKey);
+    if (reservedBallot && reservedBallot !== ballot) throw new VotingError("Retry with the original ballot setup, or reload to start again.", 409);
     if (reserved && reserved !== encoded) throw new VotingError("Retry with the original setup values, or reload to start a new setup.", 409);
     if (!reserved) await redisCommand("SET", reservation, encoded);
+    if (!reservedBallot) await redisCommand("SET", setupKey, ballot);
     if (!await redisCommand("GET", key)) {
       const meta = await sheets<{sheets: {properties: {title: string}}[]}>(sheetId, "?fields=sheets.properties.title", "GET", undefined, true);
       if (meta.sheets.some(s => Object.hasOwn(HEADERS, s.properties.title))) throw new VotingError("Use a new spreadsheet for this election.", 409);
       const admin: Member = {id: randomUUID(), claimId: randomUUID(), name: "President", role: "admin", slot: -1};
-      const doc: Election = {schema: 1, revision: 0, initialized: true, candidates: [], criteria: [], members: [admin], phase: "waiting", current: "", visible: false, rounds: {}, exportRows: {nextResponse: 2, nextReceipt: 2, responses: {}, receipts: {}}};
+      const doc: Election = {schema: 1, revision: 0, initialized: true, candidates: candidates.map((candidate, order) => ({...candidate, order, completed: false})), criteria, members: [admin], phase: "waiting", current: "", visible: false, rounds: {}, exportRows: {nextResponse: 2, nextReceipt: 2, responses: {}, receipts: {}}};
       await redisCommand("SET", key, JSON.stringify(doc), "NX");
     }
     await load(config); // Writes the Session marker, verifying Sheets edit access before admission.

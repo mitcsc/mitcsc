@@ -20,7 +20,7 @@ async function responseData(response: Response) {
   return data;
 }
 
-export default function AdminRoom({initialState, onExit, onStateChange}: {initialState: VotingState; onExit: (state?: VotingState) => void; onStateChange?: (state: VotingState) => void}) {
+export default function AdminRoom({initialState, onExit, onStateChange, setupComplete = false}: {setupComplete?: boolean; initialState: VotingState; onExit: (state?: VotingState) => void; onStateChange?: (state: VotingState) => void}) {
   const [serverState, setState] = useState<VotingState | null>(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -45,7 +45,7 @@ export default function AdminRoom({initialState, onExit, onStateChange}: {initia
   const state = serverState && selected && !viewingLive ? {...serverState, currentCandidate: selected, phase: selectedState?.phase || (selected.completed ? "locked" as const : "waiting" as const), ballotVersion: selectedState?.ballotVersion || "", submittedCount: selectedState?.submittedCount || 0, participants: selectedState?.participants || []} : serverState;
   const liveIdle = serverState?.phase === "waiting" || serverState?.phase === "locked";
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"setup" | "live">("setup");
+  const [tab, setTab] = useState<"setup" | "live">(setupComplete ? "live" : "setup");
   const [setupRevision, setSetupRevision] = useState(0);
   const pollInFlight = useRef(false);
   const pollAfter = useRef(0);
@@ -118,11 +118,11 @@ export default function AdminRoom({initialState, onExit, onStateChange}: {initia
     {error && <div className="voting-admin-alert" role="alert">{error}</div>}
     {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
     {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? null : <>
-      {!state.active && <div className="voting-admin-notice">Voting is closed. Set a password in Settings to open the session.</div>}
+      {!state.active && <div className="voting-admin-notice">This session has ended. Create a new session to vote again.</div>}
       {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Add candidates and criteria to begin.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
         <div className="voting-admin-controls" hidden={!showPreview}>
           <section className="voting-admin-candidates" aria-label="Candidate selection">
-            {editable && <div className="voting-preview-back"><button onClick={() => setTab("setup")}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg><span>Back to setup</span></button></div>}
+            {editable && !setupComplete && <div className="voting-preview-back"><button onClick={() => setTab("setup")}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg><span>Back to setup</span></button></div>}
             <ol className="voting-candidate-list">{candidates.map(c => <li key={c.id}>
               <button className={c.id === state.currentCandidate?.id ? "is-selected" : ""} aria-current={c.id === state.currentCandidate?.id ? "true" : undefined} aria-label={`View ${c.name}`} disabled={busy} onClick={() => selectCandidate(c.id)}>
                 <span className={`voting-candidate-dot ${c.completed ? "is-done" : c.id === serverState?.currentCandidate?.id ? "is-now" : ""}`} aria-hidden="true"/><span><strong>{c.name}</strong><small>{c.id === serverState?.currentCandidate?.id && !liveIdle ? "Live" : c.completed ? "Complete" : ""}</small></span>

@@ -290,17 +290,23 @@ test('president setup creates elections without a settings sheet and never grant
  const old=process.env.VOTING_PRESIDENT_PASSWORD;
  process.env.VOTING_PRESIDENT_PASSWORD='a-long-test-president-password';
  const sheetId='president-election-test-12345'; books.set(sheetId,new Map([['Sheet1',[]]]));
- const input={requestId:randomUUID(),name:'Test election',password:'voter-password',sheetUrl:`https://docs.google.com/spreadsheets/d/${sheetId}/edit`};
+ const input={requestId:randomUUID(),candidates,criteria,password:'voter-password',sheetUrl:`https://docs.google.com/spreadsheets/d/${sheetId}/edit`};
  const before=requests.length;
  try {
    await redis.redisCommand('DEL',redis.redisKey('president-active-election'));
+   await assert.rejects(backend.createElection({...input,criteria:[]}),e=>e.status===400);
+   assert.equal(await backend.currentElection(),null,'Invalid setup never opens a session');
    const cfg=await backend.createElection(input);
+   assert.match(cfg.name,/^Election \d{4}-\d{2}-\d{2}$/);
    assert.deepEqual(await backend.createElection(input),cfg,'Lost creation response is retryable');
    assert.equal((await service.settings()).sheetId,sheetId);
    assert.ok(requests.slice(before).every(r=>r.id===sheetId),'No access to settings sheet');
    const voter=await identity.claimIdentity(cfg,'First join',null);
    assert.equal(voter.role,'voter');
    const admin=await backend.presidentIdentity(cfg);
+   const ready=await service.getState(cfg,admin);
+   assert.equal(ready.candidates.length,candidates.length);
+   assert.equal(ready.criteria.length,criteria.length);
    await assert.rejects(service.adminAction(cfg,voter,{action:'initialize'}),e=>e.status===403);
    await assert.rejects(backend.createElection({...input,requestId:randomUUID()}),e=>e.status===409);
    await service.adminAction(cfg,admin,{action:'saveSetup',candidates,criteria});

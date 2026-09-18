@@ -118,3 +118,32 @@
   .voting-root .voter-room .voter-join input::placeholder,
   .voting-root .voter-room .voter-join .voter-primary { transition: none; }
 }
+
+/* Session creation is a labeled form, separate from the minimal entry screen. */
+.voting-root .voter-room .voter-join.president-create { max-width: 420px; }
+.voting-root .president-create .voter-join-logo { width: 88px; height: 88px; margin-bottom: 16px; }
+.voting-root .president-create h1 { margin: 0 0 12px; font: 500 26px/1.2 "Instrument Sans", sans-serif; letter-spacing: -.02em; }
+.voting-root .voter-join .president-field { display: grid; gap: 8px; margin-top: 8px; }
+.voting-root .president-field > span:first-child { font-size: 14px; font-weight: 500; color: #d8d8da; }
+.voting-root .president-field .president-help { font-weight: 400; }
+
+.voting-root .president-service-account { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 12px; border: 1px solid #ffffff18; border-radius: 8px; }
+.voting-root .president-service-account > span { min-width: 0; overflow-wrap: anywhere; color: #b5b5bb; font-size: 12px; line-height: 1.5; user-select: all; }
+.voting-root .voter-join .president-service-account button { flex: none; min-height: 36px; min-width: 64px; padding: 8px 10px; border: 1px solid #ffffff26; border-radius: 6px; background: transparent; color: #eee; font-size: 12px; cursor: pointer; }
+.voting-root .voter-join .president-service-account button:hover { background: #ffffff09; }
+
+/* One setup flow, then the live console. */
+.voting-root .president-room { width: 100%; min-height: 0; }
+.voting-root .president-room > .voter-room { flex: 1; min-height: 0; height: auto; }
+.voting-root .president-setup-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; border-bottom: 1px solid #ffffff18; flex: none; }
+.voting-root .president-setup-header ol { display: flex; align-items: center; gap: 28px; list-style: none; margin: 0; padding: 0; }
+.voting-root .president-setup-header li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #77777d; }
+.voting-root .president-setup-header li > span { display: grid; place-items: center; width: 23px; height: 23px; border-radius: 50%; border: 1px solid #ffffff20; font-size: 11px; }
+.voting-root .president-setup-header li[aria-current] { color: #f4f3f1; }
+.voting-root .president-setup-header li[aria-current] > span { background: var(--voting-accent); border-color: transparent; }
+.voting-root .president-ballot-setup .voting-setup-editor { flex: 1; }
+@media(max-width:600px) {
+ .voting-root .president-setup-header { padding: 14px 16px; gap: 8px; }
+ .voting-root .president-setup-header ol { gap: 14px; }
+ .voting-root .president-setup-header li { font-size: 12px; gap: 5px; }
+}
