@@ -85,6 +85,8 @@ Initial ratings are an honor-system record, because voters control their browser
 ## Operational limits
 
 State updates use polling and a short server cache.
+Admin submission counts refresh every eight seconds using a fresh read, without adding cache delay.
+Voter stage polling remains every four seconds with the existing five-second server cache.
 Allow a few seconds for changes to reach everyone.
 Each app instance has its own cache; Google API quotas still apply across instances.
 A large number of cold instances can still exceed the shared Google quota; the in-memory cache is not a global rate limiter.
@@ -162,7 +164,7 @@ No shared cache provider, paid service, or additional credential is introduced.
 
 The automated 30-voter test enforces separate 60-read and 60-write budgets for each submission burst.
 Measured initial and final bursts each use 31 reads and 30 writes, including surrounding state checks, on one warm process.
-A separate simulated minute with 30 voters and an admin polling uses 50 reads and 30 writes.
+A separate simulated minute with 30 voters and an admin polling every eight seconds uses 51 reads and 30 writes.
 This does not establish a production guarantee: joins, ongoing polling, admin actions, and other Vercel instances add traffic.
 The test uses a simulated Sheets endpoint, not live Google quota enforcement.
 
@@ -170,3 +172,6 @@ Settings and Session History are fetched together when the history tab exists.
 They share one cached response, with a 30-second maximum age for settings and a 5-second maximum age for roster checks.
 Roster refreshes also refresh settings, so settings can update sooner while an admin is active.
 The 30-voter simulated minute dropped from 55 to 50 reads with this change; submission writes remain 30.
+
+Eight-second admin polling with fresh counts measures 51 reads in that simulated minute.
+The earlier four-second admin poll already reused cached counts, so this timing change alone does not reduce total reads.

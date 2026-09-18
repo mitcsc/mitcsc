@@ -301,7 +301,7 @@ test('one minute of 30-voter polling plus an initial burst stays under the mock 
     await Promise.all(voters.map(v=>service.submitInitial(cfg,v,{sessionId:cfg.sessionId,candidateId:'alex',ballotVersion:state.ballotVersion,ratings:{reliability:3}})));
     for(elapsed=4000;elapsed<60000;elapsed+=4000){
       await Promise.all(voters.map(async v=>{await service.settings();return service.getState(cfg,v);}));
-      await service.getState(cfg,owner);
+      if(elapsed%8000===0) await service.getState(cfg,owner);
     }
     assert.ok(quota.reads<=60,JSON.stringify(quota));
     assert.equal(quota.writes,30);
@@ -354,4 +354,23 @@ test('combined settings/history reads share cache while honoring each consumer f
     books.set('control-no-history',new Map([['Settings',[['session_password','value']]]]));
     assert.equal((await readControlSheet('control-no-history')).history,undefined,'First-use settings do not require an existing history tab');
   }finally{Date.now=realNow;}
+});
+
+
+test('admin refresh sees external submissions immediately while voter stage reads stay cached',async()=>{
+  const cfg={...config,sheetId:'load-election',sessionId:'load-session'};
+  const owner={...admin,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const who={...voter,id:'load-29',voterSlot:29,sheetId:cfg.sheetId,sessionId:cfg.sessionId};
+  const previous=await service.getState(cfg,owner);
+  const rows=books.get(cfg.sheetId).get('Responses');
+  const original=rows.map(row=>row?.slice());
+  try {
+    rows.push(['external-confirmation',cfg.sessionId,previous.currentCandidate.id,'',who.id,who.name,previous.ballotVersion,'reliability','Reliability','3','4','']);
+    const next=await service.getState(cfg,owner);
+    assert.equal(next.submittedCount,previous.submittedCount+1,'Admin counts must not reuse the previous polling response');
+    await service.getState(cfg,who);
+    const start=requests.length;
+    await service.getState(cfg,who);
+    assert.equal(requests.length,start,'Voter polls still reuse cached stage reads');
+  }finally{books.get(cfg.sheetId).set('Responses',original);invalidate(cfg.sheetId);}
 });

@@ -78,7 +78,7 @@ export default function AdminRoom({initialState, onExit}: {initialState: VotingS
   }, [applyState, onExit]);
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => {void refresh();}, 4000);
+    const timer = window.setInterval(() => {void refresh();}, 8000);
     const visible = () => {if (!document.hidden) void refresh();};
     document.addEventListener("visibilitychange", visible);
     return () => {window.clearInterval(timer); document.removeEventListener("visibilitychange", visible); controller.current?.abort();};

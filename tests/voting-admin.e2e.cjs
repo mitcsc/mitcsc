@@ -52,8 +52,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
   });
   page.on('dialog', dialog => dialog.accept());
   const button = name => page.getByRole('button', { name, exact: true });
-  const waitFor = async (predicate, message) => {
-    for (let i = 0; i < 100; i++) { if (await predicate()) return; await page.waitForTimeout(50); }
+  const waitFor = async (predicate, message, attempts = 100) => {
+    for (let i = 0; i < attempts; i++) { if (await predicate()) return; await page.waitForTimeout(50); }
     throw new Error(message);
   };
   try {
@@ -111,7 +111,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(os.homed
     await page.getByLabel('Criterion', { exact: true }).fill('Reliability');
     await page.getByLabel('Description', { exact: true }).fill('Follow-through and preparation');
     const pollingBefore = polls;
-    await waitFor(() => polls > pollingBefore, 'Expected periodic state polling');
+    await waitFor(() => polls > pollingBefore, 'Expected periodic state polling', 200);
     assert.equal(await page.getByLabel('Criterion', { exact: true }).inputValue(), 'Reliability', 'Polling must not discard unsaved setup');
     assert.equal(await page.getByLabel('Name', { exact: true }).first().inputValue(), 'Alex Chen');
     await button('Start').click();

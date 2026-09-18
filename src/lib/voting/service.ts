@@ -45,7 +45,9 @@ async function snapshot(config: Settings, fresh = false, admin = true): Promise<
   const ranges = ["'Session'!A1:B20", ...(admin ? ["'Responses'!A:L", "'Ballots'!A:E", ...(names.includes(INITIAL_TAB) ? [`'${INITIAL_TAB}'!A:E`] : [])] : [])];
   const combined = fresh ? await readRanges(config.sheetId, [...definitions, ...ranges], true) : undefined;
   const definition = combined ? combined.slice(0, 2) : await readRanges(config.sheetId, definitions, false, 60_000);
-  const live = combined ? combined.slice(2) : await readRanges(config.sheetId, ranges);
+  // Admin polls every eight seconds. Read counts fresh so cache age does not add another delay.
+  // Voter stage polls retain their shared five-second cache.
+  const live = combined ? combined.slice(2) : await readRanges(config.sheetId, ranges, admin);
   const tables = [...definition, ...live];
   (["Candidates", "Criteria", "Session"] as const).forEach((name, i) => checkHeaders(name, tables[i]));
   if (admin) {
