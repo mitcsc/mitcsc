@@ -167,3 +167,21 @@
 .voting-root .president-ballot-heading button { padding: 8px 12px; border: 1px solid #ffffff20; border-radius: 7px; background: transparent; color: #c3c3c8; font-size: 13px; }
 .voting-root .president-ballot-heading button:hover:not(:disabled) { color: #fff; background: #ffffff06; }
 @media(max-width:600px) { .voting-root .president-ballot-heading { padding: 20px 16px 8px; } }
+
+/* The ballot remains part of the centered setup flow, not the live workspace. */
+.voting-root .president-room:has(.president-ballot-setup) { padding: 28px 32px; }
+.voting-root .voting-admin.voting-console.president-ballot-setup { flex: 0 1 auto; width: 100%; max-width: 960px; height: min(800px, 100%); margin: auto; border: 0; background: transparent; }
+.voting-root .president-ballot-heading { padding: 0 0 24px; }
+.voting-root .president-ballot-logo { display: block; width: 88px; height: 88px; object-fit: contain; margin: 0 auto 16px; }
+.voting-root .president-ballot-heading h1 { font-size: 26px; }
+.voting-root .president-ballot-setup .voting-setup-editor { height: 0; border: 0; }
+.voting-root .president-ballot-setup .voting-pane-heading { padding-top: 8px; }
+.voting-root .president-ballot-footer { grid-column: 1 / -1; padding: 20px 0 0; }
+.voting-root .president-ballot-footer button { display: block; width: 100%; max-width: 420px; min-height: 54px; margin: 0 auto; padding: 14px 20px; border-radius: 999px; font-size: 16px; font-weight: 500; }
+@media(max-width:760px) {
+ .voting-root .president-room:has(.president-ballot-setup) { padding: 20px 16px; }
+ .voting-root .president-ballot-setup .voting-setup-editor { grid-template-rows: minmax(100px,1fr) minmax(150px,1.3fr) auto auto; }
+ .voting-root .president-ballot-logo { width: 64px; height: 64px; margin-bottom: 12px; }
+ .voting-root .president-ballot-heading { padding-bottom: 16px; }
+ .voting-root .president-ballot-footer { padding-top: 16px; }
+}

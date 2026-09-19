@@ -9,6 +9,7 @@ interface Props {
   criteria: Criterion[];
   busy: boolean;
   joinedCount: number;
+  onboarding?: boolean;
   showJoinedCount?: boolean;
   actionLabel?: string;
   onDraftChange?: (candidates: Candidate[], criteria: Criterion[]) => void;
@@ -16,7 +17,7 @@ interface Props {
   onSave: (candidates: Candidate[], criteria: Criterion[]) => Promise<boolean>;
 }
 
-export default function AdminSetup({ candidates: initialCandidates, criteria: initialCriteria, busy, joinedCount, showJoinedCount = true, actionLabel = "Start", onDraftChange, onSave, onContinue }: Props) {
+export default function AdminSetup({ candidates: initialCandidates, criteria: initialCriteria, busy, joinedCount, onboarding = false, showJoinedCount = true, actionLabel = "Start", onDraftChange, onSave, onContinue }: Props) {
   const listRef = useRef<HTMLUListElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const [split, setSplit] = useState(38);
@@ -71,8 +72,9 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
           event.preventDefault(); setSplit(value => event.key === "Home" ? 30 : event.key === "End" ? 70 : Math.min(70, Math.max(30, value + (event.key === "ArrowLeft" ? -2 : 2))));
         }
       }}/>
-      <fieldset disabled={busy} className="voting-admin-editor"><legend className="voting-sr-only">Criteria</legend><div className="voting-pane-heading voting-criteria-heading"><div className="voting-pane-title"><h3>Criteria <span>{criteria.length}</span></h3></div><div className="voting-criteria-actions"><button onClick={() => updateCriteria([...criteria, {id: crypto.randomUUID(), label: "", description: "", min: 1, max: 5, required: true}])}>+ Add criteria</button><button className="voting-admin-primary voting-start" disabled={busy} onClick={save}>{busy ? "Saving…" : actionLabel}<span aria-hidden="true">↗</span></button></div></div>{criteria.map(c => <div className="voting-admin-criterion" key={c.id}><div className="voting-criterion-heading"><label>Criterion<input placeholder="Criterion name" value={c.label} maxLength={150} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, label: e.target.value} : x))}/></label><button className="voting-remove-criterion" aria-label={`Remove ${c.label || "criterion"}`} onClick={() => updateCriteria(criteria.filter(x => x.id !== c.id))}>×</button></div><label>Description<textarea placeholder="Short description (optional)" value={c.description} rows={2} maxLength={1000} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, description: e.target.value} : x))}/></label><div className="voting-admin-scale"><label>Minimum<input type="number" min={0} max={9} step={1} value={c.min} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, min: Number(e.target.value)} : x))}/></label><label>Maximum<input type="number" min={1} max={10} step={1} value={c.max} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, max: Number(e.target.value)} : x))}/></label><label className="voting-admin-check"><input type="checkbox" checked={c.required} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, required: e.target.checked} : x))}/> Required</label></div></div>)}</fieldset>
+      <fieldset disabled={busy} className="voting-admin-editor"><legend className="voting-sr-only">Criteria</legend><div className="voting-pane-heading voting-criteria-heading"><div className="voting-pane-title"><h3>Criteria <span>{criteria.length}</span></h3></div><div className="voting-criteria-actions"><button onClick={() => updateCriteria([...criteria, {id: crypto.randomUUID(), label: "", description: "", min: 1, max: 5, required: true}])}>+ Add criteria</button>{!onboarding && <button className="voting-admin-primary voting-start" disabled={busy} onClick={save}>{busy ? "Saving…" : actionLabel}<span aria-hidden="true">↗</span></button>}</div></div>{criteria.map(c => <div className="voting-admin-criterion" key={c.id}><div className="voting-criterion-heading"><label>Criterion<input placeholder="Criterion name" value={c.label} maxLength={150} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, label: e.target.value} : x))}/></label><button className="voting-remove-criterion" aria-label={`Remove ${c.label || "criterion"}`} onClick={() => updateCriteria(criteria.filter(x => x.id !== c.id))}>×</button></div><label>Description<textarea placeholder="Short description (optional)" value={c.description} rows={2} maxLength={1000} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, description: e.target.value} : x))}/></label><div className="voting-admin-scale"><label>Minimum<input type="number" min={0} max={9} step={1} value={c.min} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, min: Number(e.target.value)} : x))}/></label><label>Maximum<input type="number" min={1} max={10} step={1} value={c.max} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, max: Number(e.target.value)} : x))}/></label><label className="voting-admin-check"><input type="checkbox" checked={c.required} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, required: e.target.checked} : x))}/> Required</label></div></div>)}</fieldset>
     {message && <p role="status">{message}</p>}
+    {onboarding && <div className="president-ballot-footer"><button className="voting-admin-primary" disabled={busy} onClick={save}>{busy ? "Opening…" : actionLabel}</button></div>}
   </section>;
 }
 

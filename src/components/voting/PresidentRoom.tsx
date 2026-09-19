@@ -92,11 +92,12 @@ export default function PresidentRoom() {
   return <div className="president-room">
     {!login && overview && step === "ballot" ? <div className="voting-admin voting-console president-ballot-setup">
       <header className="president-ballot-heading">
+        <Image className="president-ballot-logo" src="/img/logo/logo.png" alt="MIT CSC" width={88} height={88} priority/>
         <SetupProgress step={2}/>
         <div><h1>Ballot</h1><button type="button" disabled={busy} onClick={() => {setError(""); setStep("session");}}>Back</button></div>
       </header>
       {error && <div className="voting-admin-alert" role="alert">{error}</div>}
-      <AdminSetup candidates={draft.candidates} criteria={draft.criteria} busy={busy} joinedCount={0} showJoinedCount={false} actionLabel="Open session" onDraftChange={(candidates, criteria) => setDraft({candidates, criteria})} onSave={create} onContinue={() => {}}/>
+      <AdminSetup onboarding candidates={draft.candidates} criteria={draft.criteria} busy={busy} joinedCount={0} showJoinedCount={false} actionLabel="Open session" onDraftChange={(candidates, criteria) => setDraft({candidates, criteria})} onSave={create} onContinue={() => {}}/>
     </div> : <div className="voter-room">
     <section className={`voter-panel voter-join ${!login && overview ? "president-create" : ""}`}>
       <Image className="voter-join-logo" src="/img/logo/logo.png" alt="MIT CSC" width={144} height={144} priority/>
@@ -107,7 +108,7 @@ export default function PresidentRoom() {
           <h1>Session details</h1>
           <label className="president-field">
             <span>Session code</span>
-            <input aria-label="Session code" placeholder="Choose a code" type="password" autoComplete="new-password" required maxLength={500} aria-describedby="session-code-help" value={voterPassword} onChange={e=>setVoterPassword(e.target.value)}/>
+            <input aria-label="Session code" placeholder="Choose a code" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} required maxLength={500} aria-describedby="session-code-help" value={voterPassword} onChange={e=>setVoterPassword(e.target.value)}/>
             <span id="session-code-help" className="president-help">Share this code with voters.</span>
           </label>
           <label className="president-field">
