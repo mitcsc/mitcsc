@@ -480,9 +480,12 @@ test('voter completion appears only after all rounds close and clears on reopen'
  const e=await election('completion',1);
  for (const candidate of candidates) {
   await open(e,candidate.id);
+  const state=await service.getState(e.cfg,e.voters[0]);
+  await service.submitInitial(e.cfg,e.voters[0],{sessionId:e.cfg.sessionId,candidateId:candidate.id,ballotVersion:state.ballotVersion,ratings});
   await service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'locked'});
  }
  assert.equal((await service.getState(e.cfg,e.voters[0])).votingComplete,true);
+ assert.equal((await service.getState(e.cfg,e.voters[0])).pollIntervalMs,3000,'Unfinished voters keep watching for reopened ballots');
  await service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'final',candidateId:candidates[0].id});
  assert.equal((await service.getState(e.cfg,e.voters[0])).votingComplete,false);
 });

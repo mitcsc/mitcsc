@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
     let phase = 'initial', confirmed = false;
     await page.route('**/api/voting/**', r => { const u = r.request().url(); if (u.includes('/initial'))
         return r.fulfill({ status: 409, json: { error: 'Initial ratings have closed for this candidate.' } }); if (u.includes('/ballot'))
-        return r.fulfill({ json: { initialRatings: { c: 4 }, finalRatings: null } }); return r.fulfill({ json: { active: true, sessionId: 'unconfirmed-test', isAdmin: false, voter: { id: 'v', name: 'Tester' }, phase, ballotVersion: 'one', currentCandidate: { id: 'a', name: 'Candidate', context: '' }, eligible: true, ownBallot: { initialSubmitted: confirmed, submitted: false }, criteria: [{ id: 'c', label: 'Rating', min: 1, max: 5, required: true }], pollIntervalMs: 500 } }); });
+        return r.fulfill({ json: { initialRatings: { c: 4 }, finalRatings: null } }); return r.fulfill({ json: { active: true, sessionId: 'unconfirmed-test', isAdmin: false, voter: { id: 'v', name: 'Tester' }, phase, votingComplete: phase === 'locked', ballotVersion: 'one', currentCandidate: { id: 'a', name: 'Candidate', context: '' }, eligible: true, ownBallot: { initialSubmitted: confirmed, submitted: false }, criteria: [{ id: 'c', label: 'Rating', min: 1, max: 5, required: true }], pollIntervalMs: 3000 } }); });
     await page.goto(`${process.env.VOTING_TEST_URL || 'http://localhost:3112'}/vote`);
     await page.getByRole('radio', { name: '4', exact: true }).check();
     await page.getByRole('button', { name: 'Save ratings' }).click();
@@ -31,6 +31,12 @@ const assert = require('node:assert/strict');
     assert.ok(await page.getByRole('radio', { name: '4', exact: true }).isChecked());
     await page.waitForTimeout(500);
     assert.equal(await page.getByText('Initial ratings were not received', { exact: false }).count(), 0);
+    phase = 'locked';
+    await page.getByRole('heading', {name:'Voting is complete.', exact:true}).waitFor({timeout:7000});
+    phase = 'final';
+    await page.getByRole('button', {name:'Submit vote', exact:true}).waitFor({timeout:7000});
+    assert.ok(await page.getByRole('radio', {name:'4', exact:true}).isChecked());
+    assert.equal(await page.getByRole('heading', {name:'Voting is complete.', exact:true}).count(),0);
     console.log('PASS: unconfirmed local score blocked; authoritative receipt restores ratings and clears warning');
 }
 finally {

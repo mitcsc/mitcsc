@@ -144,7 +144,7 @@ export default function VoterRoom() {
         const changed = lastHidden.current !== (document.hidden || !document.hasFocus());
         const elapsed = Date.now() - lastPresence.current;
         if (changed && elapsed < 1000) { resume(); return; }
-        if (!joinRequired.current && (changed || elapsed >= 20000)) void refresh();
+        if (!joinRequired.current && (changed || elapsed >= 20000 || (!document.hidden && document.hasFocus()))) void refresh();
       }, Math.max(150, 1000 - (Date.now() - lastPresence.current)));
     };
     const reconnect = () => { if (!joinRequired.current) void refresh(); };
