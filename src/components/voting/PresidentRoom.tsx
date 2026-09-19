@@ -90,11 +90,11 @@ export default function PresidentRoom() {
     <AdminRoom key={state.sessionId} initialState={state} onExit={exit} onStateChange={setState} setupComplete={!!state.candidates?.length && !!state.criteria.length}/>
   </div>;
   return <div className="president-room">
-    {!login && overview && <header className="president-setup-header">
-      <ol aria-label="Session setup progress"><li className={step === "ballot" ? "is-complete" : ""} aria-current={step === "session" ? "step" : undefined}><span>{step === "ballot" ? "✓" : "1"}</span>Session details</li><li aria-current={step === "ballot" ? "step" : undefined}><span>2</span>Ballot</li></ol>
-      {step === "ballot" && <button type="button" className="voter-text-button" disabled={busy} onClick={() => {setError(""); setStep("session");}}>Back</button>}
-    </header>}
     {!login && overview && step === "ballot" ? <div className="voting-admin voting-console president-ballot-setup">
+      <header className="president-ballot-heading">
+        <SetupProgress step={2}/>
+        <div><h1>Ballot</h1><button type="button" disabled={busy} onClick={() => {setError(""); setStep("session");}}>Back</button></div>
+      </header>
       {error && <div className="voting-admin-alert" role="alert">{error}</div>}
       <AdminSetup candidates={draft.candidates} criteria={draft.criteria} busy={busy} joinedCount={0} showJoinedCount={false} actionLabel="Open session" onDraftChange={(candidates, criteria) => setDraft({candidates, criteria})} onSave={create} onContinue={() => {}}/>
     </div> : <div className="voter-room">
@@ -103,6 +103,7 @@ export default function PresidentRoom() {
       {error && <div className="voter-alert" role="alert">{error}</div>}
       {login || overview ? <form onSubmit={submit}>
         {login ? <input aria-label="Password" placeholder="Password" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/> : <>
+          <SetupProgress step={1}/>
           <h1>Session details</h1>
           <label className="president-field">
             <span>Session code</span>
@@ -125,5 +126,11 @@ export default function PresidentRoom() {
       </form> : <p role="status">Connecting…</p>}
     </section>
     </div>}
+  </div>;
+}
+
+function SetupProgress({step}: {step: 1 | 2}) {
+  return <div className="president-setup-progress" role="progressbar" aria-label="Session setup" aria-valuemin={1} aria-valuemax={2} aria-valuenow={step} aria-valuetext={`Step ${step} of 2: ${step === 1 ? "Session details" : "Ballot"}`}>
+    <span className={step === 1 ? "is-current" : "is-complete"}/><span className={step === 2 ? "is-current" : ""}/>
   </div>;
 }
