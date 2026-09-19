@@ -3,7 +3,7 @@ import { polishElectionSheet, writeSummary } from "./sheet-layout";
 import { randomUUID, createHash } from "node:crypto";
 import { compareAndSet, redisCommand, redisKey, releaseLock } from "./redis";
 import { Identity, text, VotingError } from "./security";
-import { HEADERS, validateRatings, validateSetup } from "./service";
+import { authorize, HEADERS, validateRatings, validateSetup } from "./service";
 import type { Settings } from "./service";
 import { readRanges, sheets, writeRanges } from "./sheets";
 import type { Candidate, Criterion, Ratings, VotingPhase, VotingState } from "./types";
@@ -131,10 +131,32 @@ function present(config: Settings, identity: Identity, doc: Election): VotingSta
   const round = doc.rounds[doc.current];
   const counted = (r?: Round) => Object.keys(r?.votes || {}).filter(id=>!doc.members.find(m=>m.id===id)?.banned).length;
   const participants = (r?: Round) => doc.members.filter(m => m.role === "voter" && !m.removed && !m.pending && (!(r?.roster || doc.roster) || (r?.roster || doc.roster)!.includes(m.id))).map(m => ({id: m.id, name: m.name, submitted: !!r?.votes[m.id], initialSubmitted: !!r?.initial[m.id]}));
-  return {pollIntervalMs: 3000, sessionId: config.sessionId, active: !!config.password && !doc.ended, votingComplete: doc.phase === "locked" && !doc.exportPending && doc.candidates.length > 0 && doc.candidates.every(c=>c.completed), phase: doc.phase, votingStarted: Object.keys(doc.rounds).length > 0, ballotVersion: round?.version || "", currentCandidate: current && {...current, context: current.context}, criteria: doc.criteria, contextVisible: !!current?.context, submittedCount: counted(round), voter: {id: m.id, name: m.name}, isAdmin: admin, initialized: doc.initialized, ownBallot: {initialSubmitted: !!round?.initial[m.id], submitted: !!round?.votes[m.id]}, eligible: admin || !round || !(round.roster || doc.roster) || (round.roster || doc.roster)!.includes(m.id),
+  const complete = doc.phase === "locked" && !doc.exportPending && doc.candidates.length > 0 && doc.candidates.every(c=>c.completed);
+  return {pollIntervalMs: !admin && complete ? 10000 : 3000, sessionId: config.sessionId, active: !!config.password && !doc.ended, votingComplete: doc.phase === "locked" && !doc.exportPending && doc.candidates.length > 0 && doc.candidates.every(c=>c.completed), phase: doc.phase, votingStarted: Object.keys(doc.rounds).length > 0, ballotVersion: round?.version || "", currentCandidate: current && {...current, context: current.context}, criteria: doc.criteria, contextVisible: !!current?.context, submittedCount: counted(round), voter: {id: m.id, name: m.name}, isAdmin: admin, initialized: doc.initialized, ownBallot: {initialSubmitted: !!round?.initial[m.id], submitted: !!round?.votes[m.id]}, eligible: admin || !round || !(round.roster || doc.roster) || (round.roster || doc.roster)!.includes(m.id),
     ...(admin ? {voters: doc.members.filter(v => v.role === "voter").map(v => ({id: v.id, name: v.name, removed: !!v.removed, banned: !!v.banned, eligible: !v.pending && (!round || !!(round.roster || doc.roster)?.includes(v.id))})), candidates: doc.candidates, participants: participants(round), exportPending: !!doc.exportPending, candidateStates: doc.candidates.map(c => ({candidateId: c.id, phase: c.id === doc.current ? doc.phase : c.completed ? "locked" : "waiting", ballotVersion: doc.rounds[c.id]?.version || "", submittedCount: counted(doc.rounds[c.id]), participants: participants(doc.rounds[c.id])}))} : {})};
 }
 export async function redisState(config: Settings, identity: Identity) { return present(config, identity, await readView(config)); }
+
+// Polling validates the current election on every request, without caching admission.
+export async function voterPoll(identity: Identity) {
+  if (identity.role !== "voter") throw new VotingError("Enter the president password.", 401);
+  const expected: Settings = {sessionId:identity.sessionId,sheetId:identity.sheetId,settingsSheetId:"president-v1",password:""};
+  const [active, snapshot] = await redisCommand<(string | null)[]>("MGET", activeElectionKey(), `${keyFor(expected)}:view`);
+  if (!active) throw new VotingError("No election is open yet.", 401);
+  const config = JSON.parse(active) as Settings;
+  authorize(identity, config);
+  const doc = snapshot && config.settingsSheetId === expected.settingsSheetId ? JSON.parse(snapshot) as Election : await readView(config);
+  return {config, identity, state:present(config,identity,doc)};
+}
+export async function presidentPoll() {
+  const config = await redisSettings();
+  const doc = await readView(config);
+  const admin = doc.members.find(m=>m.role === "admin");
+  if (!admin) throw new VotingError("Election admin is missing.", 503);
+  const identity = identityFor(config,admin);
+  return {config,identity,state:present(config,identity,doc)};
+}
+
 
 export async function redisSubmit(config: Settings, identity: Identity, input: Record<string, unknown>, initial: boolean) {
   const at = new Date().toISOString();

@@ -486,3 +486,37 @@ test('voter completion appears only after all rounds close and clears on reopen'
  await service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'final',candidateId:candidates[0].id});
  assert.equal((await service.getState(e.cfg,e.voters[0])).votingComplete,false);
 });
+
+test('polling uses one voter read and two admin reads with fresh moderation and session checks',async()=>{
+ const backend=require('../src/lib/voting/redis-service.ts');
+ const cfg={...config,settingsSheetId:'president-v1',sessionId:'poll-budget',sheetId:'poll-budget-sheet'};
+ books.set(cfg.sheetId,new Map([['Sheet1',[]]]));
+ const admin=await seedElection(cfg);
+ await service.adminAction(cfg,admin,{action:'initialize'});
+ await service.adminAction(cfg,admin,{action:'saveSetup',candidates,criteria});
+ const voter=await identity.claimIdentity(cfg,'Polling voter',null);
+ const activeKey=redis.redisKey('president-active-election');
+ await redis.redisCommand('SET',activeKey,JSON.stringify(cfg));
+ let before=redisRequests;
+ assert.equal((await backend.voterPoll(voter)).state.voter.name,'Polling voter');
+ assert.equal(redisRequests-before,1,'One MGET per voter poll');
+ before=redisRequests;
+ assert.equal((await backend.presidentPoll()).state.isAdmin,true);
+ assert.equal(redisRequests-before,2,'Admin snapshot is read only once');
+ await service.adminAction(cfg,admin,{action:'removeVoters',voterIds:[voter.id]});
+ await assert.rejects(backend.voterPoll(voter),/kicked/);
+ const rejoined=await identity.claimIdentity(cfg,'Returned',voter);
+ assert.equal((await backend.voterPoll(rejoined)).state.voter.name,'Returned');
+ for(const candidate of candidates){
+   await service.adminAction(cfg,admin,{action:'setPhase',phase:'initial',candidateId:candidate.id});
+   await service.adminAction(cfg,admin,{action:'setPhase',phase:'locked'});
+ }
+ assert.equal((await backend.voterPoll(rejoined)).state.pollIntervalMs,10000);
+ assert.equal((await backend.presidentPoll()).state.pollIntervalMs,3000);
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'final',candidateId:candidates[0].id});
+ assert.equal((await backend.voterPoll(rejoined)).state.pollIntervalMs,3000);
+ await service.adminAction(cfg,admin,{action:'banVoters',voterIds:[voter.id]});
+ await assert.rejects(backend.voterPoll(rejoined),/banned/);
+ await redis.redisCommand('SET',activeKey,JSON.stringify({...cfg,sessionId:'next-session'}));
+ await assert.rejects(backend.voterPoll(rejoined),e=>e.status===401);
+});

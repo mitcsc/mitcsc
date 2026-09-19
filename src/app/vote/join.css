@@ -586,3 +586,10 @@
 .voting-root .results-section-heading .results-filter{margin:0;padding:0}
 
 .results-candidate-overview>h2{font-size:22px;font-weight:500;margin:24px 0 0;overflow-wrap:anywhere}
+
+/* Mobile dialogs fade in place to avoid subpixel text and backdrop movement. */
+@media(max-width:600px){
+  .candidate-platform-dialog,.candidate-platform-dialog[open]{transform:none;transition:opacity 180ms ease,display 180ms allow-discrete,overlay 180ms allow-discrete}
+  .candidate-platform-dialog::backdrop,.candidate-platform-dialog[open]::backdrop{backdrop-filter:none;transition:background 180ms,display 180ms allow-discrete,overlay 180ms allow-discrete}
+  @starting-style{.candidate-platform-dialog[open]{transform:none}}
+}

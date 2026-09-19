@@ -1,12 +1,10 @@
-import { failure, json, session } from "@/lib/voting/http";
+import { failure, json, pollingSession } from "@/lib/voting/http";
 import { recordPresence } from "@/lib/voting/presence";
-import { getState } from "@/lib/voting/service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
-    const { config, identity } = await session();
-    const state = await getState(config, identity);
+    const { config, identity, state } = await pollingSession();
     // Presence is best-effort and cannot interrupt ballots or admission.
     try {
       if (!state.isAdmin && state.active && new URL(request.url).searchParams.has("presence")) {

@@ -6,7 +6,7 @@ import WaitingPanda from "./WaitingPanda";
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { FinalBallot, RecoveredBallot, Ratings, VotingPhase, VotingState } from "@/lib/voting/types";
 
 type Draft = {
@@ -232,7 +232,7 @@ export default function VoterRoom() {
 
 function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; connected: boolean; onSubmitted: () => void }) {
   const key = draftKey(state);
-  const [draft, setDraft] = useState<Draft>(() => { try { return parseDraft(localStorage.getItem(key)); } catch { return emptyDraft(); } });
+  const [draft, setDraft] = useState<Draft>(() => { try { const stored = parseDraft(localStorage.getItem(key)); return {...stored, initial: state.ownBallot?.initialSubmitted ? stored.initial : null, initialConfirmed: false, submitted: false, submissionId: stored.submitted ? undefined : stored.submissionId}; } catch { return emptyDraft(); } });
   const [storageError, setStorageError] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -250,9 +250,13 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     try { localStorage.setItem(key, JSON.stringify(next)); setStorageError(false); }
     catch { setStorageError(true); }
   }
-  const [recovering, setRecovering] = useState(!!state.ownBallot?.initialSubmitted && !draft.initialConfirmed);
+  // Only server responses in this mounted ballot establish confirmation. Stored flags
+  // are drafts, not receipts; restore the authoritative values after a reload.
+  const [initialVerified, setInitialVerified] = useState(false);
+  const [submissionVerified, setSubmissionVerified] = useState(false);
+  const [recovering, setRecovering] = useState(!!state.ownBallot?.initialSubmitted);
   useEffect(() => {
-    if (!connected || !state.ownBallot?.initialSubmitted || (draftRef.current.initialConfirmed && (!state.ownBallot.submitted || draftRef.current.submitted))) return;
+    if (!connected || !state.ownBallot?.initialSubmitted || (initialVerified && (!state.ownBallot.submitted || submissionVerified))) return;
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     setRecovering(true);
@@ -262,8 +266,9 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
         if (cancelled) return;
         const current = draftRef.current;
         if (saved.initialRatings) persist({...current, initial: saved.initialRatings, initialConfirmed: true,
-          final: saved.finalRatings || (current.initial ? current.final : saved.initialRatings),
-          submitted: !!saved.submissionId || current.submitted, submissionId: saved.submissionId || current.submissionId});
+          final: saved.finalRatings || (current.submissionId ? current.final : saved.initialRatings),
+          submitted: !!saved.submissionId, submissionId: saved.submissionId || current.submissionId});
+        if (saved.initialRatings) { setInitialVerified(true); setSubmissionVerified(!!saved.submissionId); setError(""); }
         setRecovering(false);
       } catch {
         if (!cancelled) retry = setTimeout(() => void restore(), 2000);
@@ -273,9 +278,11 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     return () => { cancelled = true; clearTimeout(retry); };
     // The ballot component remounts when candidate or version changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, state.ownBallot?.initialSubmitted, state.ownBallot?.submitted]);
-  const initialOpen = state.phase === "initial" && !draft.initial;
-  const revisionsOpen = ["revision", "final"].includes(state.phase) && !!draft.initial;
+  }, [connected, state.ownBallot?.initialSubmitted, state.ownBallot?.submitted, initialVerified, submissionVerified]);
+  const initialAccepted = initialVerified || !!state.ownBallot?.initialSubmitted;
+  const restoringInitial = !!state.ownBallot?.initialSubmitted && !initialVerified;
+  const initialOpen = state.phase === "initial" && !initialAccepted;
+  const revisionsOpen = ["revision", "final"].includes(state.phase) && !!draft.initial && initialAccepted;
   const editable = connected && !recovering && !busy && !draft.submitted && !draft.submissionId && (initialOpen || revisionsOpen);
   const values = draft.initial ? draft.final : draft.ratings;
   function validate(ratings: Ratings) {
@@ -302,11 +309,13 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     try {
       await api("initial", {sessionId: state.sessionId, candidateId: state.currentCandidate!.id, ballotVersion: state.ballotVersion, ratings});
       persist({...next, initialConfirmed: true});
+      setInitialVerified(true);
+      onSubmitted();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
   async function submit() {
-    if (busy || !draft.initial || draft.submitted || !["revision", "final"].includes(state.phase) || !connected) return;
+    if (busy || !draft.initial || !initialAccepted || draft.submitted || !["revision", "final"].includes(state.phase) || !connected) return;
     if (!validate(draft.final)) { setError("Your ballot does not match the current criteria. Ask the admin for help."); return; }
     setBusy(true); setError("");
     const next = { ...draft, submissionId: draft.submissionId || crypto.randomUUID() };
@@ -315,6 +324,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     try {
       await api("submit", ballot);
       persist({ ...next, submitted: true });
+      setSubmissionVerified(true);
       onSubmitted();
     } catch (e) { setError(`${(e as Error).message} Your ballot is still pending. Retry when voting is open; the same submission ID will be used.`); }
     finally { setBusy(false); }
@@ -322,28 +332,29 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   const phase = phases[state.phase];
   if (state.eligible === false) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer">{state.phase === "initial" ? "Waiting for admission" : "Waiting for the next candidate"}</p><p>{state.phase === "initial" ? "You joined after ratings opened. Ask the admin to admit you for this candidate." : "Initial ratings have closed. You can participate when the next candidate starts."}</p></section>;
   if (state.phase === "deliberation") return <section className="voter-discussion" aria-label="Discussion"><WaitingPanda/><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer" role="status">Discussion in progress</p><CandidatePlatform candidate={state.currentCandidate!}/></section>;
-  if (draft.submitted || state.ownBallot?.submitted) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>Vote submitted for {state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer">Waiting for the next candidate</p><CandidatePlatform candidate={state.currentCandidate!}/></section>;
+  if (submissionVerified || state.ownBallot?.submitted) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>Vote submitted for {state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer">Waiting for the next candidate</p><CandidatePlatform candidate={state.currentCandidate!}/></section>;
 
-  if (recovering) return <section className="voter-submitted" role="status"><p>Restoring your ratings…</p></section>;
+  if (recovering || restoringInitial) return <section className="voter-submitted" role="status"><p>Restoring your ratings…</p></section>;
+  if (state.phase !== "initial" && !initialAccepted) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>{state.currentCandidate!.name}</h2><p>Initial ratings were not received for this candidate.</p><p>Initial ratings have closed. You can participate when the next candidate starts.</p><CandidatePlatform candidate={state.currentCandidate!}/></section>;
   return <section className="voter-panel voter-ballot">
     <div className="voter-ballot-heading"><span className="voter-phase">{phase.label}</span><h2>{state.currentCandidate!.name}</h2><CandidatePlatform candidate={state.currentCandidate!}/></div>
 
     <VotingNotice message={storageError ? "Browser storage is unavailable. Keep this page open until you submit." : ""}/>
     {draft.submitted ? <div className="voter-success" role="status"><h3>Ballot received.</h3><p>Your ratings have been submitted.</p></div> : <>
-      <VotingNotice tone="info" message={!draft.initial && state.phase !== "initial" ? "Initial ratings were not received for this candidate. You can participate when the next candidate starts." : ""}/>
+      <VotingNotice tone="info" message={!initialAccepted && state.phase !== "initial" ? "Initial ratings were not received for this candidate." : ""}/>
       <VotingNotice tone="info" message={draft.submissionId ? "Submission not confirmed. Retry when submissions are open; your ratings are kept." : ""}/>
 
     </>}
     <div className="voter-criteria">{state.criteria.map((criterion) => <fieldset className="voter-criterion" key={criterion.id} disabled={!editable}>
       <legend>{criterion.label}{!criterion.required && <span className="voter-required">Optional</span>}</legend>
       {criterion.description && <p>{criterion.description}</p>}
-      <div className="voter-scale" role="radiogroup" aria-label={criterion.label}>{Array.from({ length: Math.max(0, Math.min(21, criterion.max - criterion.min + 1)) }, (_, i) => criterion.min + i).map(value => <label key={value} className={`voter-rating ${values[criterion.id] === value ? "voter-rating-selected" : draft.initial?.[criterion.id] === value ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} value={value} title={draft.initial?.[criterion.id] === value ? "Initial rating" : undefined} checked={values[criterion.id] === value} onChange={() => setRating(criterion.id, value)} /><span>{value}</span></label>)}{!criterion.required && <label className={`voter-rating voter-rating-na ${values[criterion.id] === null ? "voter-rating-selected" : draft.initial?.[criterion.id] === null ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} checked={values[criterion.id] === null} onChange={() => setRating(criterion.id, null)} /><span>Not enough information</span></label>}</div>
+      <div className="voter-scale" style={{"--rating-count": criterion.max - criterion.min + 1, "--rating-mobile-columns": Math.ceil((criterion.max - criterion.min + 1) / Math.ceil((criterion.max - criterion.min + 1) / 5))} as CSSProperties} role="radiogroup" aria-label={criterion.label}>{Array.from({ length: Math.max(0, Math.min(21, criterion.max - criterion.min + 1)) }, (_, i) => criterion.min + i).map(value => <label key={value} className={`voter-rating ${values[criterion.id] === value ? "voter-rating-selected" : draft.initial?.[criterion.id] === value ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} value={value} title={draft.initial?.[criterion.id] === value ? "Initial rating" : undefined} checked={values[criterion.id] === value} onChange={() => setRating(criterion.id, value)} /><span>{value}</span></label>)}{!criterion.required && <label className={`voter-rating voter-rating-na ${values[criterion.id] === null ? "voter-rating-selected" : draft.initial?.[criterion.id] === null ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} checked={values[criterion.id] === null} onChange={() => setRating(criterion.id, null)} /><span>Not enough information</span></label>}</div>
     </fieldset>)}</div>
     <VotingNotice message={error}/>
     {!draft.submitted && <div className="voter-ballot-actions">
       {state.phase === "initial" && !draft.initialConfirmed && <><button className="voter-primary" disabled={busy || !connected || !state.criteria.length} onClick={() => void saveInitial()}>{busy ? "Saving…" : error ? "Retry" : "Save ratings"}</button></>}
       {state.phase === "initial" && draft.initialConfirmed && <p className="voter-action-status">Ratings saved</p>}
-      {["revision", "final"].includes(state.phase) && draft.initial && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
+      {["revision", "final"].includes(state.phase) && draft.initial && initialAccepted && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
       {state.phase === "locked" && draft.initial && <p className="voter-action-status">Submissions are closed. Ask the admin to reopen them if you still need to submit.</p>}
     </div>}
   </section>;

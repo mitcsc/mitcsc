@@ -18,6 +18,7 @@ async function main() {
   let stateRequests = 0;
   const joinRequests = [];
   const submissions = [];
+  const savedInitials = new Map();
   let rejectSubmission = true;
   let transientFailures = 2;
   const state = {
@@ -42,13 +43,14 @@ async function main() {
       joinRequests.push(route.request().postDataJSON()); authenticated = true;
       return reply(200, { ok: true });
     }
-    if (path.endsWith('/ballot')) return reply(200, {initialRatings:{reliability:2,experience:null}, finalRatings:state.ownBallot?.submitted ? {reliability:4,experience:null} : null, submissionId:state.ownBallot?.submitted ? 'recovered-vote' : null});
-    if (path.endsWith('/initial')) return reply(200, {ok:true});
+    if (path.endsWith('/ballot')) return reply(200, {initialRatings:savedInitials.get(state.currentCandidate.id) || {reliability:2,experience:null}, finalRatings:state.ownBallot?.submitted ? {reliability:4,experience:null} : null, submissionId:state.ownBallot?.submitted ? 'recovered-vote' : null});
+    if (path.endsWith('/initial')) { savedInitials.set(state.currentCandidate.id, route.request().postDataJSON().ratings); state.ownBallot = {initialSubmitted:true,submitted:false}; return reply(200, {ok:true}); }
     if (path.endsWith('/submit')) {
       const ballot = route.request().postDataJSON(); submissions.push(ballot);
       if (rejectSubmission) return reply(409, {error:'Submission is closed.'});
       if (transientFailures-- === 2) return reply(503, {error:'Temporary spreadsheet failure.'});
       if (transientFailures === 0) return route.abort('failed');
+      state.ownBallot = {initialSubmitted:true,submitted:true};
       return reply(200, {ok:true, submissionId:ballot.submissionId});
     }
     throw new Error(`Unexpected voting API route: ${path}`);
@@ -111,7 +113,8 @@ async function main() {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
     await page.reload();
     await page.locator('.voter-phase').filter({ hasText: 'Voting open' }).waitFor();
-    assert.equal(await fieldset('Reliability').getByRole('radio', { name: '5', exact: true }).isChecked(), true);
+    assert.equal(await fieldset('Reliability').getByRole('radio', { name: '3', exact: true }).isChecked(), true, 'Reload restores server ratings rather than unsent local revisions');
+    await rate('Reliability', 5);
     assert.equal(await fieldset('Reliability').locator('.voter-rating-initial').innerText(),'3');
     assert.equal(await page.locator('.voter-footnote').count(),0);
     await page.getByRole('button', { name: 'Submit vote' }).click();
@@ -140,6 +143,7 @@ async function main() {
     assert.equal(await page.getByRole('heading', {name:'You’re in.',exact:true}).count(),0);
     // Start another candidate, save locally, and advance before final submission.
     state.currentCandidate = { id: 'candidate-two', name: 'Morgan Lee', context: '', order: 1, completed: false };
+    state.ownBallot = {initialSubmitted:false,submitted:false};
     state.ballotVersion = 'v2'; state.contextVisible = false;
     await refreshPhase('initial');
     await page.getByRole('heading', { name: 'Morgan Lee' }).waitFor();
@@ -147,7 +151,7 @@ async function main() {
     await page.getByRole('button', { name: 'Save ratings' }).click();
     await waitText('Ratings saved');
     state.currentCandidate = { id: 'candidate-three', name: 'Jordan Wu', context: '', order: 2, completed: false };
-    state.ballotVersion = 'v3';
+    state.ballotVersion = 'v3'; state.ownBallot = {initialSubmitted:false,submitted:false};
     const beforePoll = stateRequests;
     // Deliberately wait for scheduled polling rather than firing focus.
     await page.getByRole('heading', { name: 'Jordan Wu' }).waitFor({ timeout: 7000 });
@@ -155,9 +159,11 @@ async function main() {
     await page.getByRole('status').filter({ hasText: '1 earlier vote is unfinished' }).waitFor();
     assert.equal(await page.getByText('Morgan Lee', { exact: true }).count(), 0);
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '4', exact: true }).isChecked(), false);
-    await refreshPhase('final');
+    state.phase = 'final';
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await page.getByRole('status').filter({ hasText: 'Initial ratings were not received' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Submit vote' }).count(), 0);
+    assert.equal(await page.getByRole('radio').count(),0,'No local ratings are shown without a server receipt');
     // Recover accepted initial and final ballots after browser storage is cleared.
     state.ownBallot = {initialSubmitted:true,submitted:false}; state.pollIntervalMs=2000;
     await page.evaluate(()=>localStorage.clear()); await page.reload();

@@ -114,3 +114,10 @@
 .voter-ballot-actions>p.voter-action-status{color:#aaa}
 .voter-footnote{color:#888}
 @media(max-width:600px){.voter-room{padding:16px 0 32px}.voter-panel{padding:24px 0}.voter-intro{padding:0 0 24px}.voter-intro h1{font-size:34px}.voter-join{margin:32px auto}}
+
+/* Keep every score the same width; longer mobile scales use balanced rows. */
+.voting-root .voter-room .voter-scale{display:grid;grid-template-columns:repeat(var(--rating-count),minmax(0,1fr));gap:6px}
+.voting-root .voter-room .voter-rating{min-width:0}
+.voting-root .voter-room .voter-rating span{padding:10px 0;width:100%;text-align:center}
+.voting-root .voter-room .voter-rating-na{grid-column:1 / -1}
+@media(max-width:600px){.voting-root .voter-room .voter-scale{grid-template-columns:repeat(var(--rating-mobile-columns),minmax(0,1fr))}}
