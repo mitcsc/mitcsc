@@ -67,7 +67,7 @@ export default function PresidentRoom() {
     try {
       const next = await call<Overview>("president");
       setOverview(next); setLogin(false);
-      if (next.election && !next.election.open) setResults(await call<Results>("president?view=results"));
+      if (!next.election?.open) { setResults(null); setNewSession(true); setShowVoters(false); }
       setState(next.election?.open ? await call<VotingState>("state") : null);
     } catch (e) {
       if ((e as {status?: number}).status === 401) {setLogin(true); setState(null);}
