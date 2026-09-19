@@ -169,7 +169,7 @@ test('30 concurrent voters: atomic admission, no Sheets traffic while live, retr
   const publicState=await service.getState(config,voters[0]);
   assert.equal(publicState.participants,undefined);
   assert.equal(publicState.candidateStates,undefined);
-  assert.equal(publicState.currentCandidate.context,'');
+  assert.equal(publicState.currentCandidate.context,'private','Admitted voters can read the platform throughout voting');
   failExport=true;
   await assert.rejects(service.adminAction(config,admin,{action:'setPhase',phase:'locked'}),e=>e.status===503);
   state=await service.getState(config,admin);
@@ -247,14 +247,23 @@ test('Redis restores initial ratings and keeps the original values authoritative
  await assert.rejects(service.submit(cfg,voters[1],finalPayload(s,voters[1])),e=>e.status===409);
 });
 
-test('late arrivals join the next round and stale admin controls cannot change the live round',async()=>{
+test('late arrivals stay private until admitted and stale controls cannot change the live round',async()=>{
  const e=await election('late',1); const {cfg,admin}=e;
  const a=await open(e,'a');
  const late=await identity.claimIdentity(cfg,'Late voter',null);
  assert.equal((await service.getState(cfg,late)).eligible,false);
- await assert.rejects(service.submitInitial(cfg,late,initialPayload(a)),e=>e.status===409);
+ await assert.rejects(service.submitInitial(cfg,late,initialPayload(a)),e=>e.status===403);
  await service.adminAction(cfg,admin,{action:'setPhase',phase:'locked'});
  const b=await open(e,'b');
+ const pending=await service.getState(cfg,late);
+ assert.equal(pending.eligible,false);
+ assert.equal(pending.admissionPending,true);
+ assert.equal(pending.currentCandidate,null);
+ assert.deepEqual(pending.criteria,[]);
+ assert.equal(pending.ballotVersion,"");
+ assert.equal(pending.participants,undefined);
+ assert.equal((await service.getState(cfg,admin)).participants.some(v=>v.id===late.id),false);
+ await service.adminAction(cfg,admin,{action:'admitVoters',voterIds:[late.id]});
  assert.equal((await service.getState(cfg,late)).eligible,true);
  await service.submitInitial(cfg,late,initialPayload(b));
  await assert.rejects(service.adminAction(cfg,admin,{action:'setPhase',phase:'locked',expected:{candidateId:'a',version:a.ballotVersion,phase:'initial'}}),e=>e.status===409);
@@ -262,6 +271,43 @@ test('late arrivals join the next round and stale admin controls cannot change t
  const key=redis.redisKey('session',cfg.settingsSheetId,cfg.sheetId,cfg.sessionId);
  const view=JSON.parse(await redis.redisCommand('GET',`${key}:view`));
  assert.equal(view.rounds.b.initialRatings,undefined,'Polling projection contains no rating values');
+});
+
+test('admin roster admits late voters and removal blocks access without deleting ballots',async()=>{
+ const e=await election('roster-controls',1); const {cfg,admin}=e;
+ const a=await open(e,'a');
+ const late=await identity.claimIdentity(cfg,'Late voter',null);
+ let state=await service.getState(cfg,admin);
+ assert.equal(state.voters.find(v=>v.id===late.id).eligible,false);
+ await assert.rejects(service.adminAction(cfg,late,{action:'admitVoter',voterId:late.id}),e=>e.status===403);
+ await service.adminAction(cfg,admin,{action:'admitVoter',voterId:late.id});
+ await service.submitInitial(cfg,late,initialPayload(a));
+ await service.adminAction(cfg,admin,{action:'setPhase',phase:'revision'});
+ await service.submit(cfg,late,finalPayload(a,late));
+ await service.adminAction(cfg,admin,{action:'removeVoter',voterId:late.id});
+ await assert.rejects(service.getState(cfg,late),e=>e.status===401);
+ const rejoined=await identity.claimIdentity(cfg,'Another name',late);
+ assert.equal(rejoined.id,late.id);
+ assert.equal((await service.getState(cfg,rejoined)).admissionPending,true);
+ state=await service.getState(cfg,admin);
+ assert.equal(state.submittedCount,1,'Previously submitted ballots remain');
+ assert.equal(state.voters.find(v=>v.id===late.id).removed,false);
+
+ assert.equal(state.participants.some(v=>v.id===late.id),false);
+ await assert.rejects(service.adminAction(cfg,admin,{action:'admitVoter',voterId:late.id}),e=>e.status===409);
+});
+
+test('bulk removal is authorized, atomic and preserves member identities',async()=>{
+ const {cfg,admin,voters}=await election('bulk-remove');
+ await assert.rejects(service.adminAction(cfg,voters[0],{action:'removeVoters',voterIds:[voters[1].id]}),e=>e.status===403);
+ await assert.rejects(service.adminAction(cfg,admin,{action:'removeVoters',voterIds:[voters[0].id,admin.id]}),e=>e.status===404);
+ assert.equal((await service.getState(cfg,admin)).voters.filter(v=>v.removed).length,0);
+ await service.adminAction(cfg,admin,{action:'removeVoters',voterIds:voters.slice(0,2).map(v=>v.id)});
+ const state=await service.getState(cfg,admin);
+ assert.equal(state.voters.filter(v=>v.removed).length,2);
+ assert.equal(state.voters.length,3);
+ await service.adminAction(cfg,admin,{action:'admitVoters',voterIds:voters.slice(0,2).map(v=>v.id)});
+ assert.equal((await service.getState(cfg,admin)).voters.filter(v=>v.removed).length,0);
 });
 
 test('existing election row addresses remain unchanged after upgrading',async()=>{
@@ -335,4 +381,108 @@ test('missing Redis or president configuration never falls back to Google Sheets
  await redis.redisCommand('DEL',redis.redisKey('president-active-election'));
  await assert.rejects(service.settings(),e=>e.status===401);
  assert.equal(requests.length,before);
+});
+
+
+test('lobby kicks allow normal rejoin while bans prevent rejoin and admission',async()=>{
+ const {cfg,admin,voters}=await election('kick-ban');
+ const voter=voters[0];
+ await service.adminAction(cfg,admin,{action:'removeVoters',voterIds:[voter.id]});
+ await assert.rejects(service.getState(cfg,voter),e=>e.status===401);
+ assert.equal((await identity.claimIdentity(cfg,voter.name,voter)).id,voter.id);
+ assert.equal((await service.getState(cfg,voter)).eligible,true);
+ await service.adminAction(cfg,admin,{action:'banVoters',voterIds:[voter.id]});
+ await assert.rejects(service.getState(cfg,voter),e=>e.status===401);
+ await assert.rejects(identity.claimIdentity(cfg,voter.name,voter),e=>e.status===403);
+ await assert.rejects(service.adminAction(cfg,admin,{action:'admitVoters',voterIds:[voter.id]}),e=>e.status===409);
+ assert.equal((await service.getState(cfg,admin)).voters.find(v=>v.id===voter.id).banned,true);
+});
+
+
+test('result statistics exclude blanks and retain kicked ballots without Sheets reads',async()=>{
+ const backend=require('../src/lib/voting/redis-service.ts');
+ const {summarizeRatings}=require('../src/lib/voting/results.ts');
+ const stat=summarizeRatings([{initial:{c:1},final:{c:2}},{initial:{c:3},final:{c:4}},{initial:{c:null},final:{c:null}}],'c');
+ assert.equal(stat.average,3);assert.equal(stat.median,3);assert.equal(stat.count,2);assert.equal(stat.initialAverage,2);
+ const e=await election('results',1);const s=await open(e,'a');
+ await service.submitInitial(e.cfg,e.voters[0],initialPayload(s));
+ await service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'revision'});
+ await service.submit(e.cfg,e.voters[0],finalPayload(s,e.voters[0]));
+ await service.adminAction(e.cfg,e.admin,{action:'removeVoters',voterIds:[e.voters[0].id]});
+ const before=requests.length;const result=await backend.electionResults(e.cfg);
+ assert.equal(requests.length,before);assert.equal(result.candidates.find(c=>c.candidate.id==='a').ballots.length,1);
+ assert.equal(result.candidates.find(c=>c.candidate.id==='b').stats[0].average,null);
+});
+
+
+test('bans are scoped to a session, including the same browser join ID',async()=>{
+ const first=await election('ban-scope-old',0), second=await election('ban-scope-new',0);
+ const joinId=require('node:crypto').randomUUID();
+ const banned=await identity.claimIdentity(first.cfg,'Returning voter',null,joinId);
+ await service.adminAction(first.cfg,first.admin,{action:'banVoters',voterIds:[banned.id]});
+ await assert.rejects(identity.claimIdentity(first.cfg,'Returning voter',banned,joinId),e=>e.status===403);
+ const fresh=await identity.claimIdentity(second.cfg,'Returning voter',banned,joinId);
+ assert.notEqual(fresh.id,banned.id);
+ assert.equal((await service.getState(second.cfg,fresh)).eligible,true);
+ assert.equal((await service.getState(second.cfg,second.admin)).voters[0].banned,false);
+});
+
+test('bans exclude saved ballots and refresh every summary without deleting audit rows',async()=>{
+ const backend=require('../src/lib/voting/redis-service.ts');
+ const e=await election('ban-exclusion',1);const s=await open(e,'a');
+ await service.submitInitial(e.cfg,e.voters[0],initialPayload(s));
+ await service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'revision'});
+ await service.submit(e.cfg,e.voters[0],finalPayload(s,e.voters[0]));
+ await service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'locked'});
+ const rawBefore=JSON.stringify(books.get(e.cfg.sheetId).get('Responses'));
+ await service.adminAction(e.cfg,e.admin,{action:'banVoters',voterIds:[e.voters[0].id]});
+ assert.equal((await service.getState(e.cfg,e.admin)).submittedCount,0);
+ assert.equal((await backend.electionResults(e.cfg)).candidates[0].ballots.length,0);
+ assert.equal(JSON.stringify(books.get(e.cfg.sheetId).get('Responses')),rawBefore,'Raw ballots stay available for audit');
+ const summary=books.get(e.cfg.sheetId).get('Summary');
+ assert.ok(summary[1][1].includes(e.voters[0].id));
+ assert.ok(summary[1][criteria.length+1].includes(e.voters[0].id));
+ assert.equal((await service.getState(e.cfg,e.admin)).exportPending,false);
+});
+
+
+test('rejoining updates the name while retaining voter identity and ban enforcement',async()=>{
+ const e=await election('rename-rejoin',0), joinId=require('node:crypto').randomUUID();
+ const first=await identity.claimIdentity(e.cfg,'test2',null,joinId);
+ const renamed=await identity.claimIdentity(e.cfg,'b',first,joinId);
+ assert.equal(renamed.id,first.id);assert.equal(renamed.name,'b');
+ let roster=(await service.getState(e.cfg,e.admin)).voters;
+ assert.equal(roster.length,1);assert.equal(roster[0].name,'b');
+ const retry=await identity.claimIdentity(e.cfg,'c',null,joinId);
+ assert.equal(retry.id,first.id);assert.equal(retry.name,'c');
+ await service.adminAction(e.cfg,e.admin,{action:'banVoters',voterIds:[first.id]});
+ await assert.rejects(identity.claimIdentity(e.cfg,'different name',first,joinId),e=>e.status===403);
+ roster=(await service.getState(e.cfg,e.admin)).voters;assert.equal(roster[0].name,'c');
+});
+
+test('presence expires independently of voter admission and ballots',async()=>{
+ const presence=require('../src/lib/voting/presence.ts');
+ const e=await election('presence',1);
+ assert.equal(presence.presenceStatus(1000,false,7000),'online');
+ assert.equal(presence.presenceStatus(1000,true,15000),'away');
+ assert.equal(presence.presenceStatus(1000,false,28000),'away');
+ assert.equal(presence.presenceStatus(1000,false,62000),'offline');
+ await presence.recordPresence(e.cfg,e.voters[0].id,false);
+ assert.equal((await presence.readPresence(e.cfg,[e.voters[0].id]))[e.voters[0].id],'online');
+ await presence.recordPresence(e.cfg,e.voters[0].id,true);
+ assert.equal((await presence.readPresence(e.cfg,[e.voters[0].id]))[e.voters[0].id],'away');
+ assert.equal((await service.getState(e.cfg,e.voters[0])).eligible,true);
+ assert.equal((await presence.readPresence({...e.cfg,sessionId:'other'},[e.voters[0].id]))[e.voters[0].id],'offline');
+});
+
+
+test('voter completion appears only after all rounds close and clears on reopen',async()=>{
+ const e=await election('completion',1);
+ for (const candidate of candidates) {
+  await open(e,candidate.id);
+  await service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'locked'});
+ }
+ assert.equal((await service.getState(e.cfg,e.voters[0])).votingComplete,true);
+ await service.adminAction(e.cfg,e.admin,{action:'setPhase',phase:'final',candidateId:candidates[0].id});
+ assert.equal((await service.getState(e.cfg,e.voters[0])).votingComplete,false);
 });

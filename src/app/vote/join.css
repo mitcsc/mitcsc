@@ -158,30 +158,431 @@
 
 .voting-root .president-setup-progress { display: flex; gap: 8px; margin: 0 0 12px; width: 100%; }
 .voting-root .president-setup-progress > span { flex: 1; height: 3px; background: #ffffff18; }
-.voting-root .president-setup-progress > .is-current { background: var(--voting-accent); }
-.voting-root .president-setup-progress > .is-complete { background: #ffffff70; }
+.voting-root .president-setup-progress > .is-current { background: var(--voting-accent); background-image: linear-gradient(100deg, transparent 30%, #ff818d 50%, transparent 70%); background-size: 250% 100%; animation: setup-progress-shimmer 1.8s ease-in-out infinite; }
+.voting-root .president-setup-progress > .is-complete { background: var(--voting-accent); }
 .voting-root .president-ballot-heading { flex: none; padding: 24px 24px 8px; }
 .voting-root .president-ballot-heading .president-setup-progress { margin-bottom: 20px; }
-.voting-root .president-ballot-heading > div:last-child { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.voting-root .president-ballot-heading > div:last-child:not(.president-setup-progress) { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .voting-root .president-ballot-heading h1 { margin: 0; font-family: inherit; font-size: 24px; line-height: 1.2; font-weight: 500; letter-spacing: -.02em; }
 .voting-root .president-ballot-heading button { padding: 8px 12px; border: 1px solid #ffffff20; border-radius: 7px; background: transparent; color: #c3c3c8; font-size: 13px; }
 .voting-root .president-ballot-heading button:hover:not(:disabled) { color: #fff; background: #ffffff06; }
 @media(max-width:600px) { .voting-root .president-ballot-heading { padding: 20px 16px 8px; } }
 
-/* The ballot remains part of the centered setup flow, not the live workspace. */
-.voting-root .president-room:has(.president-ballot-setup) { padding: 28px 32px; }
-.voting-root .voting-admin.voting-console.president-ballot-setup { flex: 0 1 auto; width: 100%; max-width: 960px; height: min(800px, 100%); margin: auto; border: 0; background: transparent; }
-.voting-root .president-ballot-heading { padding: 0 0 24px; }
+/* Every setup step shares the same contained form width. */
+.voting-root .president-room:has(.president-ballot-setup) { padding: 32px 24px; }
+.voting-root .voting-admin.voting-console.president-ballot-setup { flex: 0 1 auto; width: 100%; max-width: 420px; height: min(640px, 100%); max-height: 100%; min-height: 0; margin: auto; border: 0; background: transparent; }
+.voting-root .president-ballot-heading { padding: 0 0 20px; }
 .voting-root .president-ballot-logo { display: block; width: 88px; height: 88px; object-fit: contain; margin: 0 auto 16px; }
+.voting-root .president-ballot-heading .president-setup-progress { margin-bottom: 12px; }
 .voting-root .president-ballot-heading h1 { font-size: 26px; }
-.voting-root .president-ballot-setup .voting-setup-editor { height: 0; border: 0; }
-.voting-root .president-ballot-setup .voting-pane-heading { padding-top: 8px; }
-.voting-root .president-ballot-footer { grid-column: 1 / -1; padding: 20px 0 0; }
-.voting-root .president-ballot-footer button { display: block; width: 100%; max-width: 420px; min-height: 54px; margin: 0 auto; padding: 14px 20px; border-radius: 999px; font-size: 16px; font-weight: 500; }
-@media(max-width:760px) {
- .voting-root .president-room:has(.president-ballot-setup) { padding: 20px 16px; }
- .voting-root .president-ballot-setup .voting-setup-editor { grid-template-rows: minmax(100px,1fr) minmax(150px,1.3fr) auto auto; }
- .voting-root .president-ballot-logo { width: 64px; height: 64px; margin-bottom: 12px; }
- .voting-root .president-ballot-heading { padding-bottom: 16px; }
+.voting-root .president-ballot-setup .voting-setup-editor { display: flex; flex-direction: column; flex: 1; min-height: 0; height: auto; border: 0; overflow: hidden; }
+.voting-root .president-ballot-setup .voting-setup-editor > .voting-admin-editor { flex: 1; min-height: 0; padding: 0; border: 0; overflow-y: auto; }
+.voting-root .president-ballot-setup .voting-admin-editor[hidden] { display: none; }
+.voting-root .president-ballot-setup .voting-pane-heading { padding: 0; border: 0; }
+.voting-root .president-ballot-setup .voting-pane-title { display: none; }
+.voting-root .president-ballot-setup .voting-pane-heading .voting-candidate-add { margin-top: 0; }
+.voting-root .president-ballot-setup .voting-candidate-editor-list { margin: 12px 0 0; }
+.voting-root .president-ballot-setup .voting-admin-criterion { margin: 12px 0 0; padding: 16px 0; }
+.voting-root .president-ballot-footer { flex: none; padding: 24px 0 0; }
+.voting-root .president-ballot-footer button { display: block; width: 100%; min-height: 54px; margin: 0; padding: 14px 20px; border-radius: 999px; font-size: 16px; font-weight: 500; }
+@media(max-height:600px) {
+ .voting-root .president-ballot-logo { width: 56px; height: 56px; margin-bottom: 12px; }
+ .voting-root .president-ballot-heading { padding-bottom: 12px; }
  .voting-root .president-ballot-footer { padding-top: 16px; }
 }
+
+/* Keep the setup frame and header stationary as fields are added. */
+.voting-root .voter-room .voter-join.president-create { display: flex; flex-direction: column; height: min(640px, 100%); min-height: 0; overflow: hidden; }
+.voting-root .president-create .president-ballot-heading h1 { margin: 0; }
+.voting-root .president-ballot-heading > div:last-child:not(.president-setup-progress) { min-height: 36px; }
+.voting-root .voter-room .voter-join.president-create form { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 0; }
+.voting-root .president-session-fields { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; overscroll-behavior: contain; }
+.voting-root .president-create form > .voter-primary { flex: none; margin-top: 24px; min-height: 54px; }
+
+.voting-root .voter-room .president-create form > .voter-primary,
+.voting-root .president-ballot-footer > .voting-admin-primary {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  height: 54px;
+  min-height: 54px;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.voting-root .president-session-fields,
+.voting-root .president-session-fields > * { min-width: 0; width: 100%; box-sizing: border-box; }
+.voting-root .president-session-fields input { min-width: 0; box-sizing: border-box; }
+.voting-root .voter-room .voter-join.president-create { width: min(420px, calc(100vw - 48px)); }
+
+/* Soft edges indicate more content without adding persistent UI. */
+.voting-root .president-ballot-setup .voting-admin-editor {
+  --scroll-top: 0px;
+  --scroll-bottom: 0px;
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--scroll-top), #000 calc(100% - var(--scroll-bottom)), transparent);
+}
+.voting-root .president-ballot-setup [data-scroll-above="true"] { --scroll-top: 20px; }
+.voting-root .president-ballot-setup [data-scroll-below="true"] { --scroll-bottom: 28px; }
+
+/* Editing actions share the section heading; navigation shares the footer. */
+.voting-root .president-ballot-setup .voting-pane-title { display: flex; }
+.voting-root .president-ballot-setup .voting-pane-title h3 { font-size: 26px; line-height: 36px; margin: 0; }
+.voting-root .president-ballot-setup .voting-pane-title h3 > span { display: none; }
+.voting-root .president-ballot-setup .voting-pane-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-bottom: 12px; }
+.voting-root .president-ballot-setup .voting-criteria-heading { flex-direction: column; align-items: stretch; flex-wrap: nowrap; }
+.voting-root .president-ballot-setup .voting-criteria-heading .voting-pane-title { width: 100%; }
+.voting-root .president-ballot-setup .voting-criteria-actions { width: 100%; justify-content: flex-start; flex: none; margin: 0; }
+.voting-root .president-ballot-footer { display: flex; gap: 12px; }
+.voting-root .president-ballot-footer > .president-setup-back { width: auto; min-width: 76px; flex: none; background: transparent; border: 1px solid #ffffff20; color: #bcbcc2; }
+.voting-root .president-ballot-footer > .voting-admin-primary { width: auto; flex: 1; }
+.voting-root .president-ballot-setup .voting-pane-heading { position: sticky; top: 0; z-index: 2; background: #0c0c0d; }
+.voting-root .president-ballot-setup [data-scroll-above="true"] { --scroll-top: 0px; }
+
+/* Shared setup field treatment across session details, candidates and criteria. */
+.voting-root .president-room {
+  --setup-text: #f4f3f1;
+  --setup-muted: #99999f;
+  --setup-placeholder: #77777d;
+  --setup-border: #ffffff26;
+}
+.voting-root .president-room .voter-join.president-create input,
+.voting-root .president-room .voting-admin.president-ballot-setup .voting-admin-editor input:not([type=checkbox]):not([type=radio]),
+.voting-root .president-room .voting-admin.president-ballot-setup .voting-admin-editor textarea {
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--setup-text);
+  background: transparent;
+  border: 1px solid var(--setup-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  min-height: 42px;
+  caret-color: var(--voting-accent);
+  box-shadow: none;
+  transition: border-color 180ms ease;
+}
+.voting-root .president-room .voter-join.president-create input { height: 42px; }
+.voting-root .president-room .voting-admin.president-ballot-setup .voting-admin-editor textarea { height: auto; min-height: 60px; }
+.voting-root .president-room .president-create input::placeholder,
+.voting-root .president-room .president-ballot-setup input::placeholder,
+.voting-root .president-room .president-ballot-setup textarea::placeholder { color: var(--setup-placeholder); opacity: 1; }
+.voting-root .president-room .president-create input:focus-visible,
+.voting-root .president-room .voting-admin.president-ballot-setup .voting-admin-editor input:not([type=checkbox]):focus-visible,
+.voting-root .president-room .voting-admin.president-ballot-setup .voting-admin-editor textarea:focus-visible { outline: none; border-color: #ffffff60; box-shadow: none; }
+.voting-root .president-room .president-help,
+.voting-root .president-room .president-service-account > span { font-family: inherit; font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--setup-muted); }
+.voting-root .president-room .president-field > span:first-child,
+.voting-root .president-room .president-ballot-setup .voting-admin-scale > label { font-size: 14px; font-weight: 400; color: var(--setup-muted); }
+
+/* The same 12px interval from progress line to heading in every setup step. */
+.voting-root .president-ballot-setup > .president-ballot-heading { padding-bottom: 0; }
+.voting-root .president-create .president-ballot-heading h1 { line-height: 36px; }
+@keyframes setup-progress-shimmer {
+  0% { background-position: 160% 0; }
+  90%, 100% { background-position: -60% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voting-root .president-setup-progress > .is-current { animation: none; }
+}
+
+.voting-root .president-room .president-create input::placeholder,
+.voting-root .president-room .president-ballot-setup input::placeholder,
+.voting-root .president-room .president-ballot-setup textarea::placeholder { font: inherit; }
+/* Keep mobile fields readable without triggering browser focus zoom. */
+@media (max-width: 600px) {
+  .voting-root .president-room .voter-join.president-create input,
+  .voting-root .president-room .voting-admin.president-ballot-setup .voting-admin-editor input:not([type=checkbox]):not([type=radio]),
+  .voting-root .president-room .voting-admin.president-ballot-setup .voting-admin-editor textarea,
+  .voting-root .president-room .president-help,
+  .voting-root .president-room .president-service-account > span { font-size: 16px; }
+}
+
+/* Bulk entry belongs to the list, rather than a nested card in its toolbar. */
+.voting-root .president-ballot-setup .voting-paste-panel {
+  width: 100%; box-sizing: border-box; margin: 8px 0 20px; padding: 0;
+  border: 0; border-radius: 0; background: transparent;
+}
+.voting-root .president-ballot-setup .voting-paste-panel .voting-admin-paste {
+  display: block; margin: 0 0 8px; font-size: 14px; line-height: 1.4; color: var(--setup-muted);
+}
+.voting-root .president-room .voting-admin.president-ballot-setup .voting-paste-panel textarea {
+  display: block; width: 100%; height: 124px; min-height: 124px; margin: 0; resize: vertical;
+}
+.voting-root .president-ballot-setup .voting-paste-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 10px; }
+.voting-root .president-ballot-setup .voting-paste-actions button { min-height: 34px; padding: 6px 12px; border-radius: 7px; font-size: 13px; }
+.voting-root .president-ballot-setup .voting-paste-actions .voting-paste-confirm { background: var(--voting-accent); border-color: transparent; color: #fff; }
+.voting-root .president-ballot-setup .voting-paste-actions .voting-paste-confirm:disabled { background: #ffffff0a; color: #77777d; opacity: 1; }
+
+.voting-root .voting-admin .voting-criteria-actions .voting-shuffle-criteria { display: inline-flex; align-items: center; gap: 7px; color: #ffffff80; }
+.voting-root .voting-admin .voting-admin-edit-row:has(.voting-candidate-platform) {
+  display: grid; grid-template-columns: 16px 20px minmax(0,1fr) 28px;
+  grid-template-rows: 42px 64px; gap: 8px; height: 132px; min-height: 132px; max-height: 132px;
+  padding: 8px 0;
+}
+.voting-root .voting-admin .voting-candidate-platform { grid-column: 3 / -1; min-width: 0; width: 100%; }
+.voting-root .president-room .voting-admin.president-ballot-setup .voting-admin-editor .voting-candidate-platform textarea { height: 64px; min-height: 64px; width: 100%; resize: none; }
+.voting-root .president-live-progress { padding-left: 0; border: 0; }
+.voting-root .voting-round-steps li { position: relative; border-top: 0; }
+.voting-root .voting-round-steps li::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: #ffffff18; }
+.voting-root .voting-round-steps li.is-complete::before,
+.voting-root .voting-round-steps li.is-current::before { background: var(--voting-accent); }
+.voting-root .voting-round-steps li.is-current::before { background-image: linear-gradient(100deg, transparent 30%, #ff818d 50%, transparent 70%); background-size: 250% 100%; animation: setup-progress-shimmer 1.8s ease-in-out infinite; }
+.voting-root .voting-roster { flex: none; padding: 10px 24px; border-bottom: 1px solid #ffffff18; }
+.voting-root .voting-roster button { background: transparent; color: #ccc; border: 1px solid #ffffff20; border-radius: 7px; padding: 7px 12px; font-size: 13px; }
+.voting-root .voting-roster-list { max-height: 240px; overflow: auto; margin-top: 12px; }
+.voting-root .voting-roster-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; gap: 12px; border-bottom: 1px solid #ffffff12; }
+.voting-root .voting-roster-row small { display: block; color: #888; font-size: 12px; }
+.voting-root .voting-roster-row > div { display: flex; gap: 8px; }
+.voting-root .voting-roster-list p { font-size: 13px; color: #999; }
+@media(prefers-reduced-motion:reduce) { .voting-root .voting-round-steps li.is-current::before { animation: none; } }
+
+/* Roster floats over the console; opening it never resizes the voting workspace. */
+.voting-root .president-room { position: relative; }
+.voting-root .president-live-header { min-height: 48px; padding: 7px 20px; }
+.voting-root .president-live-actions .president-voters-toggle { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 6px 9px; font-variant-numeric: tabular-nums; }
+.voting-root .voting-roster { position: absolute; z-index: 30; top: 52px; right: 20px; width: min(360px, calc(100% - 32px)); max-height: calc(100% - 68px); overflow: auto; padding: 16px; background: #151516; border: 1px solid #ffffff20; border-radius: 12px; box-shadow: 0 12px 40px #0008; }
+.voting-root .voting-roster h2 { margin: 0; font-size: 14px; font-weight: 500; }
+.voting-root .voting-roster-list { max-height: 320px; margin-top: 8px; }
+@media(max-width:600px) { .voting-root .president-live-header { padding: 7px 16px; flex-wrap: nowrap; } .voting-root .voting-roster { right: 16px; } }
+/* One control treatment throughout the live toolbar. */
+.voting-root .president-live-actions { gap: 8px; }
+.voting-root .president-live-actions > button,
+.voting-root .president-live-actions > .president-voters-toggle {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid #ffffff20;
+  border-radius: 7px;
+  background: transparent;
+  color: #c3c3c8;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+.voting-root .president-live-actions > button:hover:not(:disabled),
+.voting-root .president-live-actions > button[aria-expanded="true"] {
+  background: #ffffff06;
+  border-color: #ffffff40;
+  color: #fff;
+}
+.voting-root .president-live-actions > button:focus-visible { outline: 2px solid #ffffff80; outline-offset: 3px; }
+.voting-root .president-live-actions > button:disabled { opacity: .4; }
+
+/* Compact roster: fixed title and note, only the voter list scrolls. */
+.voting-root .voting-admin .voting-roster {
+  box-sizing: border-box; display: flex; flex-direction: column;
+  width: min(320px, calc(100% - 32px)); max-height: min(380px, calc(100dvh - 84px));
+  overflow: hidden; padding: 12px;
+}
+.voting-root .voting-admin .voting-roster h2 { flex: none; margin: 0 0 6px; font-weight: 500; font-size: 13px; line-height: 20px; }
+.voting-root .voting-admin .voting-roster-list { flex: 0 1 auto; min-height: 0; max-height: 280px; overflow-y: auto; overflow-x: hidden; margin: 0; overscroll-behavior: contain; }
+.voting-root .voting-admin .voting-roster-row { min-width: 0; gap: 10px; padding: 8px 0; }
+.voting-root .voting-admin .voting-roster-person { flex: 1; min-width: 0; font-size: 13px; line-height: 18px; }
+.voting-root .voting-admin .voting-roster-person > span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.voting-root .voting-admin .voting-roster-person small { font-size: 11px; line-height: 16px; color: #88888f; }
+.voting-root .voting-admin .voting-roster-row > div { flex: none; gap: 6px; }
+.voting-root .voting-admin .voting-roster-row button { min-height: 28px; height: 28px; margin: 0; padding: 0 8px; font-size: 12px; line-height: 1; border-radius: 6px; }
+.voting-root .voting-admin .voting-roster-note { flex: none; margin: 10px 0 0; font-size: 11px; line-height: 16px; color: #88888f; overflow-wrap: anywhere; }
+.voting-root .voting-admin .voting-roster-list > p { margin: 8px 0; font-size: 13px; line-height: 18px; }
+.voting-root .voting-admin .voting-roster-heading { display: flex; align-items: center; justify-content: space-between; flex: none; margin-bottom: 6px; gap: 12px; }
+.voting-root .voting-admin .voting-roster-heading h2 { margin: 0; }
+.voting-root .voting-admin .voting-roster-kick { height: 28px; min-height: 28px; padding: 0 10px; border-radius: 6px; border-color: #ed243440; background: #ed243415; color: #ff6875; font-size: 12px; }
+.voting-root .voting-admin .voting-roster-kick:disabled { opacity: .4; }
+.voting-root .voting-admin .voting-roster-select { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; cursor: pointer; }
+.voting-root .voting-admin .voting-roster-select input { width: 14px; height: 14px; min-height: 0; margin: 0; padding: 0; flex: none; accent-color: var(--voting-accent); }
+.voting-root .voting-admin .voting-roster-person { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.voting-root .voting-admin .voting-roster-person > span { min-width: 0; flex: 1; }
+.voting-root .voting-admin .voting-roster-person small { display: inline; flex: none; white-space: nowrap; }
+.voting-root .voting-admin .voting-roster-actions { display: flex; align-items: center; gap: 6px; }
+.voting-root .voting-admin .voting-roster-actions button { height: 28px; min-height: 28px; padding: 0 8px; font-size: 12px; border-radius: 6px; }
+.voting-root .voting-admin .voting-roster-actions button:disabled { opacity: .4; }
+.voting-root .voting-admin .voting-roster-person small.is-admitted { color: #85b99b; }
+.voting-root .voting-admin .voting-roster-person small.is-waiting { color: #d0ad68; }
+.voting-root .voting-admin .voting-roster-person small.is-removed { color: #d5838b; }
+
+.voting-root .voting-admin .voting-roster-actions .voting-roster-visibility { display: inline-flex; align-items: center; justify-content: center; width: 28px; padding: 0; flex: none; }
+.voting-root .voting-admin .voting-roster-visibility[aria-pressed="true"] { background: #ffffff0a; border-color: #ffffff40; color: #fff; }
+.csc-tooltip { position: fixed; z-index: 1000; box-sizing: border-box; width: max-content; max-width: min(240px, calc(100vw - 24px)); padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 7px; background: #242426; color: #e4e4e7; font-family: "Instrument Sans", sans-serif; font-size: 12px; line-height: 1.4; pointer-events: none; box-shadow: 0 4px 16px #0004; animation: csc-tooltip-in 120ms ease-out both; }
+@keyframes csc-tooltip-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+@media(prefers-reduced-motion:reduce) { .csc-tooltip { animation: none; } }
+.csc-tooltip-arrow { position: absolute; width: 6px; height: 6px; background: #242426; transform: translateX(-50%) rotate(45deg); }
+.csc-tooltip[data-side="bottom"] .csc-tooltip-arrow { top: -4px; border-top: 1px solid #ffffff20; border-left: 1px solid #ffffff20; }
+.csc-tooltip[data-side="top"] .csc-tooltip-arrow { bottom: -4px; border-bottom: 1px solid #ffffff20; border-right: 1px solid #ffffff20; }
+.voting-notice { display: flex; align-items: flex-start; gap: 10px; box-sizing: border-box; width: var(--width, 356px); max-width: calc(100vw - 32px); padding: 12px 14px; border: 1px solid #ffffff24; border-radius: 10px; background: #19191b; color: #dedee2; box-shadow: 0 6px 24px #0005; font-family: "Instrument Sans", sans-serif; font-size: 13px; line-height: 1.5; }
+.voting-notice > div { flex: 1; min-width: 0; }
+.voting-notice p { margin: 0; overflow-wrap: anywhere; }
+.voting-notice-icon { display: grid; place-items: center; flex: none; width: 16px; height: 16px; margin-top: 2px; border: 1px solid #888; border-radius: 50%; color: #bbb; font-size: 11px; line-height: 1; }
+.voting-notice.is-error .voting-notice-icon { color: #ee9299; border-color: #b85a65; }
+.voting-notice button { margin: 7px 0 0; padding: 4px 8px; border: 1px solid #ffffff24; border-radius: 5px; background: transparent; color: #ddd; font: inherit; font-size: 12px; cursor: pointer; }
+.voting-notice button:hover { background: #ffffff0a; }
+.voting-notice .voting-notice-close { margin: 0; padding: 0 4px; border: 0; font-size: 18px; }
+.president-roster-attention { width: 5px; height: 5px; border-radius: 50%; background: #d0ad68; }
+
+/* Keep round actions and their supporting copy together. */
+.voting-root .voting-round-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 24px; }
+.voting-root .voting-admin .voting-round-actions button.voting-round-next { margin: 0; min-height: 44px; padding: 10px 20px; font-size: 14px; }
+.voting-root .voting-round-actions > p { margin: 0; font-size: 13px; line-height: 1.5; color: #99999f; }
+.voting-root .voting-roster { width: min(380px, calc(100vw - 32px)); }
+
+.voting-root .president-live-title { min-width: 0; gap: 12px; }
+.voting-root .president-join-code { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 240px; }
+.voting-root .president-code-label { color: #929298; font-size: 12px; }
+.voting-root .president-code-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
+@media(max-width:600px) { .voting-root .president-live-title .president-live-progress { display:none; } .voting-root .president-join-code { max-width: 150px; } }
+
+.voting-root .president-code-value { font-weight:500; color:#ddd; }
+.election-results { width:min(1100px,100%); margin:0 auto; padding:32px 24px 64px; color:#eee; }
+.results-heading,.results-section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.results-heading h1 { font-size:32px; margin:4px 0 0; font-weight:500; }
+.results-heading p,.results-section p,.results-totals span { color:#929298; font-size:13px; line-height:1.6; margin:0; }
+.results-actions { display:flex; gap:8px; }
+.results-actions a,.results-actions button,.results-section select { border:1px solid #ffffff20; border-radius:7px; background:#151516; color:#ccc; padding:8px 12px; font-size:13px; text-decoration:none; }
+.results-totals { display:flex; gap:48px; padding:28px 0; border-bottom:1px solid #ffffff14; }
+.results-totals div { display:flex; flex-direction:column; gap:4px; }
+.results-totals strong { font-size:28px; font-weight:500; }
+.results-section { margin-top:32px; }
+.results-section h2 { font-size:18px; font-weight:500; margin:0 0 8px; }
+.results-table { overflow:auto; margin-top:16px; max-height:420px; }
+.results-table table { border-collapse:collapse; width:100%; font-size:13px; text-align:left; }
+.results-table th,.results-table td { padding:12px 16px; border-bottom:1px solid #ffffff12; white-space:nowrap; font-weight:400; }
+.results-table th:first-child,.results-table td:first-child { padding-left:0; }
+.results-table thead th { color:#999; position:sticky; top:0; background:#0b0b0b; }
+.results-table small { display:block; color:#aaa; }
+.results-chart { height:300px; margin-top:16px; font-size:12px; }
+.results-ballots { margin-top:24px; }
+.results-ballots summary { cursor:pointer; font-size:14px; margin-bottom:12px; }
+@media(max-width:600px) { .election-results { padding:24px 16px; } .results-heading { align-items:flex-start; flex-direction:column; } .results-totals { gap:28px; } .results-section-heading { flex-wrap:wrap; } .results-section select { max-width:100%; } }
+
+.voting-root .president-round-label { font-size:13px; color:#aaaab0; white-space:nowrap; }
+.voting-root .voting-admin .voting-roster-moderation { margin:6px 0 10px; flex:none; }
+.voting-root .voting-admin .voting-roster-actions button { white-space:nowrap; }
+.voting-root .voting-admin .voting-roster-moderation { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); width:100%; }
+.voting-root .voting-admin .voting-roster-moderation button { width:100%; }
+
+.voting-root .voting-admin .voting-roster-row.is-banned { opacity: .45; }
+.voting-root .voting-admin .voting-roster-row.is-banned .voting-roster-select { cursor: default; }
+.voting-root .voting-admin .voting-roster-row.is-banned .voting-roster-person small { color: #929298; }
+/* Results stay in the same console, with a compact header and scrolling body. */
+.voting-root .election-results { width:100%; max-width:none; padding:0; height:calc(100dvh - 48px); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.voting-root .results-heading { flex:none; margin:0; padding:12px 20px; min-height:58px; }
+.voting-root .results-heading h1 { font-size:18px; line-height:24px; margin:0; }
+.voting-root .results-heading>div>p { font-size:11px; line-height:16px; }
+.voting-root .results-actions { flex-wrap:wrap; justify-content:flex-end; }
+.voting-root .results-actions button,.voting-root .results-actions a { min-height:34px; height:auto; padding:7px 12px; font-size:13px; border-radius:7px; line-height:18px; }
+.results-body { min-height:0; overflow:auto; overscroll-behavior:contain; padding:0 24px 32px; scrollbar-gutter:stable; }
+.results-body>* { max-width:1100px; margin-left:auto; margin-right:auto; }
+.results-section-heading { align-items:flex-start; }
+.results-filter { display:flex; flex-direction:column; gap:5px; width:240px; max-width:100%; min-width:0; flex-shrink:1; }
+.results-filter>span { color:#929298; font-size:11px; }
+.voting-root .results-filter select { appearance:none; width:100%; min-width:0; height:36px; padding:0 32px 0 10px; font-size:13px; line-height:20px; border:1px solid #ffffff20; border-radius:7px; background:#151516 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4 3 3 3-3' fill='none' stroke='%239999a0' stroke-width='1.3'/%3E%3C/svg%3E") no-repeat right 10px center; text-overflow:ellipsis; color:#ddd; }
+.results-section .results-selected-label { color:#ddd; margin:12px 0 4px; overflow-wrap:anywhere; }
+.results-table { border:1px solid #ffffff12; border-radius:8px; scrollbar-gutter:stable; }
+.results-table table { width:100%; }
+.results-table th,.results-table td { min-width:100px; padding:12px; }
+.results-table thead th { white-space:normal; overflow-wrap:anywhere; min-width:160px; max-width:220px; vertical-align:bottom; z-index:2; }
+.results-table th:first-child,.results-table td:first-child { padding-left:12px; }
+.results-table tbody th { white-space:normal; overflow-wrap:anywhere; min-width:160px; max-width:240px; }
+.results-table tr>:first-child { position:sticky; left:0; background:#101011; z-index:1; border-right:1px solid #ffffff12; }
+.results-table thead tr>:first-child { z-index:3; }
+.results-chart { height:auto; max-height:420px; overflow:auto; border:1px solid #ffffff12; border-radius:8px; padding:12px; }
+@media(max-width:600px){.voting-root .results-heading { flex-direction:row; flex-wrap:wrap; gap:12px; }.results-body{padding:0 16px 24px}.results-filter{width:100%}.results-section-heading{gap:8px}.results-totals{gap:24px}.voting-root .election-results{height:calc(100dvh - 32px)}}
+.results-overview-filter { padding-top:20px; }
+.results-candidate-breakdown + .results-candidate-breakdown { border-top:1px solid #ffffff14; margin-top:28px; padding-top:16px; }
+/* Progress forward is primary; reopening is a secondary correction. */
+.voting-root .voting-round-actions { flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px; }
+.voting-root .voting-round-actions > p { flex-basis:100%; margin-top:2px; }
+.voting-root .voting-admin .voting-round-actions button.voting-reopen-action { background:transparent; border:1px solid #ffffff26; color:#b8b8bf; }
+.voting-root .voting-admin .voting-round-actions button.voting-reopen-action:hover:not(:disabled) { background:#ffffff08; border-color:#ffffff40; color:#eee; }
+.voting-root .election-results.voting-console { border-radius:0; }
+.voting-root .candidate-platform-control { margin-top:12px; }
+.voting-root .candidate-platform-trigger { background:transparent; color:#b8b8bf; border:1px solid #ffffff26; border-radius:7px; padding:7px 12px; min-height:34px; font-size:13px; line-height:18px; }
+.candidate-platform-dialog { position:fixed; inset:0; margin:auto; padding:0; width:min(600px,calc(100vw - 32px)); max-height:min(680px,calc(100dvh - 48px)); border:1px solid #ffffff26; border-radius:10px; background:#151516; color:#ddd; overflow:hidden; text-align:left; }
+.candidate-platform-dialog::backdrop { background:#0009; }
+.candidate-platform-dialog { flex-direction:column; }
+.candidate-platform-dialog[open] { display:flex; }
+.candidate-platform-dialog header { flex:none; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px; border-bottom:1px solid #ffffff16; }
+.candidate-platform-dialog header span { font-size:12px; color:#999; }
+.voting-root .candidate-platform-dialog header h2 { font-size:20px; line-height:1.4; margin:4px 0 0; overflow-wrap:anywhere; }
+.candidate-platform-dialog header button { flex:none; width:32px; height:32px; border:1px solid #ffffff26; border-radius:7px; background:transparent; color:#bbb; font-size:20px; }
+.candidate-platform-content { overflow:auto; min-height:0; padding:20px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; line-height:1.7; }
+.voting-root .voting-admin .voting-roster-person > .voting-presence { flex:none; font-size:11px; color:#85858c; }
+.voting-presence::before { content:""; display:inline-block; width:4px; height:4px; border-radius:50%; background:currentColor; margin-right:4px; vertical-align:middle; }
+.voting-root .voting-admin .voting-roster-person > .voting-presence.is-online { color:#85b99b; }
+.voting-root .voting-admin .voting-roster-person > .voting-presence.is-away { color:#c2a36a; }
+
+.voting-root .voting-admin .voting-roster-actions .voting-roster-admit { background:#79ba9115; border-color:#79ba9140; color:#91c8a4; }
+.voting-root .voting-admin .voting-roster-actions .voting-roster-admit:hover:not(:disabled) { background:#79ba9126; border-color:#79ba9170; }
+
+.voting-root .voting-admin .voting-roster-group-heading { margin:12px 0 2px; padding-top:12px; border-top:1px solid #ffffff18; color:#85858d; font-size:11px; line-height:16px; font-weight:500; }
+.voting-root .voting-admin .voting-roster-group-heading:first-child { margin-top:4px; }
+.voting-root .voting-admin .voting-roster-row:has(+ .voting-roster-group-heading) { border-bottom:0; }
+.voting-root .voting-admin .voting-roster-group-heading { margin-top:8px; padding-top:10px; }
+.voting-root .voting-admin .voting-roster-group-heading:first-child { margin-top:4px; padding-top:0; border-top:0; }
+/* A quiet reading panel, with the same controls and typography as the ballot. */
+.voting-root .candidate-platform-trigger { display:inline-flex; align-items:center; justify-content:center; gap:7px; border-color:#ffffff18; color:#a8a8af; transition:color 160ms,background 160ms,border-color 160ms; }
+.voting-root .candidate-platform-trigger:hover { color:#eee; border-color:#ffffff30; background:#ffffff06; }
+.candidate-platform-dialog { background:#111112; border-color:#ffffff20; border-radius:10px; box-shadow:0 24px 80px #0006; opacity:0; transform:translateY(8px); transition:opacity 180ms ease,transform 220ms cubic-bezier(.2,.8,.2,1),display 220ms allow-discrete,overlay 220ms allow-discrete; }
+.candidate-platform-dialog[open] { opacity:1; transform:translateY(0); }
+.candidate-platform-dialog::backdrop { background:#0000; backdrop-filter:blur(0); transition:background 180ms,backdrop-filter 180ms,display 220ms allow-discrete,overlay 220ms allow-discrete; }
+.candidate-platform-dialog[open]::backdrop { background:#0008; backdrop-filter:blur(3px); }
+@starting-style { .candidate-platform-dialog[open] { opacity:0; transform:translateY(8px); } .candidate-platform-dialog[open]::backdrop { background:#0000; backdrop-filter:blur(0); } }
+.candidate-platform-dialog header { padding:20px 24px 16px; align-items:flex-start; border-bottom-color:#ffffff0e; }
+.candidate-platform-dialog header span { font-size:11px; color:#85858e; }
+.voting-root .candidate-platform-dialog header h2 { font-size:20px; font-weight:500; color:#eee; }
+.candidate-platform-dialog header button { display:grid; place-items:center; border-color:transparent; background:transparent; color:#9999a2; transition:background 150ms,color 150ms; }
+.candidate-platform-dialog header button:hover { background:#ffffff09; color:#eee; }
+.candidate-platform-trigger:focus-visible,.candidate-platform-dialog button:focus-visible { outline:2px solid #ffffff70; outline-offset:3px; }
+.candidate-platform-content { padding:20px 24px 28px; line-height:1.8; color:#bdbdc5; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#ffffff25 transparent; scrollbar-gutter:stable; }
+@media(max-width:600px){.candidate-platform-dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 32px)}.candidate-platform-dialog header{padding:18px 20px 14px}.candidate-platform-content{padding:16px 20px 24px;font-size:14px}}
+@media(prefers-reduced-motion:reduce){.candidate-platform-dialog,.candidate-platform-dialog::backdrop { transition:none; transform:none; }}
+/* Stable reading areas keep the overview anchored when filters change. */
+.results-summary-table { height:280px; }
+.results-chart { height:340px; max-height:340px; box-sizing:border-box; }
+.results-section .results-selected-label { min-height:0; }
+.results-section-heading { min-height:0; }
+.results-totals strong,.results-table td { font-variant-numeric:tabular-nums; }
+.results-empty { padding:12px 0; color:#9999a2; font-size:13px; line-height:1.6; }
+.results-history { margin-top:32px; padding-top:20px; border-top:1px solid #ffffff16; }
+.results-history>summary { color:#a8a8b0; font-size:14px; cursor:pointer; }
+.results-history .results-section { margin-top:20px; }
+.results-body { overflow-anchor:none; }
+
+.voting-root .president-live-header button.voting-end-session { color:#fff; background:var(--voting-accent); border-color:var(--voting-accent); }
+.voting-root .president-live-header button.voting-end-session:hover:not(:disabled) { filter:brightness(1.08); }
+.voting-root .president-live-header button.voting-end-session:disabled { opacity:.45; }
+
+/* Align section titles and controls while keeping descriptions with their heading. */
+.results-section-heading { justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px 32px; margin-bottom:8px; }
+.results-section-heading h2 { margin:0; }
+.results-section-heading .results-filter { width:280px; max-width:100%; flex:0 0 280px; }
+.results-section-intro { flex:1; min-width:240px; }
+.results-section-intro h2 { min-height:36px; display:flex; align-items:center; }
+.results-section-intro p { margin-top:4px; }
+.results-section-heading .results-filter>span { flex:none; }
+.results-section-heading .results-filter select { flex:none; min-width:0; min-height:36px; }
+.results-section { margin-top:24px; }
+.results-chart { margin-top:12px; padding:8px; }
+.results-section .results-selected-label { margin:12px 0 4px; }
+.results-totals { padding:20px 0; }
+@media(max-width:600px){.results-section-heading{gap:8px}.results-section-heading .results-filter{flex-basis:100%;max-width:100%}.results-section-heading .results-filter select{width:100%}}
+
+/* Charts are read-only; matching tables expose the values without SVG focus chrome. */
+.results-chart:focus,.results-chart *:focus,.results-chart *:focus-visible { outline:none; box-shadow:none; }
+
+.voting-root .results-section-heading h2{margin:0;line-height:24px}
+.voting-root .results-section-heading .results-filter{margin:0;padding:0}
+
+.results-candidate-overview>h2{font-size:22px;font-weight:500;margin:24px 0 0;overflow-wrap:anywhere}

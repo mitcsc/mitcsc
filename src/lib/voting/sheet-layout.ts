@@ -30,15 +30,16 @@ export async function polishElectionSheet(id: string, tabs: Sheet[], criterionCo
   await sheets(id, ":batchUpdate", "POST", {requests});
 }
 
-export async function writeSummary(id: string, candidates: Candidate[], criteria: Criterion[], sheetId: number) {
+export async function writeSummary(id: string, candidates: Candidate[], criteria: Criterion[], sheetId: number, excludedVoterIds: string[] = []) {
   const quoted = (value: string) => '"' + value.replace(/"/g, '""') + '"';
   const literal = (value: string) => ({userEnteredValue: {stringValue: value}});
   const formula = (value: string) => ({userEnteredValue: {formulaValue: value}});
+  const eligible = excludedVoterIds.length ? `,ISNA(MATCH(Responses!$E$2:$E,{${excludedVoterIds.map(quoted).join(",")}},0))` : "";
   const rows = [
     {values: ["Candidate", ...criteria.map(c => c.label), "Votes"].map(literal)},
     ...candidates.map(candidate => ({values: [literal(candidate.name),
-      ...criteria.map(c => formula(`=IFERROR(AVERAGEIFS(Responses!$K$2:$K,Responses!$C$2:$C,${quoted(candidate.id)},Responses!$H$2:$H,${quoted(c.id)}),"")`)),
-      formula(`=COUNTUNIQUEIFS(Responses!$E$2:$E,Responses!$C$2:$C,${quoted(candidate.id)},Responses!$E$2:$E,"<>")`),
+      ...criteria.map(c => formula(excludedVoterIds.length ? `=IFERROR(AVERAGE(FILTER(Responses!$K$2:$K,Responses!$C$2:$C=${quoted(candidate.id)},Responses!$H$2:$H=${quoted(c.id)},ISNUMBER(Responses!$K$2:$K)${eligible})),"")` : `=IFERROR(AVERAGEIFS(Responses!$K$2:$K,Responses!$C$2:$C,${quoted(candidate.id)},Responses!$H$2:$H,${quoted(c.id)}),"")`)),
+      formula(excludedVoterIds.length ? `=IFERROR(COUNTUNIQUE(FILTER(Responses!$E$2:$E,Responses!$C$2:$C=${quoted(candidate.id)},Responses!$E$2:$E<>""${eligible})),0)` : `=COUNTUNIQUEIFS(Responses!$E$2:$E,Responses!$C$2:$C,${quoted(candidate.id)},Responses!$E$2:$E,"<>")`),
     ]})),
   ];
   // One atomic replacement. Typed strings keep names beginning with '=' literal.

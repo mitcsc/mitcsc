@@ -22,7 +22,7 @@ async function main() {
   let transientFailures = 2;
   const state = {
     sessionId: 'ui-test-session', active: true, phase: 'waiting', votingStarted: false, ballotVersion: 'v1',
-    currentCandidate: { id: 'candidate-one', name: 'Alex Chen', context: '', order: 0, completed: false },
+    currentCandidate: { id: 'candidate-one', name: 'Alex Chen', context: 'Community events and transparent budgets.', order: 0, completed: false },
     criteria: [
       { id: 'reliability', label: 'Reliability', description: 'Consider follow-through.', min: 1, max: 5, required: true },
       { id: 'experience', label: 'Experience', description: '', min: 1, max: 5, required: false },
@@ -33,6 +33,7 @@ async function main() {
   await page.route('**/api/voting/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const reply = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (path.endsWith('/president')) return reply(200,{enabled:true,election:{sessionId:state.sessionId,name:'Test election',open:true}});
     if (path.endsWith('/state')) {
       stateRequests++;
       return authenticated ? reply(200, state) : reply(401, { error: 'Join the session.' });
@@ -89,6 +90,10 @@ async function main() {
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '3', exact: true }).isChecked(), true);
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '4', exact: true }).isDisabled(), true);
     await refreshPhase('deliberation');
+    await page.getByRole('button',{name:'View platform'}).click();
+    await page.getByRole('dialog').waitFor();
+    assert.equal(await page.getByRole('dialog').getByText('Community events and transparent budgets.').count(),1);
+    await page.keyboard.press('Escape');
     assert.equal(await page.getByRole('radio').count(),0,'Discussion should hide the ballot');
     assert.equal(await page.getByRole('button',{name:'Save ratings'}).count(),0);
     await page.emulateMedia({reducedMotion:'reduce'});
@@ -96,7 +101,10 @@ async function main() {
     await page.emulateMedia({reducedMotion:'no-preference'});
     state.contextVisible = true; state.currentCandidate.context = 'Discussion notes released by admin.';
     await refreshPhase('revision');
-    assert.equal(await page.getByText('Discussion notes released by admin.').count(), 0);
+    assert.equal(await page.getByText('Discussion notes released by admin.').isVisible(), false);
+    await page.getByRole('button',{name:'View platform'}).click();
+    assert.equal(await page.getByText('Discussion notes released by admin.').isVisible(), true);
+    await page.keyboard.press('Escape');
     await rate('Reliability', 5);
     await page.setViewportSize({width:390,height:844});
     await page.screenshot({path:'/private/tmp/voting-mobile-mockup.png'});
@@ -144,11 +152,11 @@ async function main() {
     // Deliberately wait for scheduled polling rather than firing focus.
     await page.getByRole('heading', { name: 'Jordan Wu' }).waitFor({ timeout: 7000 });
     assert.ok(stateRequests > beforePoll);
-    await page.getByRole('status').filter({ hasText: '1 earlier ballot remains unsubmitted' }).waitFor();
+    await page.getByRole('status').filter({ hasText: '1 earlier vote is unfinished' }).waitFor();
     assert.equal(await page.getByText('Morgan Lee', { exact: true }).count(), 0);
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: '4', exact: true }).isChecked(), false);
     await refreshPhase('final');
-    await page.getByRole('status').filter({ hasText: 'You did not submit initial ratings' }).waitFor();
+    await page.getByRole('status').filter({ hasText: 'Initial ratings were not received' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Submit vote' }).count(), 0);
     // Recover accepted initial and final ballots after browser storage is cleared.
     state.ownBallot = {initialSubmitted:true,submitted:false}; state.pollIntervalMs=2000;
@@ -162,11 +170,30 @@ async function main() {
     await page.evaluate(()=>localStorage.clear()); await page.reload();
     await page.getByRole('heading',{name:'Vote submitted for Jordan Wu'}).waitFor();
     assert.equal(submissions.length,4,'Recovery does not resubmit a ballot');
+    state.phase='locked'; state.votingComplete=true;
+    await page.getByRole('heading',{name:'Voting is complete.',exact:true}).waitFor({timeout:7000});
+    assert.equal(await page.getByText('Waiting for the next candidate',{exact:true}).count(),0);
+    state.phase='final'; state.votingComplete=false;
+    await page.getByRole('heading',{name:'Vote submitted for Jordan Wu'}).waitFor({timeout:7000});
+    state.admissionPending=true; state.eligible=false; state.phase='waiting'; state.currentCandidate=null; state.criteria=[];
+    await page.reload();
+    await page.getByRole('heading',{name:'Waiting for admission',exact:true}).waitFor();
+    assert.equal(await page.getByRole('radio').count(),0);
+    assert.equal(await page.getByText('Jordan Wu',{exact:true}).count(),0);
+    state.admissionPending=false; state.currentCandidate={id:'later',name:'Jordan Wu',context:'',order:2,completed:false};
+    state.eligible=false; state.phase='initial'; state.ownBallot={initialSubmitted:false,submitted:false};
+    await page.reload();
+    await page.getByText('Waiting for admission',{exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Submit vote'}).count(),0);
+    state.phase='deliberation'; await page.reload();
+    await page.getByText('Initial ratings have closed. You can participate when the next candidate starts.',{exact:true}).waitFor();
+    assert.equal(await page.getByText('Discussion in progress',{exact:true}).count(),0);
+    state.eligible=true;
     // Presidents are routed to controls and never receive a ballot.
     state.isAdmin = true;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await page.locator('.voting-console').waitFor();
-    assert.equal(new URL(page.url()).pathname,'/vote');
+    assert.equal(new URL(page.url()).pathname,'/vote/admin');
     assert.equal(await page.getByRole('button', {name: 'Submit vote'}).count(), 0);
     assert.equal(submissions.length, 4);
     assert.deepEqual(errors, [], 'No uncaught browser errors');

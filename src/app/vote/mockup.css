@@ -48,7 +48,7 @@
 .voting-root .voting-admin-candidates .voting-admin-heading{margin:0 12px 16px}
 .voting-root .voting-admin-candidates .voting-admin-heading h2{font-size:13px;color:#ffffff73;font-weight:400}
 .voting-root .voting-candidate-list{gap:2px}
-.voting-root .voting-candidate-list button{border:0;padding:12px;min-height:48px;border-radius:10px;gap:12px}
+.voting-root .voting-candidate-list button{border:0;padding:8px 10px;min-height:38px;border-radius:8px;gap:10px}
 .voting-root .voting-candidate-list button.is-selected{background:#ffffff14}
 .voting-candidate-dot{width:8px;height:8px;border-radius:50%;border:1px solid #ffffff4d;flex:none}
 .voting-candidate-dot.is-now{background:oklch(.58 .22 25);border-color:transparent}
@@ -435,6 +435,40 @@
 
 .voting-root .voter-room img.voter-waiting-panda{display:block;width:64px;height:64px;object-fit:contain;flex:none;margin:0 auto 8px}
 
-@keyframes voting-panda-spin{0%,30%{transform:rotate(0deg)}75%,100%{transform:rotate(360deg)}}
-.voting-root .voter-room img.voter-waiting-panda{animation:voting-panda-spin 4.5s cubic-bezier(.65,0,.35,1) infinite}
+@keyframes voting-panda-spin{0%{transform:rotate(0deg)}88%,100%{transform:rotate(360deg)}}
+.voting-root .voter-room img.voter-waiting-panda{animation:voting-panda-spin 1.3s cubic-bezier(.45,0,.55,1) infinite}
 @media(prefers-reduced-motion:reduce){.voting-root .voter-room img.voter-waiting-panda{animation:none}}
+
+/* The outer hop tracks the jump; the inner image keeps its independent spin. */
+.voter-panda-track{display:block;width:96px;height:94px;margin:0 auto 8px;padding-top:24px}
+.voter-panda-hop{display:block;width:64px;height:64px;margin:auto;transform-origin:50% 100%;animation:voting-panda-hop 1.3s infinite}
+.voting-root .voter-room .voter-panda-hop img.voter-waiting-panda{margin:0}
+@keyframes voting-panda-hop{
+  0%,100%{transform:translate(-6px,0) scale(1.08,.92);animation-timing-function:cubic-bezier(.18,.7,.35,1)}
+  45%{transform:translate(2px,-24px) scale(.98,1.02);animation-timing-function:cubic-bezier(.55,0,.85,.35)}
+  88%{transform:translate(6px,0) scale(1.08,.92);animation-timing-function:ease-out}
+}
+@media(prefers-reduced-motion:reduce){.voter-panda-hop{animation:none}}
+
+.voting-root .voter-room .voter-panda-jump-only img.voter-waiting-panda{animation:none;transform:none}
+.voter-panda-jump-only .voter-panda-hop{animation:voting-panda-jump 1.3s infinite}
+@keyframes voting-panda-jump{
+  0%,100%{transform:translateY(0);animation-timing-function:cubic-bezier(.2,.65,.4,1)}
+  45%{transform:translateY(-24px);animation-timing-function:cubic-bezier(.6,0,.8,.35)}
+  90%{transform:translateY(0)}
+}
+@media(prefers-reduced-motion:reduce){.voter-panda-jump-only .voter-panda-hop{animation:none}}
+
+.voting-root .voter-room .voter-complete{gap:8px}
+.voter-complete .voter-panda-track{margin-bottom:-6px}
+
+.voter-panda-track{position:relative;isolation:isolate}
+.voter-panda-confetti{position:absolute;left:50%;top:60%;width:0;height:0;pointer-events:none;z-index:-1}
+.voter-panda-confetti>span{position:absolute;width:5px;height:8px;border-radius:1px;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.voter-panda-confetti{display:none}}
+
+.voter-panda-track[role="button"]{cursor:pointer;border-radius:8px}
+.voter-panda-track[role="button"]:focus-visible{outline:2px solid #ffffff70;outline-offset:4px}
+
+.voter-panda-track{user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.voter-panda-track img{-webkit-user-drag:none;user-select:none}

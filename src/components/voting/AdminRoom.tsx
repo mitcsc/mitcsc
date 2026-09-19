@@ -1,7 +1,9 @@
 "use client";
+import VotingNotice from "./VotingNotice";
 
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useTooltip } from "@/components/ui/useTooltip";
 import AdminSetup from "@/components/voting/AdminSetup";
 import type { AdminAction, VotingPhase, VotingState } from "@/lib/voting/types";
 
@@ -20,7 +22,31 @@ async function responseData(response: Response) {
   return data;
 }
 
-export default function AdminRoom({initialState, onExit, onStateChange, setupComplete = false}: {setupComplete?: boolean; initialState: VotingState; onExit: (state?: VotingState) => void; onStateChange?: (state: VotingState) => void}) {
+export default function AdminRoom({initialState, onExit, onStateChange, setupComplete = false, showVoters = false, onResults}: {onResults?: () => void; showVoters?: boolean; setupComplete?: boolean; initialState: VotingState; onExit: (state?: VotingState) => void; onStateChange?: (state: VotingState) => void}) {
+  const [presence, setPresence] = useState<Record<string, "online" | "away" | "offline" | "unknown">>({});
+  useEffect(() => {
+    if (!showVoters) return;
+    const controller = new AbortController();
+    let running = false;
+    const refreshPresence = async () => {
+      if (running || document.hidden || controller.signal.aborted) return;
+      running = true;
+      try {
+        const response = await fetch("/api/voting/presence", {cache:"no-store", signal:controller.signal});
+        const data = await responseData(response);
+        if (!controller.signal.aborted) setPresence(data.presence || {});
+      } catch { if (!controller.signal.aborted) setPresence({}); }
+      finally { running = false; }
+    };
+    void refreshPresence();
+    const timer = window.setInterval(()=>void refreshPresence(),2000);
+    document.addEventListener("visibilitychange",refreshPresence);
+    return () => { controller.abort(); window.clearInterval(timer); document.removeEventListener("visibilitychange",refreshPresence); };
+  }, [showVoters, initialState.sessionId]);
+  const [showRemoved, setShowRemoved] = useState(false);
+  const removedTip = useTooltip(showRemoved ? "Hide removed voters" : "Show removed voters");
+  const admitTip = useTooltip("Select waiting or removed voters. Admission is available before a round or during initial ratings.");
+  const [selectedVoters, setSelectedVoters] = useState<string[]>([]);
   const [serverState, setState] = useState<VotingState | null>(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -113,10 +139,34 @@ export default function AdminRoom({initialState, onExit, onStateChange, setupCom
   const round = rounds.find(r => r.phase === state?.phase);
   const stepIndex = state?.phase === "final" ? 2 : ["initial", "deliberation", "revision", "locked"].indexOf(state?.phase || "");
   const nextCandidate = candidates.find(c => !c.completed && c.id !== state?.currentCandidate?.id);
+  const roster = serverState?.voters || [];
+  const visibleVoters = [...roster.filter(v => !v.removed), ...(showRemoved ? roster.filter(v => v.removed) : [])];
+  const rosterSelection = visibleVoters.filter(v => selectedVoters.includes(v.id));
+  const canAdmit = !busy && !serverState?.exportPending && !!rosterSelection.length && ["waiting", "initial"].includes(serverState?.phase || "") && rosterSelection.every(v => !v.banned && (v.removed || !v.eligible));
+  const canKick = !busy && !serverState?.exportPending && !!rosterSelection.length && rosterSelection.every(v => !v.removed);
+  const canBan = !busy && !serverState?.exportPending && !!rosterSelection.length && rosterSelection.every(v => !v.banned);
   return <div className={`voting-admin ${state?.isAdmin && state.initialized ? `voting-console ${showPreview ? "voting-live-page" : ""}` : ""}`}>
 
-    {error && <div className="voting-admin-alert" role="alert">{error}</div>}
-    {connectionError && <div className="voting-admin-alert" role="alert">{connectionError} Retrying automatically.</div>}
+    {removedTip.tooltip}{admitTip.tooltip}
+    {setupComplete && serverState && showVoters && <div id="admin-voter-roster" className="voting-roster">
+      <div className="voting-roster-heading"><h2>Voters{rosterSelection.length ? ` (${rosterSelection.length} selected)` : ` (${visibleVoters.length})`}</h2><div className="voting-roster-actions">
+        <button className="voting-roster-visibility" aria-label="Show removed voters" aria-pressed={showRemoved} {...removedTip.triggerProps} onClick={() => {setShowRemoved(!showRemoved); setSelectedVoters([]);}}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>{!showRemoved && <path d="m3 3 18 18"/>}</svg>
+        </button>
+      </div></div>
+      <div className="voting-roster-actions voting-roster-moderation">
+        <button className="voting-roster-admit" disabled={!canAdmit} {...admitTip.triggerProps} onClick={async () => {if (await act({action: "admitVoters", voterIds: rosterSelection.map(v => v.id)})) setSelectedVoters([]);}}>Admit</button>
+        <button className="voting-roster-kick" disabled={!canKick} onClick={async () => {if (await act({action: "removeVoters", voterIds: rosterSelection.map(v => v.id)})) setSelectedVoters([]);}}>Kick{rosterSelection.length ? ` (${rosterSelection.length})` : ""}</button>
+        <button className="voting-roster-kick" disabled={!canBan} onClick={async () => {if (await act({action: "banVoters", voterIds: rosterSelection.map(v => v.id)})) setSelectedVoters([]);}}>Ban</button>
+      </div>
+      <section aria-label="Voters" className="voting-roster-list">
+        {!visibleVoters.length && <p>{roster.length ? "No active voters." : "No voters have joined yet."}</p>}
+        {visibleVoters.map((v, index) => <Fragment key={v.id}>{v.removed && (index === 0 || !visibleVoters[index - 1].removed) && <h3 className="voting-roster-group-heading">Removed</h3>}<div className={`voting-roster-row${v.banned ? " is-banned" : ""}`} key={v.id}><label className="voting-roster-select"><input type="checkbox" aria-label={`Select ${v.name}`} disabled={busy || !!v.banned} checked={selectedVoters.includes(v.id)} onChange={event => setSelectedVoters(ids => event.target.checked ? [...ids, v.id] : ids.filter(id => id !== v.id))}/><span className="voting-roster-person"><span title={v.name}>{v.name}</span>{!v.removed && v.eligible ? <small className={`voting-presence is-${presence[v.id] || "unknown"}`} aria-label={`Presence: ${presence[v.id] || "unknown"}`}>{presence[v.id] === "online" ? "Online" : presence[v.id] === "away" ? "Away" : presence[v.id] === "offline" ? "Offline" : "Unknown"}</small> : <small className={v.removed ? "is-removed" : "is-waiting"}>{v.banned ? "Banned" : v.removed ? "Kicked" : "Awaiting admission"}</small>}</span></label></div></Fragment>)}
+      </section>
+      <p className="voting-roster-note">Kick keeps votes. Ban blocks rejoining and excludes votes.</p>
+    </div>}
+    <VotingNotice message={error}/>
+    <VotingNotice message={connectionError ? `${connectionError} Retrying automatically.` : ""}/>
     {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? null : <>
       {!state.active && <div className="voting-admin-notice">This session has ended. Create a new session to vote again.</div>}
       {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Add candidates and criteria to begin.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
@@ -145,11 +195,14 @@ export default function AdminRoom({initialState, onExit, onStateChange, setupCom
                 })()}
               </div>}
 
+              <div className="voting-round-actions">
               {round && <button className="voting-admin-primary voting-round-next" disabled={busy || (!viewingLive && !liveIdle) || !state.active || (round.next === "initial" && state.currentCandidate.completed) || !state.criteria.length} onClick={() => changePhase(round.next)}>{busy ? "Updating…" : round.action}</button>}
               {state.exportPending && <button className="voting-admin-primary voting-round-next" disabled={busy} onClick={() => void act({action: "setPhase", phase: "locked"})}>{busy ? "Exporting…" : "Retry export to Sheets"}</button>}
+              {state.phase === "locked" && !state.exportPending && candidates.length > 0 && candidates.every(c => c.completed) && onResults && <button className="voting-admin-primary voting-round-next" onClick={onResults} disabled={busy}>Continue to results →</button>}
               {state.phase === "locked" && !state.exportPending && <button className="voting-admin-primary voting-round-next voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? "Reopening…" : "Reopen final submission"}</button>}
               {!viewingLive && !liveIdle && <p className="voting-admin-muted">Another candidate is live. Close that round before opening this one.</p>}
               {state.phase === "locked" && !state.exportPending && !nextCandidate && <p className="voting-admin-muted">All candidates are complete.</p>}
+              </div>
             </>}
           </section>
         </div>

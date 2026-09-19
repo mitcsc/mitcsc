@@ -1,3 +1,4 @@
+import { summarizeRatings } from "./results";
 import { polishElectionSheet, writeSummary } from "./sheet-layout";
 import { randomUUID, createHash } from "node:crypto";
 import { compareAndSet, redisCommand, redisKey, releaseLock } from "./redis";
@@ -7,7 +8,7 @@ import type { Settings } from "./service";
 import { readRanges, sheets, writeRanges } from "./sheets";
 import type { Candidate, Criterion, Ratings, VotingPhase, VotingState } from "./types";
 
-type Member = {id: string; name: string; claimId: string; role: "admin" | "voter"; slot: number};
+type Member = {banned?: boolean; rejoinRequested?: boolean; pending?: boolean; removed?: boolean; id: string; name: string; claimId: string; role: "admin" | "voter"; slot: number};
 type Vote = {id: string; initial: Ratings; final: Ratings; at: string};
 type Round = {version: string; initial: Record<string, string>; initialRatings?: Record<string, Ratings>; roster?: string[]; votes: Record<string, Vote>};
 interface ExportRows {
@@ -31,7 +32,7 @@ interface Election {
   visible: boolean;
   rounds: Record<string, Round>;
   exportRows?: ExportRows;
-  exportPending?: {id: string; candidateId: string};
+  exportPending?: {id: string; candidateId: string; summaryOnly?: boolean};
 }
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const keyFor = (config: Settings) => redisKey("session", config.settingsSheetId, config.sheetId, config.sessionId);
@@ -84,6 +85,8 @@ async function change<T>(config: Settings, operation: (doc: Election) => T): Pro
 }
 function member(doc: Election, identity: Identity, admin = false) {
   const found = doc.members.find(m => m.id === identity.id && m.claimId === identity.claimId);
+  if (found?.banned) throw new VotingError("You are banned from this session.", 401);
+  if (found?.removed) throw new VotingError("You were kicked from this session. You can join again.", 401);
   if (!found || (admin && found.role !== "admin")) throw new VotingError(admin ? "Admin access required." : "Join the session again.", admin ? 403 : 401);
   return found;
 }
@@ -93,18 +96,23 @@ function identityFor(config: Settings, m: Member): Identity {
 export async function redisClaim(config: Settings, name: string, existing: Identity | null, joinId?: string) {
   const stable = joinId ? createHash("sha256").update(JSON.stringify([config.sessionId, config.sheetId, joinId])).digest("hex") : undefined;
   const id = stable || randomUUID(), claimId = stable || randomUUID();
-  return change(config, doc => {
+  const result = await change<Identity>(config, doc => {
     if (existing?.sessionId === config.sessionId && existing.sheetId === config.sheetId) {
       const known = doc.members.find(m => m.id === existing.id && m.claimId === existing.claimId);
-      if (known) return identityFor(config, known);
+      if (known?.banned) throw new VotingError("You are banned from this session.", 403);
+      if (known?.removed) { known.removed = false; known.pending = Object.keys(doc.rounds).length > 0; known.rejoinRequested = false; }
+      if (known) { known.name = name; return identityFor(config, known); }
     }
     const retry = doc.members.find(m => m.id === id && m.claimId === claimId);
-    if (retry) return identityFor(config, retry);
+    if (retry?.banned) throw new VotingError("You are banned from this session.", 403);
+    if (retry?.removed) { retry.removed = false; retry.pending = Object.keys(doc.rounds).length > 0; retry.rejoinRequested = false; }
+    if (retry) { retry.name = name; return identityFor(config, retry); }
     if (doc.members.length >= 129) throw new VotingError("This session has reached its 128-voter limit.", 409);
-    const m: Member = {id, claimId, name, role: "voter", slot: doc.members.length - 1};
+    const m: Member = {pending: Object.keys(doc.rounds).length > 0, id, claimId, name, role: "voter", slot: doc.members.length - 1};
     doc.members.push(m);
     return identityFor(config, m);
   });
+  return result;
 }
 export async function redisCanonical(config: Settings, identity: Identity) {
   if (identity.role !== "admin") return identity;
@@ -116,11 +124,15 @@ export async function redisVoters(config: Settings) {
 function present(config: Settings, identity: Identity, doc: Election): VotingState {
   const m = member(doc, identity);
   const admin = m.role === "admin";
+  const liveRound = doc.rounds[doc.current];
+  const eligible = !m.pending && (!liveRound || !(liveRound.roster || doc.roster) || (liveRound.roster || doc.roster)!.includes(m.id));
+  if (!admin && !eligible) return {pollIntervalMs: 3000, sessionId: config.sessionId, active: !doc.ended, phase: "waiting", votingStarted: true, ballotVersion: "", currentCandidate: null, criteria: [], contextVisible: false, submittedCount: 0, voter: {id: m.id, name: m.name}, isAdmin: false, initialized: true, eligible: false, admissionPending: !!m.pending};
   const current = doc.candidates.find(c => c.id === doc.current) || null;
   const round = doc.rounds[doc.current];
-  const participants = (r?: Round) => doc.members.filter(m => m.role === "voter" && (!(r?.roster || doc.roster) || (r?.roster || doc.roster)!.includes(m.id))).map(m => ({id: m.id, name: m.name, submitted: !!r?.votes[m.id], initialSubmitted: !!r?.initial[m.id]}));
-  return {pollIntervalMs: 3000, sessionId: config.sessionId, active: !!config.password && !doc.ended, phase: doc.phase, votingStarted: Object.keys(doc.rounds).length > 0, ballotVersion: round?.version || "", currentCandidate: current && {...current, context: admin || doc.visible ? current.context : ""}, criteria: doc.criteria, contextVisible: doc.visible, submittedCount: Object.keys(round?.votes || {}).length, voter: {id: m.id, name: m.name}, isAdmin: admin, initialized: doc.initialized, ownBallot: {initialSubmitted: !!round?.initial[m.id], submitted: !!round?.votes[m.id]}, eligible: admin || !round || !(round.roster || doc.roster) || (round.roster || doc.roster)!.includes(m.id),
-    ...(admin ? {candidates: doc.candidates, participants: participants(round), exportPending: !!doc.exportPending, candidateStates: doc.candidates.map(c => ({candidateId: c.id, phase: c.id === doc.current ? doc.phase : c.completed ? "locked" : "waiting", ballotVersion: doc.rounds[c.id]?.version || "", submittedCount: Object.keys(doc.rounds[c.id]?.votes || {}).length, participants: participants(doc.rounds[c.id])}))} : {})};
+  const counted = (r?: Round) => Object.keys(r?.votes || {}).filter(id=>!doc.members.find(m=>m.id===id)?.banned).length;
+  const participants = (r?: Round) => doc.members.filter(m => m.role === "voter" && !m.removed && !m.pending && (!(r?.roster || doc.roster) || (r?.roster || doc.roster)!.includes(m.id))).map(m => ({id: m.id, name: m.name, submitted: !!r?.votes[m.id], initialSubmitted: !!r?.initial[m.id]}));
+  return {pollIntervalMs: 3000, sessionId: config.sessionId, active: !!config.password && !doc.ended, votingComplete: doc.phase === "locked" && !doc.exportPending && doc.candidates.length > 0 && doc.candidates.every(c=>c.completed), phase: doc.phase, votingStarted: Object.keys(doc.rounds).length > 0, ballotVersion: round?.version || "", currentCandidate: current && {...current, context: current.context}, criteria: doc.criteria, contextVisible: !!current?.context, submittedCount: counted(round), voter: {id: m.id, name: m.name}, isAdmin: admin, initialized: doc.initialized, ownBallot: {initialSubmitted: !!round?.initial[m.id], submitted: !!round?.votes[m.id]}, eligible: admin || !round || !(round.roster || doc.roster) || (round.roster || doc.roster)!.includes(m.id),
+    ...(admin ? {voters: doc.members.filter(v => v.role === "voter").map(v => ({id: v.id, name: v.name, removed: !!v.removed, banned: !!v.banned, eligible: !v.pending && (!round || !!(round.roster || doc.roster)?.includes(v.id))})), candidates: doc.candidates, participants: participants(round), exportPending: !!doc.exportPending, candidateStates: doc.candidates.map(c => ({candidateId: c.id, phase: c.id === doc.current ? doc.phase : c.completed ? "locked" : "waiting", ballotVersion: doc.rounds[c.id]?.version || "", submittedCount: counted(doc.rounds[c.id]), participants: participants(doc.rounds[c.id])}))} : {})};
 }
 export async function redisState(config: Settings, identity: Identity) { return present(config, identity, await readView(config)); }
 
@@ -128,6 +140,7 @@ export async function redisSubmit(config: Settings, identity: Identity, input: R
   const at = new Date().toISOString();
   return change(config, doc => {
     const m = member(doc, identity);
+    if (m.pending) throw new VotingError("Wait for the admin to admit you.", 403);
     if (m.role === "admin") throw new VotingError("Admins do not vote.", 403);
     if (input.sessionId !== config.sessionId) throw new VotingError("This ballot belongs to another session.", 409);
     const candidateId = text(input.candidateId, "candidate ID", 100);
@@ -137,7 +150,7 @@ export async function redisSubmit(config: Settings, identity: Identity, input: R
     if (initial && r.initial[m.id]) return {ok: true};
     if (!initial && r.votes[m.id]) return {ok: true, submissionId: r.votes[m.id].id};
     if (doc.ended || !config.password || doc.exportPending || candidateId !== doc.current || !(initial ? ["initial"] : ["revision", "final"]).includes(doc.phase)) throw new VotingError(initial ? "Initial ratings have closed for this candidate." : "Final submissions are not currently open.", 409);
-    if (!(r.roster || doc.roster)?.includes(m.id)) throw new VotingError("You joined after this candidate started.", 409);
+    if (!(r.roster || doc.roster)?.includes(m.id)) throw new VotingError("You are not admitted for this candidate. Ask the admin during initial ratings, or wait for the next candidate.", 409);
     if (initial) {
       validateRatings(input.ratings, doc.criteria);
       r.initial[m.id] = at;
@@ -172,6 +185,41 @@ export async function redisAdminAction(config: Settings, identity: Identity, inp
       if (!doc.candidates.some(c => c.id === doc.current)) doc.current = "";
       return;
     }
+    if (input.action === "removeVoters" || input.action === "banVoters" || input.action === "admitVoters") {
+      if (!Array.isArray(input.voterIds) || !input.voterIds.length || input.voterIds.length > 128 || input.voterIds.some(id => typeof id !== "string")) throw new VotingError("Select voters first.");
+      const selected = input.voterIds.map(id => doc.members.find(v => v.id === id && v.role === "voter"));
+      if (selected.some(v => !v)) throw new VotingError("One of the selected voters was not found.", 404);
+      if (input.action === "removeVoters" || input.action === "banVoters") {
+        for (const voter of selected) { voter!.removed = true; voter!.rejoinRequested = false; if (input.action === "banVoters") voter!.banned = true; }
+        if (input.action === "banVoters" && doc.candidates.some(c=>c.completed)) doc.exportPending = {id:exportId,candidateId:doc.current,summaryOnly:true};
+      } else {
+        if (selected.some(v => v!.banned)) throw new VotingError("Banned voters cannot be admitted to this session.", 409);
+        const round = doc.rounds[doc.current];
+        if (round && doc.phase !== "initial") throw new VotingError("Admit voters during initial ratings or before the next candidate starts.", 409);
+        for (const voter of selected) {
+          voter!.removed = false; voter!.pending = false; voter!.rejoinRequested = false;
+          if (round) {
+            round.roster ||= [...(doc.roster || [])];
+            if (!round.roster.includes(voter!.id)) round.roster.push(voter!.id);
+          }
+        }
+      }
+      return;
+    }
+    if (input.action === "removeVoter" || input.action === "admitVoter") {
+      const voter = doc.members.find(v => v.id === input.voterId && v.role === "voter");
+      if (!voter) throw new VotingError("Voter not found.", 404);
+      if (input.action === "removeVoter") { voter.removed = true; return; }
+      if (voter.banned) throw new VotingError("Banned voters cannot be admitted to this session.", 409);
+      const round = doc.rounds[doc.current];
+      if (round && doc.phase !== "initial") throw new VotingError("Admit voters during initial ratings or before the next candidate starts.", 409);
+      voter.removed = false; voter.pending = false; voter.rejoinRequested = false;
+      if (round) {
+        round.roster ||= [...(doc.roster || [])];
+        if (!round.roster.includes(voter.id)) round.roster.push(voter.id);
+      }
+      return;
+    }
     if (input.action === "setContext") {
       if (typeof input.visible !== "boolean") throw new VotingError("Invalid context visibility.");
       doc.visible = input.visible; return;
@@ -193,8 +241,8 @@ export async function redisAdminAction(config: Settings, identity: Identity, inp
       if (!selected || selected.completed || doc.rounds[selected.id]) throw new VotingError("Choose an unfinished candidate.", 409);
       validateSetup(doc.candidates, doc.criteria);
       if (!doc.criteria.length) throw new VotingError("Add at least one criterion.");
-      doc.roster ||= doc.members.filter(m => m.role === "voter").map(m => m.id);
-      doc.rounds[selected.id] = {version, initial: {}, initialRatings: {}, roster: doc.members.filter(m => m.role === "voter").map(m => m.id), votes: {}};
+      doc.roster ||= doc.members.filter(m => m.role === "voter" && !m.removed && !m.pending).map(m => m.id);
+      doc.rounds[selected.id] = {version, initial: {}, initialRatings: {}, roster: doc.members.filter(m => m.role === "voter" && !m.removed && !m.pending).map(m => m.id), votes: {}};
       doc.current = selected.id; doc.phase = "initial"; doc.visible = false; return;
     }
     if (next === "final" && idle && input.candidateId) {
@@ -214,11 +262,18 @@ export async function redisAdminAction(config: Settings, identity: Identity, inp
   const {doc} = await load(config);
   if (doc.exportPending) {
     const pending = doc.exportPending;
-    try { await exportCandidate(config, doc, pending.candidateId); }
+    try {
+      if (pending.summaryOnly) {
+        const meta = await sheets<{sheets:{properties:{sheetId:number;title:string}}[]}>(config.sheetId, "?fields=sheets.properties", "GET", undefined, true);
+        const summary = meta.sheets.find(s=>s.properties.title === "Summary");
+        if (!summary) throw new VotingError("Summary sheet is missing.",409);
+        await writeSummary(config.sheetId,doc.candidates,doc.criteria,summary.properties.sheetId,doc.members.filter(m=>m.banned).map(m=>m.id));
+      } else await exportCandidate(config, doc, pending.candidateId);
+    }
     catch { throw new VotingError("Votes are saved in Redis. Export to Sheets failed. Retry the export before continuing.", 503, 2); }
     await change(config, latest => {
       if (latest.exportPending?.id !== pending.id) return;
-      latest.candidates.find(c => c.id === pending.candidateId)!.completed = true;
+      if (!pending.summaryOnly) latest.candidates.find(c => c.id === pending.candidateId)!.completed = true;
       delete latest.exportPending;
     });
   }
@@ -272,7 +327,7 @@ async function exportCandidate(config: Settings, doc: Election, candidateId: str
   data.push({range: `'Ballots'!A${candidateIndex + 2}`, values: [[candidateId, round.version, candidate.name, candidate.context, JSON.stringify(doc.criteria)]]});
   
   await writeRanges(config.sheetId, data);
-  await writeSummary(config.sheetId, doc.candidates, doc.criteria, meta.sheets.find(s => s.properties.title === "Summary")!.properties.sheetId);
+  await writeSummary(config.sheetId, doc.candidates, doc.criteria, meta.sheets.find(s => s.properties.title === "Summary")!.properties.sheetId, doc.members.filter(m=>m.banned).map(m=>m.id));
   await polishElectionSheet(config.sheetId, meta.sheets, doc.criteria.length);
 
 }
@@ -316,6 +371,7 @@ function allocateExportRows(doc: Election, candidateId: string) {
 export async function redisRecoverBallot(config: Settings, identity: Identity, candidateId: string, version: string) {
   const {doc} = await load(config);
   const m = member(doc, identity);
+  if (m.pending) throw new VotingError("Wait for the admin to admit you.", 403);
   if (m.role !== "voter") throw new VotingError("Admins do not vote.", 403);
   const round = Object.hasOwn(doc.rounds, candidateId) ? doc.rounds[candidateId] : undefined;
   if (!round || round.version !== version) throw new VotingError("This ballot is no longer available.", 409);
@@ -391,4 +447,18 @@ export async function endElection(sessionId: string) {
     doc.ended = true;
   });
   if (!await redisCommand("EVAL", "if redis.call('GET',KEYS[1]) == ARGV[1] then redis.call('SET',KEYS[1],ARGV[2]); return 1 else return 0 end", 1, activeElectionKey(), raw, JSON.stringify({...config, password: ""}))) throw new VotingError("The election changed. Reload before continuing.", 409);
+}
+
+// President-only route calls this directly, including after the session is closed.
+// Read the authoritative ballots, never the redacted polling projection.
+export async function electionResults(config: Settings) {
+  const raw = await redisCommand<string | null>('GET', keyFor(config));
+  if (!raw) throw new VotingError('Election results are unavailable.', 404);
+  const doc = JSON.parse(raw) as Election;
+  return {sessionId: config.sessionId, ended: !!doc.ended, spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit`, voterCount: doc.members.filter(m=>m.role==='voter').length, criteria: doc.criteria,
+    candidates: doc.candidates.map(candidate=>{
+      const round = doc.rounds[candidate.id];
+      const ballots = Object.entries(round?.votes || {}).filter(([id])=>!doc.members.find(m=>m.id===id)?.banned).map(([voterId,vote])=>({voterId,voterName:doc.members.find(m=>m.id===voterId)?.name || voterId,initial:vote.initial,final:vote.final,submittedAt:vote.at}));
+      return {candidate,initialCount:Object.keys(round?.initial || {}).filter(id=>!doc.members.find(m=>m.id===id)?.banned).length,ballots,stats:doc.criteria.map(c=>summarizeRatings(ballots,c.id))};
+    })};
 }

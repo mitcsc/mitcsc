@@ -7,6 +7,7 @@ export interface VotingState {
   active: boolean;
   phase: VotingPhase;
   votingStarted?: boolean;
+  votingComplete?: boolean;
   ballotVersion: string;
   currentCandidate: Candidate | null;
   criteria: Criterion[];
@@ -18,7 +19,9 @@ export interface VotingState {
   exportPending?: boolean;
   ownBallot?: {initialSubmitted: boolean; submitted: boolean};
   eligible?: boolean;
+  admissionPending?: boolean;
   pollIntervalMs?: number;
+  voters?: {id: string; name: string; removed: boolean; banned?: boolean; presence?: "online" | "away" | "offline" | "unknown"; eligible: boolean}[];
   participants?: { id: string; name: string; submitted: boolean; initialSubmitted?: boolean }[];
   candidateStates?: {candidateId: string; phase: VotingPhase; ballotVersion: string; submittedCount: number; participants: NonNullable<VotingState["participants"]>}[];
   candidates?: Candidate[];
@@ -33,6 +36,8 @@ export interface FinalBallot {
   finalRatings: Ratings;
 }
 export type AdminAction =
+  | { action: "removeVoters" | "banVoters" | "admitVoters"; voterIds: string[] }
+  | { action: "removeVoter" | "admitVoter"; voterId: string }
   | { action: "initialize" }
   | { action: "saveSetup"; candidates: Candidate[]; criteria: Criterion[] }
   | { action: "setPhase"; phase: VotingPhase; candidateId?: string }
