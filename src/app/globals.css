@@ -229,9 +229,9 @@
   scale: var(--s);
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45);
   transition: scale 300ms ease-out;
-  /* Quick pop-in: every polaroid grows from half size and twists into its
-     tilt at once, matching the original client-side entrance. */
-  animation: hero-photo-in 100ms linear backwards;
+  /* Entrance: fall from above the viewport, spinning and drifting, then
+     land with a small squash. Each polaroid has its own delay and speed. */
+  animation: hero-photo-fall var(--fall) var(--delay) backwards;
 }
 
 .hero-polaroid:hover {
@@ -244,11 +244,31 @@
   height: var(--photo);
 }
 
-@keyframes hero-photo-in {
-  from {
+@keyframes hero-photo-fall {
+  0% {
     opacity: 0;
-    scale: calc(var(--s) * 0.5);
-    rotate: 0deg;
+    translate: var(--drift) -100vh;
+    scale: calc(var(--s) * 1.35);
+    rotate: calc(var(--tilt) + var(--spin));
+    box-shadow: 0 60px 40px -20px rgb(0 0 0 / 0);
+    /* Gravity: slow start, fast arrival. */
+    animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.55);
+  }
+  10% {
+    opacity: 1;
+  }
+  84% {
+    translate: 0 0;
+    scale: calc(var(--s) * 0.96);
+    rotate: calc(var(--tilt) - var(--spin) * 0.08);
+    box-shadow: 0 4px 4px -2px rgb(0 0 0 / 0.55), 0 2px 3px -2px rgb(0 0 0 / 0.55);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
+  }
+  100% {
+    translate: 0 0;
+    scale: var(--s);
+    rotate: var(--tilt);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45);
   }
 }
 

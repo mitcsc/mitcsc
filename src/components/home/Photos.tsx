@@ -24,6 +24,15 @@ const MAX_TILT_DEG = 30;
 const MIN_SCALE = 0.8;
 const MAX_SCALE = 1.12;
 
+/** Entrance: each polaroid drops in on its own schedule. */
+const MAX_DELAY_MS = 700;
+const MIN_FALL_MS = 550;
+const MAX_FALL_MS = 950;
+/** Extra spin at the top of the fall that unwinds on landing, degrees. */
+const MAX_SPIN_DEG = 50;
+/** Sideways drift during the fall, px. */
+const MAX_DRIFT_PX = 70;
+
 /**
  * Candidate widths for the srcset. Each must be listed in `images.imageSizes`
  * in next.config.ts, and the quality in `images.qualities`. The largest
@@ -48,6 +57,11 @@ interface PhotoSlot {
   scale: number;
   /** Stacking order among overlapping neighbours. */
   z: number;
+  /** Entrance timing and motion. */
+  delayMs: number;
+  fallMs: number;
+  spin: number;
+  driftPx: number;
 }
 
 function buildSlots(): PhotoSlot[] {
@@ -58,6 +72,10 @@ function buildSlots(): PhotoSlot[] {
     tilt: (Math.random() * 2 - 1) * MAX_TILT_DEG,
     scale: MIN_SCALE + Math.random() * (MAX_SCALE - MIN_SCALE),
     z: Math.floor(Math.random() * 10),
+    delayMs: Math.round(Math.random() * MAX_DELAY_MS),
+    fallMs: Math.round(MIN_FALL_MS + Math.random() * (MAX_FALL_MS - MIN_FALL_MS)),
+    spin: (Math.random() * 2 - 1) * MAX_SPIN_DEG,
+    driftPx: (Math.random() * 2 - 1) * MAX_DRIFT_PX,
   }));
 }
 
@@ -92,6 +110,10 @@ export default function Photos() {
                 "--tilt": `${slot.tilt.toFixed(1)}deg`,
                 "--s": slot.scale.toFixed(3),
                 "--z": slot.z,
+                "--delay": `${slot.delayMs}ms`,
+                "--fall": `${slot.fallMs}ms`,
+                "--spin": `${slot.spin.toFixed(1)}deg`,
+                "--drift": `${slot.driftPx.toFixed(0)}px`,
               } as CSSProperties
             }
           >
