@@ -20,6 +20,10 @@ const PRIORITY_COUNT = 4;
 
 const MAX_TILT_DEG = 18;
 
+/** Per-photo size variance so the pile does not look stamped from one mould. */
+const MIN_SCALE = 0.85;
+const MAX_SCALE = 1.05;
+
 /**
  * Candidate widths for the srcset. Each must be listed in `images.imageSizes`
  * in next.config.ts, and the quality in `images.qualities`. The largest
@@ -30,7 +34,7 @@ const QUALITY = 60;
 
 /** Largest rendered photo width per breakpoint. Keep in sync with `--photo-max` in globals.css. */
 const SIZES =
-  "(min-width: 1280px) 256px, (min-width: 768px) 192px, (min-width: 640px) 136px, 120px";
+  "(min-width: 1280px) 256px, (min-width: 1024px) 208px, (min-width: 768px) 192px, (min-width: 640px) 136px, 120px";
 
 interface PhotoSlot {
   file: string;
@@ -40,6 +44,10 @@ interface PhotoSlot {
   jy: number;
   /** Tilt in degrees. */
   tilt: number;
+  /** Size multiplier, MIN_SCALE..MAX_SCALE. */
+  scale: number;
+  /** Stacking order among overlapping neighbours. */
+  z: number;
 }
 
 function buildSlots(): PhotoSlot[] {
@@ -48,6 +56,8 @@ function buildSlots(): PhotoSlot[] {
     jx: Math.random(),
     jy: Math.random(),
     tilt: (Math.random() * 2 - 1) * MAX_TILT_DEG,
+    scale: MIN_SCALE + Math.random() * (MAX_SCALE - MIN_SCALE),
+    z: Math.floor(Math.random() * 10),
   }));
 }
 
@@ -68,7 +78,7 @@ export default function Photos() {
   return (
     <section
       aria-label="Photos from past CSC events"
-      className="relative w-full h-full flex-1 flex items-center justify-center overflow-hidden max-h-[min(65vh,800px)] sm:max-h-none"
+      className="relative w-full h-full flex-1 flex items-center justify-center overflow-x-clip max-h-[min(65vh,800px)] sm:max-h-none"
     >
       <ul className="hero-photos relative w-full h-full xl:max-w-7xl list-none m-0 p-0">
         {slots.map((slot, index) => (
@@ -81,6 +91,8 @@ export default function Photos() {
                 "--jx": slot.jx.toFixed(3),
                 "--jy": slot.jy.toFixed(3),
                 "--tilt": `${slot.tilt.toFixed(1)}deg`,
+                "--s": slot.scale.toFixed(3),
+                "--z": slot.z,
               } as CSSProperties
             }
           >

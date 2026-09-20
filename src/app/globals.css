@@ -145,16 +145,18 @@
 }
 
 /* Hero photo scatter.
-   A jittered grid: one polaroid per cell, centred in the cell, then nudged
-   by the per-photo --jx / --jy values (0..1) and tilted by --tilt. Cells are
-   sized a little smaller than the polaroids so neighbours overlap slightly
-   and the pile reads as one cluster with no gaps. The grid shape changes
-   per breakpoint; extra slots are hidden and use loading="lazy" so hidden
-   photos are never downloaded.
+   A staggered, jittered grid: one polaroid per cell. Odd rows shift right
+   and odd columns shift down (a brick pattern), then each polaroid is
+   nudged by its --jx / --jy values (0..1), tilted by --tilt, scaled by --s
+   and stacked by --z. Cells are a little smaller than the polaroids, so the
+   pile overlaps and never reads as rows and columns. Polaroids in the first
+   and last column are clamped inside the grid so none is sliced off.
 
-   The photo size also follows the viewport height so every row fits inside
-   the hero. --header mirrors the hero heading block in Hero.tsx (top padding
-   + h1 + subtitle) and --hero mirrors its height classes. */
+   The grid shape changes per breakpoint (the nth-child selectors below
+   encode the column count); extra slots are hidden and use loading="lazy"
+   so hidden photos are never downloaded. The photo size also follows the
+   viewport height so every row fits inside the hero. --header mirrors the
+   hero heading block in Hero.tsx and --hero mirrors its height classes. */
 .hero-photos {
   --cols: 3;
   --rows: 3;
@@ -165,22 +167,41 @@
   --chrome: 4.5rem;
   /* How far a polaroid may run into the next row. */
   --overlap: 1.5rem;
-  --pad: 2rem;
+  --pad: 2.5rem;
+  --pad-x: 1rem;
   --row: calc((var(--hero) - var(--pad)) / var(--rows));
   --photo: max(5rem, min(var(--photo-max), var(--row) - var(--chrome) + var(--overlap)));
-  /* Random nudge range on top of the free space inside the cell. */
-  --drift: calc(var(--photo) * 0.25);
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
-  /* Keep the top row clear of the hero subtitle. */
-  padding-top: var(--pad);
+  /* Room for the top row to scatter upward without touching the subtitle. */
+  padding: var(--pad) var(--pad-x) 0;
 }
 
 .hero-photo {
+  --row-shift: -1;
+  --col-shift: -1;
+  --min-left: -9999px;
+  --max-left: 9999px;
   position: relative;
   min-width: 0;
   min-height: 0;
+}
+
+/* 3 columns: odd rows, odd columns, first and last column. */
+.hero-photo:nth-child(6n + 4),
+.hero-photo:nth-child(6n + 5),
+.hero-photo:nth-child(6n) {
+  --row-shift: 1;
+}
+.hero-photo:nth-child(3n + 2) {
+  --col-shift: 1;
+}
+.hero-photo:nth-child(3n + 1) {
+  --min-left: calc(0.5rem - var(--pad-x));
+}
+.hero-photo:nth-child(3n) {
+  --max-left: calc(100% - var(--w) + var(--pad-x) - 0.5rem);
 }
 
 .hero-photo:nth-child(n + 10) {
@@ -192,9 +213,19 @@
   --h: calc(var(--photo) + var(--chrome));
   position: absolute;
   width: var(--w);
-  left: calc(50% - var(--w) / 2 + (var(--jx) - 0.5) * (max(0px, 100% - var(--w)) + var(--drift)));
-  top: calc(50% - var(--h) / 2 + (var(--jy) - 0.5) * (max(0px, 100% - var(--h)) + var(--drift)));
+  left: clamp(
+    var(--min-left),
+    calc(50% - var(--w) / 2 + var(--row-shift) * 14% + (var(--jx) - 0.5) * 28%),
+    var(--max-left)
+  );
+  /* The lower bound keeps the top row at least 1.75rem below the subtitle. */
+  top: max(
+    calc(1.75rem - var(--pad)),
+    calc(50% - var(--h) / 2 + var(--col-shift) * 10% + (var(--jy) - 0.5) * 28%)
+  );
+  z-index: var(--z);
   rotate: var(--tilt);
+  scale: var(--s);
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45);
   transition: scale 300ms ease-out;
   animation: hero-photo-in 350ms ease-out backwards;
@@ -202,8 +233,8 @@
 }
 
 .hero-polaroid:hover {
-  scale: 1.05;
-  z-index: 1;
+  scale: calc(var(--s) * 1.06);
+  z-index: 20;
 }
 
 .hero-polaroid-frame {
@@ -214,7 +245,7 @@
 @keyframes hero-photo-in {
   from {
     opacity: 0.3;
-    scale: 0.9;
+    scale: calc(var(--s) * 0.9);
   }
 }
 
@@ -231,8 +262,31 @@
     --cols: 4;
     --rows: 4;
     --photo-max: 8.5rem;
+    --pad-x: 1.5rem;
     --hero: calc(min(130vh, 1300px) - var(--header));
     --header: 11.5rem;
+  }
+  .hero-photo {
+    --row-shift: -1;
+    --col-shift: -1;
+    --min-left: -9999px;
+    --max-left: 9999px;
+  }
+  .hero-photo:nth-child(8n + 5),
+  .hero-photo:nth-child(8n + 6),
+  .hero-photo:nth-child(8n + 7),
+  .hero-photo:nth-child(8n) {
+    --row-shift: 1;
+  }
+  .hero-photo:nth-child(4n + 2),
+  .hero-photo:nth-child(4n) {
+    --col-shift: 1;
+  }
+  .hero-photo:nth-child(4n + 1) {
+    --min-left: calc(0.5rem - var(--pad-x));
+  }
+  .hero-photo:nth-child(4n) {
+    --max-left: calc(100% - var(--w) + var(--pad-x) - 0.5rem);
   }
   .hero-photo:nth-child(n + 10) {
     display: block;
@@ -256,14 +310,38 @@
   }
 }
 
-/* Laptops and desktops: 5 x 2, or 5 x 3 when tall. The cluster is capped
-   at the heading width (max-w-7xl) in Photos.tsx. */
+/* Laptops and desktops: 5 x 2 on short screens, otherwise 5 x 3 with the
+   photos shrunk as needed so three rows fit. The cluster is capped at the heading width
+   (max-w-7xl) in Photos.tsx. */
 @media (min-width: 1024px) {
   .hero-photos {
     --cols: 5;
     --rows: 2;
-    --photo-max: 12rem;
+    --photo-max: 13rem;
     --header: 17.5rem;
+  }
+  .hero-photo {
+    --row-shift: -1;
+    --col-shift: -1;
+    --min-left: -9999px;
+    --max-left: 9999px;
+  }
+  .hero-photo:nth-child(10n + 6),
+  .hero-photo:nth-child(10n + 7),
+  .hero-photo:nth-child(10n + 8),
+  .hero-photo:nth-child(10n + 9),
+  .hero-photo:nth-child(10n) {
+    --row-shift: 1;
+  }
+  .hero-photo:nth-child(5n + 2),
+  .hero-photo:nth-child(5n + 4) {
+    --col-shift: 1;
+  }
+  .hero-photo:nth-child(5n + 1) {
+    --min-left: calc(0.5rem - var(--pad-x));
+  }
+  .hero-photo:nth-child(5n) {
+    --max-left: calc(100% - var(--w) + var(--pad-x) - 0.5rem);
   }
   .hero-photo:nth-child(n + 10) {
     display: block;
@@ -273,7 +351,7 @@
   }
 }
 
-@media (min-width: 1024px) and (min-height: 1100px) {
+@media (min-width: 1024px) and (min-height: 820px) {
   .hero-photos {
     --rows: 3;
   }
