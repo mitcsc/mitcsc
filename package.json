@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/generate-event-images.mjs",
     "dev": "next dev --turbopack",
+    "prebuild": "node scripts/generate-event-images.mjs",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",

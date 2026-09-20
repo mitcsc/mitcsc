@@ -11,6 +11,7 @@
     format("woff2");
   font-weight: 400;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -19,6 +20,7 @@
     format("woff2");
   font-weight: 500;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -27,6 +29,7 @@
     format("woff2");
   font-weight: 600;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -35,6 +38,7 @@
     format("woff2");
   font-weight: 700;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -42,6 +46,7 @@
   src: url("/font/canela/Canela-Thin-Trial.otf") format("opentype");
   font-weight: 100;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -49,6 +54,7 @@
   src: url("/font/canela/Canela-ThinItalic-Trial.otf") format("opentype");
   font-weight: 100;
   font-style: italic;
+  font-display: swap;
 }
 
 @font-face {
@@ -56,6 +62,7 @@
   src: url("/font/canela/Canela-Light-Trial.otf") format("opentype");
   font-weight: 300;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -63,6 +70,7 @@
   src: url("/font/canela/Canela-LightItalic-Trial.otf") format("opentype");
   font-weight: 300;
   font-style: italic;
+  font-display: swap;
 }
 
 @font-face {
@@ -70,6 +78,7 @@
   src: url("/font/canela/Canela-Regular-Trial.otf") format("opentype");
   font-weight: 400;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -77,6 +86,7 @@
   src: url("/font/canela/Canela-RegularItalic-Trial.otf") format("opentype");
   font-weight: 400;
   font-style: italic;
+  font-display: swap;
 }
 
 @font-face {
@@ -84,6 +94,7 @@
   src: url("/font/canela/Canela-Medium-Trial.otf") format("opentype");
   font-weight: 500;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -91,6 +102,7 @@
   src: url("/font/canela/Canela-MediumItalic-Trial.otf") format("opentype");
   font-weight: 500;
   font-style: italic;
+  font-display: swap;
 }
 
 @font-face {
@@ -98,6 +110,7 @@
   src: url("/font/canela/Canela-Bold-Trial.otf") format("opentype");
   font-weight: 700;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -105,6 +118,7 @@
   src: url("/font/canela/Canela-BoldItalic-Trial.otf") format("opentype");
   font-weight: 700;
   font-style: italic;
+  font-display: swap;
 }
 
 @font-face {
@@ -112,6 +126,7 @@
   src: url("/font/canela/Canela-Black-Trial.otf") format("opentype");
   font-weight: 900;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -119,6 +134,7 @@
   src: url("/font/canela/Canela-BlackItalic-Trial.otf") format("opentype");
   font-weight: 900;
   font-style: italic;
+  font-display: swap;
 }
 
 @theme {
@@ -126,4 +142,154 @@
   --font-secondary: "Canela", sans-serif;
   --color-primary: #c5393a;
   --color-secondary: #b4b4b4;
+}
+
+/* Hero photo scatter.
+   A jittered grid: one polaroid per cell, offset inside the cell by the
+   per-photo --jx / --jy values (0..1) and tilted by --tilt. The grid shape
+   and photo size change per breakpoint; extra slots are hidden and use
+   loading="lazy" so hidden photos are never downloaded.
+
+   The photo size also shrinks with the viewport height so every row fits
+   inside the hero. --header mirrors the hero heading block in Hero.tsx
+   (top padding + h1 + subtitle) and --hero mirrors its height classes. */
+.hero-photos {
+  --cols: 3;
+  --rows: 3;
+  --photo-max: 6.5rem;
+  --hero: min(100vh - var(--header), 65vh);
+  --header: 12rem;
+  /* Polaroid chrome around the photo: 0.5rem top, caption line, 2rem bottom. */
+  --chrome: 4.5rem;
+  --pad: 1.5rem;
+  --row: calc((var(--hero) - var(--pad)) / var(--rows));
+  --photo: max(5rem, min(var(--photo-max), var(--row) - var(--chrome) - 0.75rem));
+  /* Extra room the jitter may push a photo beyond its free space, so the
+     scatter still reads as random when the cells are barely larger than the
+     photos. */
+  --drift: calc(var(--photo) * 0.18);
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+  /* Keep the top row clear of the hero subtitle. */
+  padding-top: var(--pad);
+}
+
+.hero-photo {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.hero-photo:nth-child(n + 10) {
+  display: none;
+}
+
+.hero-polaroid {
+  --w: calc(var(--photo) + 1rem);
+  --h: calc(var(--photo) + var(--chrome));
+  position: absolute;
+  width: var(--w);
+  left: calc(max(0px, 100% - var(--w)) * var(--jx) + (var(--jx) - 0.5) * var(--drift));
+  top: calc(max(0px, 100% - var(--h)) * var(--jy) + (var(--jy) - 0.5) * var(--drift));
+  rotate: var(--tilt);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45);
+  transition: scale 300ms ease-out;
+  animation: hero-photo-in 350ms ease-out backwards;
+  animation-delay: calc(var(--i) * 35ms);
+}
+
+.hero-polaroid:hover {
+  scale: 1.05;
+}
+
+.hero-polaroid-frame {
+  width: var(--photo);
+  height: var(--photo);
+}
+
+@keyframes hero-photo-in {
+  from {
+    opacity: 0.3;
+    scale: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-polaroid {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Small tablets and landscape phones: 3 x 4. */
+@media (min-width: 640px) {
+  .hero-photos {
+    --cols: 3;
+    --rows: 4;
+    --photo-max: 8rem;
+    --hero: calc(min(130vh, 1300px) - var(--header));
+    --header: 11.5rem;
+  }
+  .hero-photo:nth-child(n + 10) {
+    display: block;
+  }
+  .hero-photo:nth-child(n + 13) {
+    display: none;
+  }
+}
+
+/* Tablets: 3 x 4, or 3 x 3 when the screen is short. */
+@media (min-width: 768px) {
+  .hero-photos {
+    --photo-max: 12rem;
+    --header: 16.5rem;
+  }
+}
+
+@media (min-width: 768px) and (max-height: 999px) {
+  .hero-photos {
+    --rows: 3;
+  }
+  .hero-photo:nth-child(n + 10) {
+    display: none;
+  }
+}
+
+/* Laptops and desktops: 5 x 2, or 5 x 3 when the screen is tall. */
+@media (min-width: 1024px) {
+  .hero-photos {
+    --cols: 5;
+    --rows: 2;
+    --photo-max: 11rem;
+    --header: 17.5rem;
+  }
+  .hero-photo:nth-child(n + 10) {
+    display: block;
+  }
+  .hero-photo:nth-child(n + 11) {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) and (min-height: 1100px) {
+  .hero-photos {
+    --rows: 3;
+  }
+  .hero-photo:nth-child(n + 11) {
+    display: block;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hero-photos {
+    --photo-max: 14rem;
+    --header: calc(14rem + min(8vw, 200px));
+  }
+}
+
+@media (min-width: 1536px) {
+  .hero-photos {
+    --photo-max: 16rem;
+  }
 }

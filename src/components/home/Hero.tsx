@@ -1,9 +1,6 @@
 import Photos from "@/components/home/Photos";
-import { getImageFiles } from "@/lib/images";
 
-export default async function Hero() {
-  const images = await getImageFiles();
-
+export default function Hero() {
   return (
     <section className="w-full flex flex-col h-screen sm:h-[min(130vh,1300px)] items-center">
       <div className="flex flex-col w-full xl:max-w-7xl pt-24 sm:pt-28 md:pt-40 lg:pt-44 xl:pt-48">
@@ -17,7 +14,7 @@ export default async function Hero() {
           </p>
         </div>
       </div>
-      <Photos images={images} />
+      <Photos />
     </section>
   );
 }

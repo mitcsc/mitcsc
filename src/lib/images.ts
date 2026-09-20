@@ -1,52 +1,21 @@
-import { readdir } from "fs/promises";
-import { join } from "path";
+import eventImages from "@/generated/event-images.json";
 
-let imageCache: string[] | null = null;
-
-export async function getImageFiles(): Promise<string[]> {
-  if (imageCache) return imageCache;
-
-  try {
-    const eventImgDir = join(process.cwd(), "public", "img", "event");
-    const files = await readdir(eventImgDir);
-
-    // Filter for common image extensions
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
-    const eventImageFiles = files.filter((file) =>
-      imageExtensions.some((ext) => file.toLowerCase().endsWith(ext))
-    );
-
-    imageCache = eventImageFiles;
-    return eventImageFiles;
-  } catch (error) {
-    console.error("Error reading image directory:", error);
-    return [];
-  }
+/**
+ * File names under public/img/event, generated at build time by
+ * scripts/generate-event-images.mjs.
+ */
+export function getEventImages(): readonly string[] {
+  return eventImages;
 }
 
-export function getRandomImages(
-  allImages: string[],
-  count: number = 10,
-  exclude: string[] = []
-): string[] {
-  const availableImages = allImages.filter((img) => !exclude.includes(img));
-  const maxCount = Math.min(count, availableImages.length);
-
-  if (maxCount === 0) return [];
-  if (maxCount === availableImages.length) return [...availableImages];
-
-  const selected: string[] = [];
-  const used = new Set<string>();
-
-  while (selected.length < maxCount) {
-    const randomIndex = Math.floor(Math.random() * availableImages.length);
-    const image = availableImages[randomIndex];
-
-    if (!used.has(image)) {
-      selected.push(image);
-      used.add(image);
-    }
+/** Returns `count` distinct random entries from `items`, in random order. */
+export function pickRandom<T>(items: readonly T[], count: number): T[] {
+  const pool = [...items];
+  const limit = Math.min(count, pool.length);
+  // Partial Fisher-Yates shuffle: only the first `limit` slots are needed.
+  for (let i = 0; i < limit; i++) {
+    const j = i + Math.floor(Math.random() * (pool.length - i));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-
-  return selected;
+  return pool.slice(0, limit);
 }

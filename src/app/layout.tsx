@@ -44,6 +44,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* The two typefaces used by the hero headline and subtitle on every route. */}
+        <link
+          rel="preload"
+          href="/font/charlottenburg/Charlottenburg_W-Compressed.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/font/canela/Canela-Regular-Trial.otf"
+          as="font"
+          type="font/otf"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body
         className={`antialiased font-primary font-bold flex flex-col items-center w-full min-h-screen bg-[#0c0c0c]`}
       >
