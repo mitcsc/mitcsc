@@ -169,6 +169,9 @@
   --overlap: 1.5rem;
   --pad: 3rem;
   --pad-x: 1rem;
+  /* Random nudge ranges as a share of the cell. */
+  --jit-x: 40%;
+  --shift-y: 6%;
   --row: calc((var(--hero) - var(--pad)) / var(--rows));
   --photo: max(5rem, min(var(--photo-max), var(--row) - var(--chrome) + var(--overlap)));
   display: grid;
@@ -215,23 +218,30 @@
   width: var(--w);
   left: clamp(
     var(--min-left),
-    calc(50% - var(--w) / 2 + var(--row-shift) * 10% + (var(--jx) - 0.5) * 40%),
+    calc(50% - var(--w) / 2 + var(--row-shift) * 10% + (var(--jx) - 0.5) * var(--jit-x)),
     var(--max-left)
   );
-  /* The lower bound keeps the top row's box 3rem below the subtitle, which
-     leaves room for the corners of a 30deg tilt. */
-  top: max(
-    calc(3rem - var(--pad)),
-    calc(50% - var(--h) / 2 + var(--col-shift) * 8% + (var(--jy) - 0.5) * 36%)
+  /* Vertical position is spread uniformly over the whole allowed range:
+     from 3.5rem below the subtitle (room for the corners of a 30deg tilt)
+     to 4rem past the bottom of the cell, so rows interleave instead of
+     clustering around their cell centres. Odd columns get a small extra
+     offset. */
+  --top-min: calc(3.5rem - var(--pad));
+  --top-max: calc(100% - var(--h) + 4rem);
+  top: clamp(
+    var(--top-min),
+    calc(var(--top-min) + var(--jy) * (var(--top-max) - var(--top-min)) + var(--col-shift) * var(--shift-y)),
+    var(--top-max)
   );
   z-index: var(--z);
   rotate: var(--tilt);
   scale: var(--s);
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45);
   transition: scale 300ms ease-out;
-  /* Entrance: fall from above the viewport, spinning and drifting, then
-     land with a small squash. Each polaroid has its own delay and speed. */
-  animation: hero-photo-fall var(--fall) var(--delay) backwards;
+  /* Entrance, seen from above: each polaroid starts large and faint as if
+     close to the camera, then shrinks, sharpens and settles onto the table.
+     Each one has its own delay and speed. */
+  animation: hero-photo-land var(--fall) var(--delay) backwards;
 }
 
 .hero-polaroid:hover {
@@ -244,25 +254,25 @@
   height: var(--photo);
 }
 
-@keyframes hero-photo-fall {
+@keyframes hero-photo-land {
   0% {
     opacity: 0;
-    translate: var(--drift) -100vh;
-    scale: calc(var(--s) * 1.35);
+    translate: var(--drift) calc(var(--drift) * -0.6);
+    scale: calc(var(--s) * 1.5);
     rotate: calc(var(--tilt) + var(--spin));
-    box-shadow: 0 60px 40px -20px rgb(0 0 0 / 0);
-    /* Gravity: slow start, fast arrival. */
-    animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.55);
+    box-shadow: 0 40px 50px -10px rgb(0 0 0 / 0);
+    /* Gentle approach, then a quick final drop onto the surface. */
+    animation-timing-function: cubic-bezier(0.35, 0, 0.65, 1);
   }
-  10% {
+  40% {
     opacity: 1;
   }
-  84% {
+  86% {
     translate: 0 0;
-    scale: calc(var(--s) * 0.96);
-    rotate: calc(var(--tilt) - var(--spin) * 0.08);
-    box-shadow: 0 4px 4px -2px rgb(0 0 0 / 0.55), 0 2px 3px -2px rgb(0 0 0 / 0.55);
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
+    scale: calc(var(--s) * 0.985);
+    rotate: calc(var(--tilt) - var(--spin) * 0.06);
+    box-shadow: 0 3px 4px -2px rgb(0 0 0 / 0.55), 0 1px 2px -1px rgb(0 0 0 / 0.55);
+    animation-timing-function: ease-out;
   }
   100% {
     translate: 0 0;
@@ -333,15 +343,19 @@
   }
 }
 
-/* Laptops and desktops: 5 x 2 on short screens, otherwise 5 x 3 with the
-   photos shrunk as needed so three rows fit. The cluster is capped at the heading width
-   (max-w-7xl) in Photos.tsx. */
+/* Laptops and desktops: 5 x 2 with strong vertical scatter so the two rows
+   interleave instead of reading as bands. The cluster is capped at the
+   heading width (max-w-7xl) in Photos.tsx. */
 @media (min-width: 1024px) {
   .hero-photos {
     --cols: 5;
     --rows: 2;
     --photo-max: 13rem;
     --header: 17.5rem;
+    /* Headroom above the first row so it can scatter upward as well as
+       down; the top clamp still keeps every corner off the subtitle. */
+    --pad: 6rem;
+    --shift-y: 8%;
   }
   .hero-photo {
     --row-shift: -1;
@@ -370,18 +384,6 @@
     display: block;
   }
   .hero-photo:nth-child(n + 11) {
-    display: none;
-  }
-}
-
-@media (min-width: 1024px) and (min-height: 820px) {
-  .hero-photos {
-    --rows: 3;
-  }
-  .hero-photo:nth-child(n + 11) {
-    display: block;
-  }
-  .hero-photo:nth-child(n + 16) {
     display: none;
   }
 }

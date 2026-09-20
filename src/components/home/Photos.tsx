@@ -4,7 +4,7 @@ import { getEventImages, pickRandom } from "@/lib/images";
 /**
  * Polaroid slots rendered into the hero. The CSS grid in globals.css
  * (`.hero-photos`) decides how many are visible per breakpoint and viewport
- * height: phones show 9, tablets 12 or 16, desktops 10 or 15.
+ * height: phones show 9, tablets 12 or 16, desktops 10.
  */
 const PHOTO_COUNT = 16;
 
@@ -24,14 +24,14 @@ const MAX_TILT_DEG = 30;
 const MIN_SCALE = 0.8;
 const MAX_SCALE = 1.12;
 
-/** Entrance: each polaroid drops in on its own schedule. */
-const MAX_DELAY_MS = 700;
-const MIN_FALL_MS = 550;
-const MAX_FALL_MS = 950;
-/** Extra spin at the top of the fall that unwinds on landing, degrees. */
-const MAX_SPIN_DEG = 50;
-/** Sideways drift during the fall, px. */
-const MAX_DRIFT_PX = 70;
+/** Entrance: each polaroid lands on its own schedule. */
+const MAX_DELAY_MS = 800;
+const MIN_FALL_MS = 600;
+const MAX_FALL_MS = 1000;
+/** Extra twist while airborne that unwinds on landing, degrees. */
+const MAX_SPIN_DEG = 25;
+/** Sideways drift while airborne, px. */
+const MAX_DRIFT_PX = 30;
 
 /**
  * Candidate widths for the srcset. Each must be listed in `images.imageSizes`
