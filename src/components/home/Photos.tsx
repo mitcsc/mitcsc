@@ -4,9 +4,9 @@ import { getEventImages, pickRandom } from "@/lib/images";
 /**
  * Polaroid slots rendered into the hero. The CSS grid in globals.css
  * (`.hero-photos`) decides how many are visible per breakpoint and viewport
- * height: phones show 9, tablets 9 or 12, desktops 10 or 15.
+ * height: phones show 9, tablets 12 or 16, desktops 10 or 15.
  */
-const PHOTO_COUNT = 15;
+const PHOTO_COUNT = 16;
 
 /** Slots that are hidden on at least one breakpoint load lazily so a phone never downloads them. */
 const ALWAYS_VISIBLE = 9;
@@ -30,7 +30,7 @@ const QUALITY = 60;
 
 /** Largest rendered photo width per breakpoint. Keep in sync with `--photo-max` in globals.css. */
 const SIZES =
-  "(min-width: 1536px) 256px, (min-width: 1280px) 224px, (min-width: 1024px) 176px, (min-width: 768px) 192px, (min-width: 640px) 128px, 104px";
+  "(min-width: 1280px) 256px, (min-width: 768px) 192px, (min-width: 640px) 136px, 120px";
 
 interface PhotoSlot {
   file: string;
@@ -70,7 +70,7 @@ export default function Photos() {
       aria-label="Photos from past CSC events"
       className="relative w-full h-full flex-1 flex items-center justify-center overflow-hidden max-h-[min(65vh,800px)] sm:max-h-none"
     >
-      <ul className="hero-photos relative w-full h-full max-w-[1920px] list-none m-0 p-0">
+      <ul className="hero-photos relative w-full h-full xl:max-w-7xl list-none m-0 p-0">
         {slots.map((slot, index) => (
           <li
             key={slot.file}
