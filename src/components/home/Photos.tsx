@@ -18,11 +18,11 @@ const ALWAYS_VISIBLE = 9;
  */
 const PRIORITY_COUNT = 4;
 
-const MAX_TILT_DEG = 18;
+const MAX_TILT_DEG = 30;
 
 /** Per-photo size variance so the pile does not look stamped from one mould. */
-const MIN_SCALE = 0.85;
-const MAX_SCALE = 1.05;
+const MIN_SCALE = 0.8;
+const MAX_SCALE = 1.12;
 
 /**
  * Candidate widths for the srcset. Each must be listed in `images.imageSizes`
@@ -87,7 +87,6 @@ export default function Photos() {
             className="hero-photo"
             style={
               {
-                "--i": index,
                 "--jx": slot.jx.toFixed(3),
                 "--jy": slot.jy.toFixed(3),
                 "--tilt": `${slot.tilt.toFixed(1)}deg`,

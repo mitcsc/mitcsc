@@ -167,7 +167,7 @@
   --chrome: 4.5rem;
   /* How far a polaroid may run into the next row. */
   --overlap: 1.5rem;
-  --pad: 2.5rem;
+  --pad: 3rem;
   --pad-x: 1rem;
   --row: calc((var(--hero) - var(--pad)) / var(--rows));
   --photo: max(5rem, min(var(--photo-max), var(--row) - var(--chrome) + var(--overlap)));
@@ -215,21 +215,23 @@
   width: var(--w);
   left: clamp(
     var(--min-left),
-    calc(50% - var(--w) / 2 + var(--row-shift) * 14% + (var(--jx) - 0.5) * 28%),
+    calc(50% - var(--w) / 2 + var(--row-shift) * 10% + (var(--jx) - 0.5) * 40%),
     var(--max-left)
   );
-  /* The lower bound keeps the top row at least 1.75rem below the subtitle. */
+  /* The lower bound keeps the top row's box 3rem below the subtitle, which
+     leaves room for the corners of a 30deg tilt. */
   top: max(
-    calc(1.75rem - var(--pad)),
-    calc(50% - var(--h) / 2 + var(--col-shift) * 10% + (var(--jy) - 0.5) * 28%)
+    calc(3rem - var(--pad)),
+    calc(50% - var(--h) / 2 + var(--col-shift) * 8% + (var(--jy) - 0.5) * 36%)
   );
   z-index: var(--z);
   rotate: var(--tilt);
   scale: var(--s);
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45);
   transition: scale 300ms ease-out;
-  animation: hero-photo-in 350ms ease-out backwards;
-  animation-delay: calc(var(--i) * 35ms);
+  /* Quick pop-in: every polaroid grows from half size and twists into its
+     tilt at once, matching the original client-side entrance. */
+  animation: hero-photo-in 100ms linear backwards;
 }
 
 .hero-polaroid:hover {
@@ -244,8 +246,9 @@
 
 @keyframes hero-photo-in {
   from {
-    opacity: 0.3;
-    scale: calc(var(--s) * 0.9);
+    opacity: 0;
+    scale: calc(var(--s) * 0.5);
+    rotate: 0deg;
   }
 }
 
