@@ -3,21 +3,21 @@ export const directory = "img/exec/current";
 export const current = [
   {
     name: "Charis Ching",
-    position: "Co President",
+    position: "President",
     classYear: "2027",
     hometown: "Bay Area, CA",
     image: "charisching.jpg",
   },
   {
     name: "Stanley Zhao",
-    position: "Co President",
+    position: "President",
     classYear: "2027",
     hometown: "Long Island, NY",
     image: "stanleyzhao.jpg",
   },
   {
     name: "Minnie Liang",
-    position: "Co President",
+    position: "President",
     classYear: "2027",
     hometown: "West Lafayette, IN",
     image: "minnieliang.png",
@@ -45,14 +45,14 @@ export const current = [
   },
   {
     name: "Qingqing Ouyang",
-    position: "Pub",
+    position: "Pub Chair",
     classYear: "2027",
     hometown: "Oakland, MI",
     image: "qingqingouyang.jpg",
   },
   {
     name: "Ashlyn Gao",
-    position: "Pub",
+    position: "Pub Chair",
     classYear: "2029",
     hometown: "Miami, FL",
     image: "ashlyngao.jpg",
