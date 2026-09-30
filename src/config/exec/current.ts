@@ -17,7 +17,7 @@ export const current = [
   },
   {
     name: "Minnie Liang",
-    position: "Co President (fall internship)",
+    position: "Co President",
     classYear: "2027",
     hometown: "West Lafayette, IN",
     image: "minnieliang.png",
@@ -45,21 +45,21 @@ export const current = [
   },
   {
     name: "Qingqing Ouyang",
-    position: "Pub: Media + Graphics",
+    position: "Pub",
     classYear: "2027",
     hometown: "Oakland, MI",
     image: "qingqingouyang.jpg",
   },
   {
     name: "Ashlyn Gao",
-    position: "Pub: Instagram Chair",
+    position: "Pub",
     classYear: "2029",
     hometown: "Miami, FL",
     image: "ashlyngao.jpg",
   },
   {
     name: "Jeff Zhu",
-    position: "Cultural Chair (studying abroad)",
+    position: "Cultural Chair",
     classYear: "2028",
     hometown: "Cincinnati, OH",
     image: "jeffzhu.jpg",
