@@ -8,11 +8,11 @@ import { createSchoolYear } from "@/app/dashboard/actions";
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
 import { MoneyInput } from "./YearSettings";
 
-export default function NewYearForm({ year, previous, prices, base, pastMembers }: {
-  year: string; previous: string | null; prices: { new: number; returning: number }; base: DriveChoice; pastMembers: number;
+export default function NewYearForm({ year, previous, prices, pickerStart, pastMembers }: {
+  year: string; previous: string | null; prices: { new: number; returning: number }; pickerStart: string; pastMembers: number;
 }) {
   const router = useRouter();
-  const [folder, setFolder] = useState(base);
+  const [folder, setFolder] = useState<DriveChoice | null>(null);
   const [picking, setPicking] = useState(false);
   const [sheetName, setSheetName] = useState(`CSC ${year} Membership`);
   const [priceNew, setPriceNew] = useState(String(prices.new));
@@ -22,9 +22,13 @@ export default function NewYearForm({ year, previous, prices, base, pastMembers 
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!folder) {
+      setError("Pick the folder for the membership sheet.");
+      return;
+    }
     setBusy(true);
     setError("");
-    const result = await createSchoolYear({ year, baseFolderId: folder.id, sheetName, prices: { new: Number(priceNew), returning: Number(priceReturning) } })
+    const result = await createSchoolYear({ year, folderId: folder.id, sheetName, prices: { new: Number(priceNew), returning: Number(priceReturning) } })
       .catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
     if (!result.ok) {
       setBusy(false);
@@ -35,7 +39,6 @@ export default function NewYearForm({ year, previous, prices, base, pastMembers 
     router.refresh();
   }
 
-  const segments = [...(folder.path.length ? folder.path : ["My Drive"]), `MIT CSC ${year}`, "Membership"];
   return (
     <main className="d-narrow">
       <form className="d-narrow-body" onSubmit={submit}>
@@ -47,12 +50,14 @@ export default function NewYearForm({ year, previous, prices, base, pastMembers 
           <div className="d-field">
             <span className="m-label">Save the sheet in</span>
             <div className="d-location">
-              <span className="d-location-path">
-                {segments.map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}{s}</span>)}
+              <span className={`d-location-path${folder ? "" : " is-empty"}`}>
+                {folder
+                  ? (folder.path.length ? folder.path : ["My Drive"]).map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}{s}</span>)
+                  : "No folder picked"}
               </span>
-              <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>Change</button>
+              <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>{folder ? "Change" : "Pick folder"}</button>
             </div>
-            <span className="d-field-note">The two new folders are created for you, or reused if they exist.</span>
+            <span className="d-field-note">The sheet goes straight into this folder. Everyone who can edit the folder can use the dashboard.</span>
           </div>
           <label className="d-field">
             <span className="m-label">Sheet name</span>
@@ -82,7 +87,7 @@ export default function NewYearForm({ year, previous, prices, base, pastMembers 
       </form>
       {picking && (
         <DrivePicker
-          title="Save the sheet in" start={folder.id} pick="folder" onClose={() => setPicking(false)}
+          title="Save the sheet in" start={folder?.id || pickerStart} pick="folder" onClose={() => setPicking(false)}
           onPick={(choice) => { setFolder(choice); setPicking(false); }}
         />
       )}

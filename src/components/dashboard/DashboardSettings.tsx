@@ -45,7 +45,7 @@ export function DashboardSettings({ year, folder, people, accessCheckedAt, club,
     <main className="d-settings">
       <Setting
         title="Exec access"
-        note={year ? `Everyone who can edit the MIT CSC ${year} Drive folder can use this dashboard. Change it in Drive.` : "After you start a school year, everyone who can edit its Drive folder can use this dashboard."}
+        note={year ? `Everyone who can edit the Drive folder with the ${year} membership sheet can use this dashboard. Change it in Drive.` : "After you start a school year, everyone who can edit the folder with its membership sheet can use this dashboard."}
       >
         {people.length > 0 ? (
           <div className="d-people-list">

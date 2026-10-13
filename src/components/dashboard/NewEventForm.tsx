@@ -9,7 +9,7 @@ import DrivePicker, { type DriveChoice } from "./DrivePicker";
 
 type Target = { kind: "default" } | { kind: "folder"; choice: DriveChoice } | { kind: "sheet"; choice: DriveChoice };
 
-export default function NewEventForm({ year, today, googleReady, eventsFolder }: { year: string; today: string; googleReady: boolean; eventsFolder: string | null }) {
+export default function NewEventForm({ today, googleReady, eventsFolder }: { today: string; googleReady: boolean; eventsFolder: DriveChoice | null }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [date, setDate] = useState(today);
@@ -35,7 +35,7 @@ export default function NewEventForm({ year, today, googleReady, eventsFolder }:
     router.push(`/dashboard/events/${result.value}`);
   }
 
-  const path = target.kind === "default" ? [`MIT CSC ${year}`, "Events"] : target.choice.path;
+  const path = target.kind === "default" ? eventsFolder?.path || [] : target.choice.path;
   return (
     <main className="d-phone">
       <form className="d-phone-body" onSubmit={submit}>
@@ -74,7 +74,7 @@ export default function NewEventForm({ year, today, googleReady, eventsFolder }:
       {picking && (
         <DrivePicker
           title={picking === "sheet" ? "Pick a sheet" : "Save attendance in"}
-          start={target.kind === "default" ? eventsFolder || "root" : target.choice.id}
+          start={target.kind === "default" ? eventsFolder?.id || "root" : target.choice.id}
           pick={picking}
           onClose={() => setPicking(null)}
           onPick={(choice) => { setTarget({ kind: picking, choice }); setPicking(null); }}

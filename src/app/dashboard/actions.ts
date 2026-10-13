@@ -3,7 +3,7 @@
 import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { clearExecAccessCache, execAccess, requireExec } from "@/lib/membership/exec-auth";
-import { createFolder, findOrCreateFolder, getItem, itemPath, listChildren, listShared, FOLDER, SPREADSHEET } from "@/lib/membership/google/drive";
+import { createFolder, getItem, itemPath, listChildren, listShared, FOLDER, SPREADSHEET } from "@/lib/membership/google/drive";
 import { clubEmail } from "@/lib/membership/google/oauth";
 import { addTab, createSheet, readFirstTab } from "@/lib/membership/google/sheets";
 import { cleanForm, text } from "@/lib/membership/form";
@@ -165,8 +165,8 @@ export async function makeFolder(name: string, parentId: string): Promise<Result
   });
 }
 
-// New school year: "<base>/MIT CSC <year>/Membership/CSC <year> Membership".
-export async function createSchoolYear(input: { year: string; baseFolderId: string; sheetName: string; prices: { new: number; returning: number } }): Promise<Result<string>> {
+// New school year: the membership sheet goes straight into the folder exec pick.
+export async function createSchoolYear(input: { year: string; folderId: string; sheetName: string; prices: { new: number; returning: number } }): Promise<Result<string>> {
   return attempt(async () => {
     const by = await requireExec();
     if (!isSchoolYear(input.year)) throw new MembershipError("Pick a school year like 2027-2028.");
@@ -176,21 +176,18 @@ export async function createSchoolYear(input: { year: string; baseFolderId: stri
       throw new MembershipError(`You can start the next school year from ${formatDay(nextYearOpens(previous.year), true)}.`);
     }
     const sheetName = text(input.sheetName, 100) || `CSC ${input.year} Membership`;
-    const base = await getItem(input.baseFolderId || "root");
-    if (base.mimeType !== FOLDER && input.baseFolderId) throw new MembershipError("Pick a folder.");
-    const yearFolder = await findOrCreateFolder(`MIT CSC ${input.year}`, base.id);
-    const membershipFolder = await findOrCreateFolder("Membership", yearFolder.id);
-    const sheetId = await createSheet(sheetName, membershipFolder.id, "Members", clubEmail());
+    const folder = input.folderId ? await getItem(input.folderId) : null;
+    if (!folder || folder.mimeType !== FOLDER) throw new MembershipError("Pick the folder for the membership sheet.");
+    const sheetId = await createSheet(sheetName, folder.id, "Members", clubEmail());
     const config: YearConfig = {
       ...newYearConfig(input.year, previous),
       prices: { new: price(input.prices.new, "new member"), returning: price(input.prices.returning, "returning member") },
-      folderId: yearFolder.id,
-      membershipFolderId: membershipFolder.id,
+      folderId: folder.id,
       sheetId,
       sheetName,
     };
     await createYear(config);
-    // The new folder decides who has exec access.
+    // The sheet's folder decides who has exec access.
     await clearExecAccessCache();
     syncMembersLater(config.year);
     console.info(`Membership year ${config.year} created by ${by}`);
@@ -214,13 +211,11 @@ export async function createEventAction(input: { name: string; date: string; fol
       if (sheet.mimeType !== SPREADSHEET) throw new MembershipError("Pick a Google Sheet.");
       sheetTab = await addTab(sheet.id, name.slice(0, 90), clubEmail());
       sheetId = sheet.id;
-    } else if (config.folderId || input.folderId) {
-      let folderId = input.folderId;
-      if (!folderId) {
-        folderId = config.eventsFolderId || (await findOrCreateFolder("Events", config.folderId!)).id;
-        if (!config.eventsFolderId) await updateYear(config.year, (c) => ({ ...c, eventsFolderId: folderId }));
-      }
+    } else if (input.folderId || config.eventsFolderId || config.folderId) {
+      const folderId = input.folderId || config.eventsFolderId || config.folderId!;
       sheetId = await createSheet(name, folderId, sheetTab, clubEmail());
+      // The next event starts in the same folder.
+      if (folderId !== config.eventsFolderId) await updateYear(config.year, (c) => ({ ...c, eventsFolderId: folderId }));
     }
     const event = await createEvent({ year: config.year, name, date: input.date, sheetId, sheetTab, createdBy: by });
     syncEventLater(event.id);

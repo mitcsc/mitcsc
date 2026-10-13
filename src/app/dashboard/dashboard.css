@@ -209,6 +209,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-location { min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; border: 1px solid var(--border); border-radius: 10px; }
 .d-location.is-large { min-height: 56px; padding-left: 18px; }
 .d-location-path { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+.d-location-path.is-empty { color: var(--faint); }
 
 /* Form editor */
 .d-editor { flex: 1; display: flex; flex-wrap: wrap; }

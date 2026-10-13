@@ -2,20 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import NewYearForm from "@/components/dashboard/NewYearForm";
 import { canStartNextYear, nextSchoolYear, schoolYearOn } from "@/lib/membership/config";
-import { getItem, itemPath } from "@/lib/membership/google/drive";
+import { getItem } from "@/lib/membership/google/drive";
 import { clubConnection } from "@/lib/membership/google/oauth";
 import { currentYear, pastMemberCount } from "@/lib/membership/store";
 
-// The folder that holds every "MIT CSC <year>" folder, found from last year's folder.
-async function baseFolder(folderId: string | null) {
-  if (!folderId) return { id: "root", path: [] as string[] };
-  try {
-    const parent = (await getItem(folderId)).parents?.[0];
-    if (!parent) return { id: "root", path: [] };
-    return { id: parent, path: (await itemPath(parent)).map((p) => p.name) };
-  } catch {
-    return { id: "root", path: [] };
-  }
+// The folder picker opens one level above last year's sheet, where next year's folder usually is.
+async function pickerStart(folderId: string | null) {
+  if (!folderId) return "root";
+  return (await getItem(folderId).catch(() => null))?.parents?.[0] || "root";
 }
 
 export default async function NewYearPage() {
@@ -36,7 +30,7 @@ export default async function NewYearPage() {
       year={year}
       previous={config?.year || null}
       prices={config?.prices || { new: 8, returning: 6 }}
-      base={await baseFolder(config?.folderId || null)}
+      pickerStart={await pickerStart(config?.folderId || null)}
       pastMembers={pastMembers}
     />
   );

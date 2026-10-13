@@ -29,9 +29,8 @@ export interface YearConfig {
   zelle: string;
   cashAllowed: boolean;
   form: FormConfig;
-  folderId: string | null; // "MIT CSC 2026-2027", its editors are the exec allowlist
-  membershipFolderId: string | null;
-  eventsFolderId: string | null;
+  folderId: string | null; // holds the membership sheet; its editors are the exec allowlist
+  eventsFolderId: string | null; // where the last event sheet was saved
   sheetId: string | null;
   sheetName: string;
   createdAt: number;

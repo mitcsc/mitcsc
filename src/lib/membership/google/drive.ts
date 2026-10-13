@@ -67,12 +67,6 @@ export async function createFolder(name: string, parentId: string) {
   });
 }
 
-// Reuses a folder an exec member already made with the same name.
-export async function findOrCreateFolder(name: string, parentId: string) {
-  const existing = await listAll(`${quote(parentId)} in parents and mimeType = '${FOLDER}' and name = ${quote(name)} and trashed = false`);
-  return existing[0] || createFolder(name, parentId);
-}
-
 export async function createSpreadsheetFile(name: string, parentId: string) {
   return google<DriveItem>(`${DRIVE}/files`, {
     method: "POST",

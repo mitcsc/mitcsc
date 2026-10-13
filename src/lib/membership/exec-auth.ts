@@ -30,7 +30,7 @@ export function devEmail() {
   return process.env.NODE_ENV === "development" ? process.env.DASHBOARD_DEV_EMAIL?.toLowerCase() || null : null;
 }
 
-// Everyone who can edit this year's Drive folder, cached for a few minutes.
+// Everyone who can edit the folder with this year's membership sheet, cached for a few minutes.
 export async function execAccess(fresh = false): Promise<ExecAccess> {
   if (!fresh) {
     const cached = await getJson<ExecAccess>(keys.execAccess);
