@@ -91,6 +91,11 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
     return result.ok;
   }
 
+  async function remove(m: MemberRow) {
+    if (!window.confirm(`Remove ${m.name}'s signup? Their Wallet card stops working.`)) return false;
+    return run(m.kerb, () => removeSignup(m.kerb), `Removed ${m.name}'s signup.`);
+  }
+
   async function checkVenmo() {
     setBusy("venmo");
     setNotice("");
@@ -174,6 +179,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 <button type="button" className="m-btn is-light is-small" disabled={busy === m.kerb} onClick={() => run(m.kerb, () => confirmPayment(m.kerb, m.method), `${m.name} is marked paid.`)}>
                   {busy === m.kerb ? "Confirming…" : "Confirm payment"}
                 </button>
+                <button type="button" className="d-remove-btn" disabled={busy === m.kerb} onClick={() => remove(m)}>Remove</button>
               </div>
             </div>
           ))}
@@ -218,7 +224,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
       </main>
 
       <Toast message={notice} onDone={clearNotice} />
-      {selected && <MemberDialog member={selected} year={year} onClose={() => setOpen(null)} run={run} busy={busy} />}
+      {selected && <MemberDialog member={selected} year={year} onClose={() => setOpen(null)} run={run} remove={remove} busy={busy} />}
       {showQr && (
         <Dialog title="Signup QR code" onClose={() => setShowQr(false)}>
           <div className="d-qr" dangerouslySetInnerHTML={{ __html: signup.qr }} />
@@ -229,8 +235,8 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
   );
 }
 
-function MemberDialog({ member: m, year, onClose, run, busy }: {
-  member: MemberRow; year: YearInfo; onClose: () => void; busy: string | null;
+function MemberDialog({ member: m, year, onClose, run, remove, busy }: {
+  member: MemberRow; year: YearInfo; onClose: () => void; busy: string | null; remove: (m: MemberRow) => Promise<boolean>;
   run: (key: string, work: () => Promise<{ ok: true } | { ok: false; error: string }>, done?: string) => Promise<boolean>;
 }) {
   const [method, setMethod] = useState<PaymentMethod>(m.method);
@@ -267,10 +273,7 @@ function MemberDialog({ member: m, year, onClose, run, busy }: {
       )}
       <button
         type="button" className="d-danger-link" disabled={busy === m.kerb}
-        onClick={async () => {
-          if (!window.confirm(`Remove ${m.name}'s signup? Their Wallet card stops working.`)) return;
-          if (await run(m.kerb, () => removeSignup(m.kerb), `Removed ${m.name}'s signup.`)) onClose();
-        }}
+        onClick={async () => { if (await remove(m)) onClose(); }}
       >
         Remove signup
       </button>

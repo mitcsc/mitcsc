@@ -59,8 +59,8 @@
 .m-root a.d-quiet-link { font-size: 13px; color: var(--muted); }
 .m-root a.d-quiet-link:hover { color: var(--text); }
 .d-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.d-name-btn { padding: 0; border: 0; background: none; text-align: left; font-size: inherit; line-height: inherit; }
-.d-name-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.d-name-btn { padding: 0; border: 0; background: none; text-align: left; font-size: inherit; line-height: inherit; text-decoration: underline; text-decoration-color: #ffffff38; text-underline-offset: 3px; }
+.d-name-btn:hover { text-decoration-color: currentColor; }
 .d-toast { position: fixed; left: 50%; bottom: 24px; z-index: 60; max-width: min(520px, calc(100vw - 32px)); padding: 12px 18px; border: 1px solid var(--line-strong); border-radius: 12px; background: #1c1c1e; box-shadow: 0 8px 32px #0009; font-size: 14px; color: var(--text); transform: translate(-50%, 16px); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; }
 .d-toast.is-shown { transform: translate(-50%, 0); opacity: 1; }
 .d-toast:empty { visibility: hidden; }
@@ -93,7 +93,9 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-pending-who .d-tags { margin-top: 4px; }
 .d-pending-pay > :first-child { font-size: 14px; }
 .d-pending-detail { font-size: 12px; color: #ffffff73; overflow-wrap: anywhere; }
-.d-pending-action { display: flex; justify-content: flex-end; }
+.d-pending-action { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.d-remove-btn { padding: 4px 0; border: 0; background: none; font-size: 13px; color: var(--muted); }
+.d-remove-btn:hover:not(:disabled) { color: oklch(0.72 0.17 25); }
 .d-more { align-self: flex-start; margin-top: 12px; min-height: 36px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 13px; }
 .d-more:hover { color: var(--text); }
 .d-table-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; }
