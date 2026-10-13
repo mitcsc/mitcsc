@@ -40,13 +40,13 @@ function decodeEntities(text: string) {
   });
 }
 
-// Lowercase, single spaces, plain hyphens. Anything else must match the prefilled note exactly.
+// Lowercase, plain hyphens, no spaces around hyphens. Anything else must match the prefilled note exactly.
 export function normalizeNote(note: string) {
-  return note.normalize("NFKC").toLowerCase().replace(/[‐-―−]/g, "-").replace(/\s+/g, " ").replace(/membership ?- ?/, "membership - ").trim();
+  return note.normalize("NFKC").toLowerCase().replace(/[‐-―−]/g, "-").replace(/\s*-\s*/g, "-").replace(/\s+/g, " ").trim();
 }
 
 // Reads one Venmo "paid you" email. Returns null unless it is a genuine Venmo email
-// whose note is exactly "CSC <year> membership - <kerb>".
+// whose note is exactly "CSC-<year>-<kerb>".
 export function parseVenmoEmail(message: Message): VenmoPayment | null {
   const headers = message.payload.headers || [];
   // Google adds the topmost Authentication-Results header. Lower ones could be forged by the sender.
@@ -59,7 +59,7 @@ export function parseVenmoEmail(message: Message): VenmoPayment | null {
   const noteHtml = html && /class=["'][^"']*\btransaction-note\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/i.exec(html)?.[1];
   if (!noteHtml) return null;
   const note = normalizeNote(decodeEntities(noteHtml.replace(/<[^>]+>/g, " ")));
-  const match = /^csc (\d{4}-\d{4}) membership - ([a-z][a-z0-9_]{1,7})$/.exec(note);
+  const match = /^csc-(\d{4}-\d{4})-([a-z][a-z0-9_]{1,7})$/.exec(note);
   if (!match) return null;
   return { messageId: message.id, amount: Number(amountMatch[1].replace(/,/g, "")), year: match[1], kerb: match[2] };
 }
@@ -69,7 +69,7 @@ export function parseVenmoEmail(message: Message): VenmoPayment | null {
 export async function checkVenmo(config: YearConfig, options: { minGapSeconds?: number } = {}) {
   const gate = await redis("SET", keys.venmoCheck(config.year), String(Date.now()), "NX", "EX", options.minGapSeconds ?? 10);
   if (gate !== "OK") return { ran: false, confirmed: [] as string[] };
-  const query = `from:venmo@venmo.com "CSC ${config.year} membership" newer_than:400d`;
+  const query = `from:venmo@venmo.com "CSC-${config.year}" newer_than:400d`;
   const list = await google<{ messages?: { id: string }[] }>(`${GMAIL}/messages`, { query: { q: query, maxResults: 200 } });
   const confirmed: string[] = [];
   for (const { id } of list.messages || []) {

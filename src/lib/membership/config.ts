@@ -128,13 +128,14 @@ export function money(amount: number) {
   return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
 }
 
+// No spaces: Venmo can turn an encoded space in the link into a literal "+".
 export function venmoNote(year: string, kerb: string) {
-  return `CSC ${year} membership - ${kerb}`;
+  return `CSC-${year}-${kerb}`;
 }
 
 export function venmoLink(config: YearConfig, kerb: string, price: number) {
   const params = new URLSearchParams({ txn: "pay", amount: String(price), note: venmoNote(config.year, kerb), audience: "private" });
-  return `https://venmo.com/${encodeURIComponent(config.venmo)}?${params.toString().replace(/\+/g, "%20")}`;
+  return `https://venmo.com/${encodeURIComponent(config.venmo)}?${params.toString()}`;
 }
 
 export function normalizeKerb(input: string) {

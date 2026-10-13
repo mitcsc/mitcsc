@@ -142,13 +142,14 @@ test('signing fails closed without a long secret', () => {
 });
 
 test('Venmo emails confirm only with a Venmo DKIM pass and the exact note', () => {
-  assert.deepEqual(parseVenmoEmail(venmoEmail('m1', { note: 'CSC 2026-2027 membership &#8211; JChen' })), { messageId: 'm1', amount: 8, year: YEAR, kerb: 'jchen' });
-  assert.equal(parseVenmoEmail(venmoEmail('m2', { note: 'CSC 2026-2027 membership - jchen', auth: 'mx.google.com; dkim=pass header.d=evil.example' })), null);
-  assert.equal(parseVenmoEmail(venmoEmail('m3', { note: 'CSC 2026-2027 membership - jchen', auth: 'mx.google.com; dkim=fail header.i=@venmo.com' })), null);
+  assert.deepEqual(parseVenmoEmail(venmoEmail('m1', { note: 'CSC&#8211;2026-2027 &#8211; JChen' })), { messageId: 'm1', amount: 8, year: YEAR, kerb: 'jchen' });
+  assert.equal(parseVenmoEmail(venmoEmail('m2', { note: 'CSC-2026-2027-jchen', auth: 'mx.google.com; dkim=pass header.d=evil.example' })), null);
+  assert.equal(parseVenmoEmail(venmoEmail('m3', { note: 'CSC-2026-2027-jchen', auth: 'mx.google.com; dkim=fail header.i=@venmo.com' })), null);
   assert.equal(parseVenmoEmail(venmoEmail('m4', { note: 'membership for jchen' })), null);
-  assert.equal(parseVenmoEmail(venmoEmail('m5', { note: 'CSC 2026-2027 membership - jchen and plau' })), null);
-  assert.equal(parseVenmoEmail(venmoEmail('m6', { note: 'CSC 2026-2027 membership - jchen', amount: '$1,008.50' })).amount, 1008.5);
-  assert.equal(normalizeNote('  CSC 2026-2027   Membership—jchen '), 'csc 2026-2027 membership - jchen');
+  assert.equal(parseVenmoEmail(venmoEmail('m5', { note: 'CSC-2026-2027-jchen and plau' })), null);
+  assert.equal(parseVenmoEmail(venmoEmail('m6', { note: 'CSC-2026-2027-jchen', amount: '$1,008.50' })).amount, 1008.5);
+  assert.equal(normalizeNote('  CSC - 2026-2027—JChen '), 'csc-2026-2027-jchen');
+  assert.equal(parseVenmoEmail(venmoEmail('m7', { note: 'CSC 2026-2027 membership - jchen' })), null);
 });
 
 test('readAnswers keeps known answers and rejects bad input', () => {
@@ -227,11 +228,11 @@ test('the Venmo check confirms each payment once and only for the right amount',
   await store.claimMember(member('jchen'));
   await store.claimMember(member('plau'));
   await store.claimMember(member('rtan', { price: 6, type: 'returning' }));
-  gmail.set('a', venmoEmail('a', { note: 'CSC 2026-2027 membership - jchen' }));
-  gmail.set('b', venmoEmail('b', { note: 'CSC 2026-2027 membership - jchen' }));
-  gmail.set('c', venmoEmail('c', { note: 'CSC 2026-2027 membership - plau', amount: '$5.00' }));
-  gmail.set('d', venmoEmail('d', { note: 'CSC 2026-2027 membership - rtan', auth: 'dkim=pass header.d=evil.example' }));
-  gmail.set('e', venmoEmail('e', { note: 'CSC 2025-2026 membership - rtan' }));
+  gmail.set('a', venmoEmail('a', { note: 'CSC-2026-2027-jchen' }));
+  gmail.set('b', venmoEmail('b', { note: 'CSC-2026-2027-jchen' }));
+  gmail.set('c', venmoEmail('c', { note: 'CSC-2026-2027-plau', amount: '$5.00' }));
+  gmail.set('d', venmoEmail('d', { note: 'CSC-2026-2027-rtan', auth: 'dkim=pass header.d=evil.example' }));
+  gmail.set('e', venmoEmail('e', { note: 'CSC-2025-2026-rtan' }));
 
   const result = await checkVenmo(config);
   assert.deepEqual(result, { ran: true, confirmed: ['jchen'] });
