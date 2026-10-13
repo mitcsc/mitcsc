@@ -21,6 +21,15 @@ export function nextSchoolYear(year: string) {
   return `${start}-${start + 1}`;
 }
 
+// Exec can start the next school year from May 1, when the new board takes over.
+export function nextYearOpens(year: string) {
+  return `${year.slice(5)}-05-01`;
+}
+
+export function canStartNextYear(year: string, now = new Date()) {
+  return localDate(now) >= nextYearOpens(year);
+}
+
 // A school year starts in August.
 export function schoolYearOn(date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, year: "numeric", month: "numeric" }).formatToParts(date);

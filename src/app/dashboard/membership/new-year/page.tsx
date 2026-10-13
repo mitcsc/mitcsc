@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import NewYearForm from "@/components/dashboard/NewYearForm";
-import { nextSchoolYear, schoolYearOn } from "@/lib/membership/config";
+import { canStartNextYear, nextSchoolYear, schoolYearOn } from "@/lib/membership/config";
 import { getItem, itemPath } from "@/lib/membership/google/drive";
 import { clubConnection } from "@/lib/membership/google/oauth";
 import { currentYear, pastMemberCount } from "@/lib/membership/store";
@@ -19,6 +20,7 @@ async function baseFolder(folderId: string | null) {
 
 export default async function NewYearPage() {
   const [config, connection, pastMembers] = await Promise.all([currentYear(), clubConnection(), pastMemberCount()]);
+  if (config && !canStartNextYear(config.year)) redirect("/dashboard/membership/settings");
   if (!connection || connection.brokenAt) {
     return (
       <main className="d-empty">

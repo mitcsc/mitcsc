@@ -21,7 +21,7 @@ export function Setting({ title, note, children, center = false }: { title: stri
 }
 
 // Every field saves on its own: switches and checkboxes right away, text when the field loses focus.
-export default function YearSettings({ config, nextYear }: { config: YearConfig; nextYear: string }) {
+export default function YearSettings({ config, nextYear }: { config: YearConfig; nextYear: string | null }) {
   const router = useRouter();
   const save = useSave();
   const [values, setValues] = useState({
@@ -100,9 +100,11 @@ export default function YearSettings({ config, nextYear }: { config: YearConfig;
         </label>
       </Setting>
 
-      <Setting title="New school year" note="Creates a new sheet and copies these settings." center>
-        <Link className="m-btn is-medium" href="/dashboard/membership/new-year">Start {nextYear}</Link>
-      </Setting>
+      {nextYear && (
+        <Setting title="New school year" note="Creates a new sheet and copies these settings." center>
+          <Link className="m-btn is-medium" href="/dashboard/membership/new-year">Start {nextYear}</Link>
+        </Setting>
+      )}
     </main>
   );
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { isKerb, isSchoolYear, newYearConfig, normalizeKerb } from "@/lib/membership/config";
+import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { clearExecAccessCache, execAccess, requireExec } from "@/lib/membership/exec-auth";
 import { createFolder, findOrCreateFolder, getItem, itemPath, listChildren, listShared, FOLDER, SPREADSHEET } from "@/lib/membership/google/drive";
@@ -172,6 +172,9 @@ export async function createSchoolYear(input: { year: string; baseFolderId: stri
     if (!isSchoolYear(input.year)) throw new MembershipError("Pick a school year like 2027-2028.");
     if (await getYear(input.year)) throw new MembershipError(`${input.year} already exists.`, 409);
     const previous = await currentYear();
+    if (previous && !canStartNextYear(previous.year)) {
+      throw new MembershipError(`You can start the next school year from ${formatDay(nextYearOpens(previous.year), true)}.`);
+    }
     const sheetName = text(input.sheetName, 100) || `CSC ${input.year} Membership`;
     const base = await getItem(input.baseFolderId || "root");
     if (base.mimeType !== FOLDER && input.baseFolderId) throw new MembershipError("Pick a folder.");

@@ -16,7 +16,7 @@ const { sign, verify, cardToken, readCardToken } = require('../src/lib/membershi
 const { parseVenmoEmail, normalizeNote, checkVenmo } = require('../src/lib/membership/venmo.ts');
 const { readAnswers } = require('../src/lib/membership/members.ts');
 const { cleanForm } = require('../src/lib/membership/form.ts');
-const { newYearConfig } = require('../src/lib/membership/config.ts');
+const { newYearConfig, canStartNextYear } = require('../src/lib/membership/config.ts');
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
 
@@ -195,6 +195,13 @@ test('cleanForm keeps built-in questions first and validates the rest', () => {
   assert.throws(() => cleanForm({ ...current, calendarUrl: 'http://example.com' }, current), /https/);
   assert.throws(() => cleanForm({ ...current, questions: [{ id: 'x', label: 'X', type: 'dropdown', required: false, options: [] }] }, current), /option/);
   assert.throws(() => cleanForm({ ...current, questions: [{ id: 'x', label: ' ', type: 'short', required: false }] }, current), /title/);
+});
+
+test('the next school year opens on May 1 in Boston', () => {
+  assert.equal(canStartNextYear(YEAR, new Date('2026-10-13T12:00:00Z')), false);
+  assert.equal(canStartNextYear(YEAR, new Date('2027-05-01T03:59:00Z')), false, 'Still April 30 in Boston');
+  assert.equal(canStartNextYear(YEAR, new Date('2027-05-01T04:00:00Z')), true);
+  assert.equal(canStartNextYear(YEAR, new Date('2028-09-01T12:00:00Z')), true);
 });
 
 test('a kerb can sign up once, and check-in records the first scan', async () => {
