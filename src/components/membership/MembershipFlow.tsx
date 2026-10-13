@@ -185,11 +185,20 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
   );
 }
 
+// The list is drawn twice so the strip can loop; screen readers get the first copy only.
 function Benefits({ items }: { items: string[] }) {
-  return (
-    <ul className="mp-benefits" aria-label="Membership includes">
-      {items.map((item, i) => <li key={i}>{item}</li>)}
+  const list = (hidden: boolean) => (
+    <ul aria-labelledby={hidden ? undefined : "benefits-title"} aria-hidden={hidden || undefined}>
+      {items.map((item, i) => <li key={i}><Icon name="check" size={12} strokeWidth={2.6} />{item}</li>)}
     </ul>
+  );
+  return (
+    <div className="mp-benefits">
+      <p id="benefits-title" className="mp-benefits-title">Your membership includes</p>
+      <div className="mp-marquee">
+        <div className="mp-marquee-track">{list(false)}{list(true)}</div>
+      </div>
+    </div>
   );
 }
 
@@ -335,14 +344,14 @@ function PayScreen({ year, member, venmo, onBack, onReported }: {
   return (
     <main className="m-root mp-pay">
       <div className="mp-pay-inner">
-        {onBack && (
-          <button type="button" className="m-back" onClick={onBack}>
-            <Icon name="back" />
-            Back
-          </button>
-        )}
         <div className={`mp-pay-grid${method === "venmo" && venmo ? " has-qr" : ""}`}>
           <div className="mp-pay-main">
+            {onBack && (
+              <button type="button" className="m-back" onClick={onBack}>
+                <Icon name="back" />
+                Back
+              </button>
+            )}
             <PriceHeading year={year} member={member} />
             {methods.length > 1 && (
               <div role="tablist" aria-label="Payment method" className="m-segments">
@@ -376,14 +385,17 @@ function PayScreen({ year, member, venmo, onBack, onReported }: {
               {method === "cash" && <button type="button" className="m-btn is-block" onClick={report} disabled={busy}>{busy ? "Saving…" : "I'll pay at an event"}</button>}
             </div>
           </div>
-          {method === "venmo" && venmo && (
-            <aside className="mp-qr">
-              <div className="mp-qr-code" dangerouslySetInnerHTML={{ __html: venmo.qr }} />
-              <div>
-                <p className="mp-qr-title">Scan with your phone camera</p>
-                <p className="mp-qr-text">Venmo opens with the amount and note already filled in.</p>
-              </div>
-            </aside>
+          {/* Stays mounted so the form can slide to the center while the QR code folds away (desktop only). */}
+          {venmo && (
+            <div className={`mp-qr-slot${method === "venmo" ? " is-shown" : ""}`} aria-hidden={method !== "venmo" || undefined}>
+              <aside className="mp-qr">
+                <div className="mp-qr-code" dangerouslySetInnerHTML={{ __html: venmo.qr }} />
+                <div>
+                  <p className="mp-qr-title">Scan with your phone camera</p>
+                  <p className="mp-qr-text">Venmo opens with the amount and note already filled in.</p>
+                </div>
+              </aside>
+            </div>
           )}
         </div>
       </div>

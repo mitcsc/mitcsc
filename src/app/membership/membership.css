@@ -11,10 +11,27 @@
 .m-hint .m-strike { font-size: 11px; }
 .mp-footnote { margin-top: auto; text-align: center; font-size: 13px; color: #ffffff73; }
 
-/* Benefits on the pay screen: the chips fade up together. */
-.mp-benefits { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; animation: mp-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms backwards; }
-.mp-benefits li { padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 13px; line-height: 1.3; color: #ffffffcc; }
+/* Benefits on the pay screen: a labeled strip of chips that scrolls sideways. The block fades up on load. */
+.mp-benefits { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; animation: mp-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms backwards; }
+.mp-benefits-title { font-size: 13px; font-weight: 500; color: var(--soft); }
+.mp-marquee {
+  min-width: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+}
+.mp-marquee-track { display: flex; width: max-content; animation: mp-marquee 30s linear infinite; }
+.mp-marquee:hover .mp-marquee-track { animation-play-state: paused; }
+.mp-marquee ul { display: flex; gap: 8px; padding-right: 8px; }
+.mp-marquee li { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 10px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 13px; line-height: 1.3; color: #ffffffcc; white-space: nowrap; }
+.mp-marquee li svg { color: var(--green-text); }
+@keyframes mp-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes mp-rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .mp-marquee { -webkit-mask-image: none; mask-image: none; }
+  .mp-marquee-track { width: auto; }
+  .mp-marquee ul { flex-wrap: wrap; padding: 0; }
+  .mp-marquee ul[aria-hidden] { display: none; }
+}
 
 .mp-form { display: flex; flex-direction: column; gap: 16px; }
 .mp-continue { margin-top: 8px; }
@@ -47,17 +64,23 @@
 @media (max-width: 370px) { .mp-details .mp-note-value { white-space: normal; } }
 .mp-note { font-size: 13px; color: #ffffff73; }
 .mp-actions { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
-.mp-qr { display: none; }
+.mp-qr-slot { display: none; }
 
 @media (min-width: 900px) {
   .mp-pay-inner { max-width: 1016px; padding: 32px 48px 64px; gap: 32px; }
-  .mp-pay-grid { flex: none; flex-wrap: wrap; gap: 48px 64px; align-items: flex-start; }
-  .mp-pay-main { flex: 1 1 380px; }
+  /* The form keeps one width. The QR slot grows and shrinks, so the whole unit slides as the QR code comes and goes. */
+  .mp-pay-grid { flex: none; justify-content: center; align-items: flex-start; }
+  .mp-pay-main { flex: 0 0 480px; }
+  .mp-qr-slot { display: block; flex: none; width: 0; overflow: hidden; transition: width 480ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .mp-qr-slot.is-shown { width: 404px; }
   .mp-actions { margin-top: -8px; flex-direction: row; }
   .mp-actions .m-btn { width: auto; padding: 0 28px; }
   .mp-actions .m-error { align-self: center; }
   .has-qr .mp-open-venmo { display: none; }
-  .mp-qr { flex: 0 0 340px; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 28px; border: 1px solid var(--line-strong); border-radius: 16px; text-align: center; }
+  .mp-qr { width: 340px; margin-left: 64px; opacity: 0; transform: translateX(24px); transition: opacity 220ms ease-out, transform 480ms cubic-bezier(0.22, 1, 0.36, 1); display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 28px; border: 1px solid var(--line-strong); border-radius: 16px; text-align: center; }
+  .mp-qr-slot.is-shown .mp-qr { opacity: 1; transform: none; transition-delay: 60ms; }
+  /* Line the QR panel up with the price heading, below the Back link (44px tall + 28px gap). */
+  .mp-pay-main:has(> .m-back) + .mp-qr-slot .mp-qr { margin-top: 72px; }
   .mp-qr-code { width: 228px; padding: 14px; border-radius: 12px; background: #fff; }
   .mp-qr-code svg { display: block; width: 100%; height: auto; }
   .mp-qr-title { font-weight: 500; }
