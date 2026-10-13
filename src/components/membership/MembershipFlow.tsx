@@ -188,7 +188,7 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
 function Benefits({ items }: { items: string[] }) {
   return (
     <ul className="mp-benefits" aria-label="Membership includes">
-      {items.map((item, i) => <li key={i} style={{ "--i": i } as React.CSSProperties}>{item}</li>)}
+      {items.map((item, i) => <li key={i}>{item}</li>)}
     </ul>
   );
 }
