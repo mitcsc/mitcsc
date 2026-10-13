@@ -6,6 +6,7 @@ import { checkVenmoNow, confirmPayment, markUnpaid, removeSignup, syncSheetNow, 
 import { formatDay, formatStamp, money, venmoNote } from "@/lib/membership/config";
 import type { SyncStatus } from "@/lib/membership/sync";
 import type { Member, PaymentMethod, Question } from "@/lib/membership/types";
+import { Icon } from "@/components/membership/icons";
 import Dialog from "./Dialog";
 import { ago, confirmLabel, METHOD_NAMES, paidLabel, shortEmail } from "./format";
 
@@ -19,6 +20,7 @@ interface YearInfo {
 }
 
 const PENDING_PREVIEW = 5;
+const PENDING_COLLAPSED_KEY = "csc-dashboard-pending-collapsed";
 
 export function Switch({ checked, label, onChange, disabled }: { checked: boolean; label: string; onChange: (value: boolean) => void; disabled?: boolean }) {
   return (
@@ -67,6 +69,9 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [pendingOpen, setPendingOpen] = useState(true);
+  // Animate only after the first click, so a saved collapsed state does not animate on load.
+  const [collapseMoved, setCollapseMoved] = useState(false);
   const clearNotice = useCallback(() => setNotice(""), []);
 
   const paid = members.filter((m) => m.status === "paid");
@@ -89,6 +94,18 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
     else if (done) setNotice(done);
     router.refresh();
     return result.ok;
+  }
+
+  // Remember a collapsed pending section on this device only.
+  useEffect(() => {
+    try { if (localStorage.getItem(PENDING_COLLAPSED_KEY) === "1") setPendingOpen(false); } catch {}
+  }, []);
+
+  function togglePending() {
+    const next = !pendingOpen;
+    setCollapseMoved(true);
+    setPendingOpen(next);
+    try { localStorage.setItem(PENDING_COLLAPSED_KEY, next ? "0" : "1"); } catch {}
   }
 
   async function remove(m: MemberRow) {
@@ -126,7 +143,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
         </div>
         <dl className="d-facts">
           <div><dt>Paid</dt><dd>{paid.length}</dd></div>
-          <div><dt>To confirm</dt><dd>{pending.length}</dd></div>
+          <div><dt>Pending confirmation</dt><dd>{pending.length}</dd></div>
           <div><dt>Collected</dt><dd>{money(collected)}</dd></div>
           <div><dt>Closes</dt><dd>{year.closesOn ? formatDay(year.closesOn) : "Not set"}</dd></div>
         </dl>
@@ -157,35 +174,44 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
       <main className="d-main">
         <section className="d-section">
           <div className="d-section-head">
-            <h2 className="d-h2">To confirm <span className="d-count">{pending.length}</span></h2>
+            <h2 className="d-h2">
+              <button type="button" className="d-collapse" aria-expanded={pendingOpen} aria-controls="pending-list" onClick={togglePending}>
+                Pending confirmation <span className="d-count">{pending.length}</span>
+                <Icon name="chevron" size={18} className="d-collapse-icon" />
+              </button>
+            </h2>
             <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo"}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
           </div>
-          <p className="d-section-note" suppressHydrationWarning>
-            Check Venmo confirms a payment only when its note matches exactly, like “{venmoNote(year.year, example)}”.
-            {venmoCheckedAt ? ` Last checked ${ago(venmoCheckedAt)}.` : ""} Everything else needs Confirm payment.
-          </p>
-          {pending.length === 0 && <p className="d-empty-row">Nobody is waiting.</p>}
-          {(showAll ? pending : pending.slice(0, PENDING_PREVIEW)).map((m) => (
-            <div className="d-pending" key={m.kerb}>
-              <div className="d-pending-who">
-                <button type="button" className="d-name-btn" onClick={() => setOpen(m.kerb)}>{m.name}</button>
-                <span className="d-tags"><span className="m-tag">{m.kerb}</span><span className="m-tag">{m.classYear}</span><span className="m-tag">{m.type === "returning" ? "Returning" : "New"}</span></span>
-              </div>
-              <div className="d-pending-pay">
-                <span>{money(m.price)} {m.method === "cash" ? "in cash" : `by ${METHOD_NAMES[m.method]}`}</span>
-                <span className="d-pending-detail">{payDetail(m, year.year)}</span>
-              </div>
-              <div className="d-pending-action">
-                <button type="button" className="m-btn is-light is-small" disabled={busy === m.kerb} onClick={() => run(m.kerb, () => confirmPayment(m.kerb, m.method), `${m.name} is marked paid.`)}>
-                  {busy === m.kerb ? "Confirming…" : "Confirm payment"}
-                </button>
-                <button type="button" className="d-remove-btn" disabled={busy === m.kerb} onClick={() => remove(m)}>Remove</button>
-              </div>
+          <div id="pending-list" className={`d-collapsible${pendingOpen ? " is-open" : ""}${collapseMoved ? " is-animated" : ""}`} inert={!pendingOpen}>
+            <div className="d-collapsible-inner">
+              <p className="d-section-note" suppressHydrationWarning>
+                Check Venmo confirms a payment only when its note matches exactly, like “{venmoNote(year.year, example)}”.
+                {venmoCheckedAt ? ` Last checked ${ago(venmoCheckedAt)}.` : ""} Everything else needs Confirm payment.
+              </p>
+              {pending.length === 0 && <p className="d-empty-row">Nobody is waiting.</p>}
+              {(showAll ? pending : pending.slice(0, PENDING_PREVIEW)).map((m) => (
+                <div className="d-pending" key={m.kerb}>
+                  <div className="d-pending-who">
+                    <button type="button" className="d-name-btn" onClick={() => setOpen(m.kerb)}>{m.name}</button>
+                    <span className="d-tags"><span className="m-tag">{m.kerb}</span><span className="m-tag">{m.classYear}</span><span className="m-tag">{m.type === "returning" ? "Returning" : "New"}</span></span>
+                  </div>
+                  <div className="d-pending-pay">
+                    <span>{money(m.price)} {m.method === "cash" ? "in cash" : `by ${METHOD_NAMES[m.method]}`}</span>
+                    <span className="d-pending-detail">{payDetail(m, year.year)}</span>
+                  </div>
+                  <div className="d-pending-action">
+                    <button type="button" className="m-btn is-light is-small" disabled={busy === m.kerb} onClick={() => run(m.kerb, () => confirmPayment(m.kerb, m.method), `${m.name} is marked paid.`)}>
+                      {busy === m.kerb ? "Confirming…" : "Confirm payment"}
+                    </button>
+                    <MoreButton name={m.name} onClick={() => setOpen(m.kerb)} />
+                  </div>
+                </div>
+              ))}
+              {pending.length > PENDING_PREVIEW && (
+                <button type="button" className="d-more" onClick={() => setShowAll(!showAll)}>{showAll ? "Show fewer" : `Show all ${pending.length}`}</button>
+              )}
             </div>
-          ))}
-          {pending.length > PENDING_PREVIEW && (
-            <button type="button" className="d-more" onClick={() => setShowAll(!showAll)}>{showAll ? "Show fewer" : `Show all ${pending.length}`}</button>
-          )}
+          </div>
         </section>
 
         <section className="d-section">
@@ -193,7 +219,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
             <h2 className="d-h2">All members</h2>
             <div className="d-table-tools">
               <div role="tablist" aria-label="Filter" className="d-filters">
-                {([["all", `All ${members.length}`], ["paid", `Paid ${paid.length}`], ["pending", `To confirm ${pending.length}`]] as const).map(([key, label]) => (
+                {([["all", `All ${members.length}`], ["paid", `Paid ${paid.length}`], ["pending", `Pending ${pending.length}`]] as const).map(([key, label]) => (
                   <button key={key} type="button" role="tab" aria-selected={filter === key} onClick={() => setFilter(key)}>{label}</button>
                 ))}
               </div>
@@ -203,7 +229,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
           <div className="d-table-wrap">
             <table className="d-table">
               <thead>
-                <tr><th>Name</th><th>Kerb</th><th>Year</th><th>Type</th><th>Payment</th><th className="is-end">Signed up</th></tr>
+                <tr><th>Name</th><th>Kerb</th><th>Year</th><th>Type</th><th>Payment</th><th>Signed up</th><th className="is-action" aria-label="Actions" /></tr>
               </thead>
               <tbody>
                 {shown.map((m) => (
@@ -213,7 +239,8 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                     <td className="is-soft">{m.classYear}</td>
                     <td className="is-soft">{m.type === "returning" ? "Returning" : "New"}</td>
                     <td><StatusPill member={m} /></td>
-                    <td className="is-end is-faint">{formatStamp(m.createdAt)}</td>
+                    <td className="is-faint">{formatStamp(m.createdAt)}</td>
+                    <td className="is-action"><MoreButton name={m.name} onClick={() => setOpen(m.kerb)} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -235,6 +262,14 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
   );
 }
 
+function MoreButton({ name, onClick }: { name: string; onClick: () => void }) {
+  return (
+    <button type="button" className="d-more-btn" aria-label={`Actions for ${name}`} onClick={onClick}>
+      <Icon name="more" size={18} />
+    </button>
+  );
+}
+
 function MemberDialog({ member: m, year, onClose, run, remove, busy }: {
   member: MemberRow; year: YearInfo; onClose: () => void; busy: string | null; remove: (m: MemberRow) => Promise<boolean>;
   run: (key: string, work: () => Promise<{ ok: true } | { ok: false; error: string }>, done?: string) => Promise<boolean>;
@@ -246,37 +281,41 @@ function MemberDialog({ member: m, year, onClose, run, remove, busy }: {
   }).filter((a) => a.value);
   return (
     <Dialog title={m.name} onClose={onClose}>
-      <span className="d-tags"><span className="m-tag">{m.kerb}</span><span className="m-tag">{m.classYear}</span><span className="m-tag">{m.type === "returning" ? "Returning" : "New"}</span><StatusPill member={m} /></span>
-      <dl className="d-detail">
-        <div><dt>Lives in</dt><dd>{m.dorm}</dd></div>
-        {answers.map((a) => <div key={a.label}><dt>{a.label}</dt><dd>{a.value}</dd></div>)}
-        <div><dt>Price</dt><dd>{money(m.price)}</dd></div>
-        <div><dt>Signed up</dt><dd>{formatStamp(m.createdAt)}</dd></div>
-        {m.paidAt && <div><dt>Paid on</dt><dd>{formatStamp(m.paidAt)}</dd></div>}
-        {m.confirmedBy && <div><dt>Confirmed by</dt><dd>{m.confirmedBy.includes("@") ? shortEmail(m.confirmedBy) : m.confirmedBy}</dd></div>}
-      </dl>
-      {m.status === "unpaid" ? (
-        <div className="d-dialog-actions">
-          <div className="m-segments" role="radiogroup" aria-label="Paid by">
-            {(["venmo", "zelle", "cash"] as const).map((x) => (
-              <button key={x} type="button" role="radio" aria-checked={method === x} onClick={() => setMethod(x)}>{METHOD_NAMES[x]}</button>
-            ))}
-          </div>
-          <button type="button" className="m-btn is-medium" disabled={busy === m.kerb} onClick={async () => { if (await run(m.kerb, () => confirmPayment(m.kerb, method), `${m.name} is marked paid.`)) onClose(); }}>
-            Confirm {money(m.price)} received
+      {(close) => (
+        <>
+          <span className="d-tags"><span className="m-tag">{m.kerb}</span><span className="m-tag">{m.classYear}</span><span className="m-tag">{m.type === "returning" ? "Returning" : "New"}</span><StatusPill member={m} /></span>
+          <dl className="d-detail">
+            <div><dt>Lives in</dt><dd>{m.dorm}</dd></div>
+            {answers.map((a) => <div key={a.label}><dt>{a.label}</dt><dd>{a.value}</dd></div>)}
+            <div><dt>Price</dt><dd>{money(m.price)}</dd></div>
+            <div><dt>Signed up</dt><dd>{formatStamp(m.createdAt)}</dd></div>
+            {m.paidAt && <div><dt>Paid on</dt><dd>{formatStamp(m.paidAt)}</dd></div>}
+            {m.confirmedBy && <div><dt>Confirmed by</dt><dd>{m.confirmedBy.includes("@") ? shortEmail(m.confirmedBy) : m.confirmedBy}</dd></div>}
+          </dl>
+          {m.status === "unpaid" ? (
+            <div className="d-dialog-actions">
+              <div className="m-segments" role="radiogroup" aria-label="Paid by">
+                {(["venmo", "zelle", "cash"] as const).map((x) => (
+                  <button key={x} type="button" role="radio" aria-checked={method === x} onClick={() => setMethod(x)}>{METHOD_NAMES[x]}</button>
+                ))}
+              </div>
+              <button type="button" className="m-btn is-medium" disabled={busy === m.kerb} onClick={async () => { if (await run(m.kerb, () => confirmPayment(m.kerb, method), `${m.name} is marked paid.`)) close(); }}>
+                Confirm {money(m.price)} received
+              </button>
+            </div>
+          ) : (
+            <div className="d-dialog-actions">
+              <button type="button" className="m-btn is-outline is-medium" disabled={busy === m.kerb} onClick={() => run(m.kerb, () => markUnpaid(m.kerb), `${m.name} is marked not paid.`)}>Mark as not paid</button>
+            </div>
+          )}
+          <button
+            type="button" className="d-danger-link" disabled={busy === m.kerb}
+            onClick={async () => { if (await remove(m)) close(); }}
+          >
+            Remove signup
           </button>
-        </div>
-      ) : (
-        <div className="d-dialog-actions">
-          <button type="button" className="m-btn is-outline is-medium" disabled={busy === m.kerb} onClick={() => run(m.kerb, () => markUnpaid(m.kerb), `${m.name} is marked not paid.`)}>Mark as not paid</button>
-        </div>
+        </>
       )}
-      <button
-        type="button" className="d-danger-link" disabled={busy === m.kerb}
-        onClick={async () => { if (await remove(m)) onClose(); }}
-      >
-        Remove signup
-      </button>
     </Dialog>
   );
 }

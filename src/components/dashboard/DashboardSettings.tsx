@@ -20,7 +20,10 @@ export function DashboardSettings({ year, folder, people, accessCheckedAt, club,
   const [busy, setBusy] = useState<"access" | "import" | null>(null);
   const [picking, setPicking] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [search, setSearch] = useState("");
   const connected = club.state === "connected";
+  const query = search.trim().toLowerCase();
+  const shownPeople = query ? people.filter((p) => p.email.toLowerCase().includes(query)) : people;
 
   async function refresh() {
     setBusy("access");
@@ -49,10 +52,18 @@ export function DashboardSettings({ year, folder, people, accessCheckedAt, club,
         note={year ? `Everyone who can edit the Drive folder with the ${year} membership sheet can use this dashboard. Change it in Drive.` : "After you start a school year, everyone who can edit the folder with its membership sheet can use this dashboard."}
       >
         {people.length > 0 ? (
-          <div className="d-people-list">
-            {people.map((p) => (
-              <div key={p.email}><span>{p.email}</span><span className="d-role">{p.role}</span></div>
-            ))}
+          <div className="d-people">
+            <input
+              className="d-search is-wide" type="search" aria-label="Search people with access"
+              placeholder={`Search ${people.length} ${people.length === 1 ? "person" : "people"}`}
+              value={search} onChange={(e) => setSearch(e.target.value)}
+            />
+            <div className="d-people-list">
+              {shownPeople.map((p) => (
+                <div key={p.email}><span>{p.email}</span><span className="d-role">{p.role}</span></div>
+              ))}
+              {shownPeople.length === 0 && <p className="d-empty-row">Nobody matches.</p>}
+            </div>
           </div>
         ) : (
           <p className="d-field-note is-large">{connected ? "Nobody yet." : "Connect the club Google account to see who has access."} {club.email} can always sign in.</p>

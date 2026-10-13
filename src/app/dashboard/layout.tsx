@@ -43,7 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="m-root d-shell">
       <header className="d-header">
-        <span className="d-brand"><span className="d-brand-dot" aria-hidden="true" />CSC Dashboard</span>
+        <span className="d-brand">Dashboard</span>
         <MainNav />
         <span className="d-account">
           <span className="d-account-email">{email}</span>
