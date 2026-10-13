@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import NewYearForm from "@/components/dashboard/NewYearForm";
-import { canStartNextYear, membershipFolderPath, nextSchoolYear, schoolYearOn } from "@/lib/membership/config";
-import { findFolderPath } from "@/lib/membership/google/drive";
+import { canStartNextYear, CLUB_DRIVE_FOLDER, nextSchoolYear, schoolYearOn } from "@/lib/membership/config";
+import { findFolder } from "@/lib/membership/google/drive";
 import { clubConnection } from "@/lib/membership/google/oauth";
 import { currentYear, pastMemberCount } from "@/lib/membership/store";
 
@@ -19,17 +19,13 @@ export default async function NewYearPage() {
     );
   }
   const year = config ? nextSchoolYear(config.year) : schoolYearOn(new Date());
-  // Picks "MIT CSC/MIT CSC <year>/Membership" when it exists, or opens the picker as deep as it goes.
-  const names = membershipFolderPath(year);
-  const found = await findFolderPath(names).catch(() => []);
-  const suggested = found.length === names.length ? { id: found.at(-1)!.id, path: found.map((f) => f.name) } : null;
+  const clubFolder = await findFolder(CLUB_DRIVE_FOLDER).catch(() => null);
   return (
     <NewYearForm
       year={year}
       previous={config?.year || null}
       prices={config?.prices || { new: 8, returning: 6 }}
-      suggested={suggested}
-      pickerStart={found.at(-1)?.id || "root"}
+      pickerStart={clubFolder?.id || "root"}
       pastMembers={pastMembers}
     />
   );

@@ -8,11 +8,11 @@ import { createSchoolYear } from "@/app/dashboard/actions";
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
 import { MoneyInput } from "./YearSettings";
 
-export default function NewYearForm({ year, previous, prices, suggested, pickerStart, pastMembers }: {
-  year: string; previous: string | null; prices: { new: number; returning: number }; suggested: DriveChoice | null; pickerStart: string; pastMembers: number;
+export default function NewYearForm({ year, previous, prices, pickerStart, pastMembers }: {
+  year: string; previous: string | null; prices: { new: number; returning: number }; pickerStart: string; pastMembers: number;
 }) {
   const router = useRouter();
-  const [folder, setFolder] = useState<DriveChoice | null>(suggested);
+  const [folder, setFolder] = useState<DriveChoice | null>(null);
   const [picking, setPicking] = useState(false);
   const [sheetName, setSheetName] = useState(`CSC ${year} Membership`);
   const [priceNew, setPriceNew] = useState(String(prices.new));

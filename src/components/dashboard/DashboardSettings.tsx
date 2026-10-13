@@ -7,13 +7,14 @@ import DrivePicker from "./DrivePicker";
 import { ago } from "./format";
 import { Setting } from "./YearSettings";
 
-export function DashboardSettings({ year, folder, people, accessCheckedAt, club, pastMembers }: {
+export function DashboardSettings({ year, folder, people, accessCheckedAt, club, pastMembers, pickerStart }: {
   year: string | null;
   folder: string | null;
   people: { email: string; role: "Owner" | "Editor" }[];
   accessCheckedAt: number | null;
   club: { email: string; state: "missing" | "broken" | "connected" };
   pastMembers: number;
+  pickerStart: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"access" | "import" | null>(null);
@@ -95,7 +96,7 @@ export function DashboardSettings({ year, folder, people, accessCheckedAt, club,
       </Setting>
 
       {picking && (
-        <DrivePicker title="Pick an old membership sheet" start="root" pick="sheet" onClose={() => setPicking(false)} onPick={(choice) => importSheet(choice.id, choice.path.at(-1) || "the sheet")} />
+        <DrivePicker title="Pick an old membership sheet" start={pickerStart} pick="sheet" onClose={() => setPicking(false)} onPick={(choice) => importSheet(choice.id, choice.path.at(-1) || "the sheet")} />
       )}
     </main>
   );

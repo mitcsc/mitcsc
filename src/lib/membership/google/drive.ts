@@ -32,17 +32,9 @@ export async function listChildren(parentId: string, includeSheets: boolean) {
   return listAll(`${quote(parentId)} in parents and ${types} and trashed = false`);
 }
 
-// Follows folder names down from My Drive and returns the folders that exist, in order.
-export async function findFolderPath(names: string[]) {
-  const found: DriveItem[] = [];
-  let parent = "root";
-  for (const name of names) {
-    const [match] = await listAll(`${quote(parent)} in parents and mimeType = '${FOLDER}' and name = ${quote(name)} and trashed = false`);
-    if (!match) break;
-    found.push(match);
-    parent = match.id;
-  }
-  return found;
+export async function findFolder(name: string, parentId = "root") {
+  const [match] = await listAll(`${quote(parentId)} in parents and mimeType = '${FOLDER}' and name = ${quote(name)} and trashed = false`);
+  return match || null;
 }
 
 // Folders and spreadsheets other people shared with the club account.
