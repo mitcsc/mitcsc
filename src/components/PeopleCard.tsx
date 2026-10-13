@@ -42,9 +42,11 @@ export default function PeopleCard({
           className="w-full h-full object-cover"
           loading="lazy"
         />
-        <img
+        <Image
           src={`/img/logo/${isAlumni ? "alumni-" : ""}panda.png`}
-          alt={`MIT CSC`}
+          alt="MIT CSC"
+          width={80}
+          height={80}
           draggable={false}
           className={
             isAlumni

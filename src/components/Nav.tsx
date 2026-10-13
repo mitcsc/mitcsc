@@ -2,6 +2,7 @@
 
 import { Link } from "@/components/home/Link";
 import { motion, Variants } from "framer-motion";
+import Image from "next/image";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { nav, email } from "@/config/links";
@@ -112,9 +113,13 @@ export default function Nav() {
             }
           }}
         >
-          <img
+          <Image
             src={logo}
             alt="MIT CSC"
+            width={128}
+            height={128}
+            sizes="(min-width: 1024px) 128px, (min-width: 768px) 96px, 64px"
+            priority
             title="MIT CSC"
             className="w-16 md:w-24 lg:w-32 aspect-square h-auto drop-shadow-lg brightness-100 hover:brightness-75 transition-all ease-out duration-300"
           />
@@ -151,9 +156,12 @@ export default function Nav() {
                 <div className="w-[40px] md:w-[48px] lg:w-[56px]" />
                 <div className="group relative flex items-center">
                   <div className="absolute -left-16 opacity-0 group-hover:translate-x-4 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
-                    <img
+                    <Image
                       src="/img/logo/panda.png"
                       alt="MIT CSC"
+                      width={56}
+                      height={56}
+                      loading="eager"
                       draggable={false}
                       className="w-10 h-10 select-none md:w-12 md:h-12 lg:w-14 lg:h-14 object-contain transition-transform duration-200"
                       style={{
