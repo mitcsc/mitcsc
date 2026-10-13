@@ -143,7 +143,6 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
         <h1 className="mp-title is-large">Join CSC</h1>
         {year.form.intro && <p className="mp-muted">{year.form.intro}</p>}
-        {year.form.benefits.length > 0 && <Benefits items={year.form.benefits} />}
       </header>
 
       <form className="mp-form" onSubmit={submit}>
@@ -187,15 +186,10 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
 }
 
 function Benefits({ items }: { items: string[] }) {
-  const list = (hidden: boolean) => (
-    <ul aria-label={hidden ? undefined : "Membership includes"} aria-hidden={hidden || undefined}>
-      {items.map((item, i) => <li key={i}>{item}</li>)}
-    </ul>
-  );
   return (
-    <div className="mp-marquee">
-      <div className="mp-marquee-track">{list(false)}{list(true)}</div>
-    </div>
+    <ul className="mp-benefits" aria-label="Membership includes">
+      {items.map((item, i) => <li key={i} style={{ "--i": i } as React.CSSProperties}>{item}</li>)}
+    </ul>
   );
 }
 
@@ -298,6 +292,7 @@ function PriceHeading({ year, member }: { year: PublicYear; member: MemberView }
         {member.name}
         {member.type === "returning" && discount > 0 && <span className="m-pill is-green">Returning member, {money(discount)} off</span>}
       </p>
+      {year.form.benefits.length > 0 && <Benefits items={year.form.benefits} />}
     </div>
   );
 }

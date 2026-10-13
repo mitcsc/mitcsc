@@ -332,7 +332,8 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-shell :is(button, a, input, select, textarea) { transition: color 180ms var(--ease), background-color 180ms var(--ease), border-color 180ms var(--ease), opacity 180ms var(--ease), filter 180ms var(--ease), transform 180ms var(--ease); }
 .d-switch span { transition: transform 240ms var(--ease); }
 .d-shell :is(.m-btn, .d-chip-btn, .d-more-btn, .d-filters button, .m-segments > *, .d-main-nav a):active:not(:disabled) { transform: scale(0.97); }
-.d-body, .d-page { animation: d-rise 320ms var(--ease) both; }
+/* Every page fades up when it mounts. The header stays put; "backwards" leaves no transform behind for fixed children. */
+.d-shell > :not(.d-header) { animation: d-rise 420ms var(--ease) backwards; }
 .d-collapsible { display: grid; grid-template-rows: 0fr; opacity: 0; }
 .d-collapsible.is-open { grid-template-rows: 1fr; opacity: 1; }
 .d-collapsible.is-animated { transition: grid-template-rows 360ms var(--ease), opacity 260ms var(--ease); }
@@ -341,9 +342,9 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-dialog[open]::backdrop { animation: d-fade-in 240ms ease-out; }
 .d-dialog.is-closing { animation: d-dialog-out 160ms ease-in forwards; }
 .d-dialog.is-closing::backdrop { animation: d-fade-out 160ms ease-in forwards; }
-@keyframes d-rise { from { opacity: 0; transform: translateY(6px); } }
 @keyframes d-dialog-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
 @keyframes d-dialog-out { to { opacity: 0; transform: translateY(6px) scale(0.98); } }
+@keyframes d-rise { from { opacity: 0; transform: translateY(8px); } }
 @keyframes d-fade-in { from { opacity: 0; } }
 @keyframes d-fade-out { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
