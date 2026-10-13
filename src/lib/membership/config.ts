@@ -88,7 +88,7 @@ export function newYearConfig(year: string, previous: YearConfig | null): YearCo
     walletExpiresOn: `${endYear}-06-01`,
     prices: previous ? { ...previous.prices } : { new: 8, returning: 6 },
     venmo: previous?.venmo || "xiong-mao",
-    zelle: previous?.zelle || "",
+    zelle: previous ? previous.zelle : "650-390-3742",
     cashAllowed: previous?.cashAllowed ?? true,
     form: previous ? carryForm(previous.form, previous.year, year) : defaultForm(year),
     folderId: null,
