@@ -9,6 +9,11 @@ export const DORMS = [
   "Next House", "Random", "Simmons", "Graduate housing", "FSILG", "Off campus", "Other",
 ];
 
+// Where the club keeps each year's membership sheet in its Drive.
+export function membershipFolderPath(year: string) {
+  return ["MIT CSC", `MIT CSC ${year}`, "Membership"];
+}
+
 export const YEAR_PATTERN = /^(\d{4})-(\d{4})$/;
 
 export function isSchoolYear(value: string) {
