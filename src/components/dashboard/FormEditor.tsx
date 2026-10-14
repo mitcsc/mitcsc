@@ -9,6 +9,7 @@ import { defaultFormTitle, formTitle, money, questionOptions, venmoNote } from "
 import type { FormConfig, Question, QuestionType } from "@/lib/membership/types";
 import { Setting } from "./YearSettings";
 import { useSave } from "./Shell";
+import { DragHandle, useReorder } from "./useReorder";
 
 const TYPE_NAMES: Record<QuestionType, string> = {
   checkboxes: "Checkboxes", short: "Short answer", long: "Long answer", multiple: "Multiple choice", dropdown: "Dropdown",
@@ -17,14 +18,6 @@ const SAVE_DELAY_MS = 800;
 
 function hasOptions(type: QuestionType) {
   return type === "checkboxes" || type === "multiple" || type === "dropdown";
-}
-
-function Grip() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
-    </svg>
-  );
 }
 
 function Lock() {
@@ -53,7 +46,6 @@ export default function FormEditor({ year, form: initial, pay }: { year: string;
   const [benefits, setBenefits] = useState(initial.benefits.join("\n"));
   const [instagram, setInstagram] = useState(initial.instagram ? `@${initial.instagram}` : "");
   const [editing, setEditing] = useState<{ index: number | null; draft: Question } | null>(null);
-  const [dragging, setDragging] = useState<number | null>(null);
   const [screen, setScreen] = useState<PreviewScreen>("signup");
   const timer = useRef<number | undefined>(undefined);
 
@@ -77,6 +69,7 @@ export default function FormEditor({ year, form: initial, pay }: { year: string;
     list.splice(to, 0, item);
     setCustom(list);
   }
+  const reorder = useReorder<HTMLDivElement>({ count: custom.length, onMove: move, disabled: !!editing });
 
   function finishEdit() {
     if (!editing) return;
@@ -124,10 +117,10 @@ export default function FormEditor({ year, form: initial, pay }: { year: string;
         </Setting>
 
         <Setting title="Questions" note="Drag to reorder. Answers show up as columns in the Google Sheet.">
-          <div className="d-questions">
+          <div className={`d-questions${reorder.sorting ? " is-sorting" : ""}`} ref={reorder.listRef}>
             {builtins.map((q) => (
               <div className="d-question is-locked" key={q.id}>
-                <span className="d-grip"><Grip /></span>
+                <span className="d-drag-handle is-locked" aria-hidden="true"><Icon name="grip" size={16} /></span>
                 <span className="d-question-label">{q.label}</span>
                 <span className="d-question-type">{TYPE_NAMES[q.type]}</span>
                 <span className="d-question-end"><Lock />Always asked</span>
@@ -136,23 +129,8 @@ export default function FormEditor({ year, form: initial, pay }: { year: string;
             {custom.map((q, i) => (editing?.index === i ? (
               <QuestionEditor key={q.id} draft={editing.draft} onChange={(draft) => setEditing({ index: i, draft })} onCancel={() => setEditing(null)} onDone={finishEdit} />
             ) : (
-              <div
-                className={`d-question${dragging === i ? " is-dragging" : ""}`} key={q.id} draggable
-                onDragStart={(e) => { setDragging(i); e.dataTransfer.effectAllowed = "move"; }}
-                onDragOver={(e) => { e.preventDefault(); if (dragging !== null && dragging !== i) { move(dragging, i); setDragging(i); } }}
-                onDragEnd={() => setDragging(null)}
-              >
-                <button
-                  type="button" className="d-grip is-movable" aria-label={`Move “${q.label}”. Use the arrow keys.`}
-                  onKeyDown={(e) => {
-                    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                      e.preventDefault();
-                      move(i, i + (e.key === "ArrowUp" ? -1 : 1));
-                    }
-                  }}
-                >
-                  <Grip />
-                </button>
+              <div key={q.id} {...reorder.rowProps(i)} className={`d-question ${reorder.rowProps(i).className}`.trimEnd()}>
+                <DragHandle label={q.label} {...reorder.handleProps(i)} />
                 <span className="d-question-label">{q.label}</span>
                 <span className="d-question-type">{TYPE_NAMES[q.type]}{q.required ? "" : ", optional"}</span>
                 <span className="d-question-end">

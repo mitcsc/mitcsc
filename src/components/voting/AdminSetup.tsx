@@ -1,7 +1,8 @@
 "use client";
-import { useRef, useState, type RefObject } from "react";
+import { useRef, useState } from "react";
 import { useScrollEdges } from "./useScrollEdges";
 import { Icon } from "@/components/membership/icons";
+import { DragHandle, useReorder } from "@/components/dashboard/useReorder";
 import { isNotes, type Candidate, type Criterion } from "@/lib/voting/types";
 
 interface Props {
@@ -20,7 +21,6 @@ interface Props {
 export default function AdminSetup({ candidates: initialCandidates, criteria: initialCriteria, busy, onBack, setupStep, actionLabel, onDraftChange, onSave, onContinue }: Props) {
   const candidateScroll = useScrollEdges<HTMLFieldSetElement>();
   const criteriaScroll = useScrollEdges<HTMLFieldSetElement>();
-  const listRef = useRef<HTMLUListElement>(null);
   const [candidates, setCandidates] = useState(initialCandidates);
   const [criteria, setCriteria] = useState(initialCriteria);
   const [scaleDrafts, setScaleDrafts] = useState<Record<string, string>>({});
@@ -28,16 +28,15 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
   const [pasteOpen, setPasteOpen] = useState(false);
   const pasteTrigger = useRef<HTMLButtonElement>(null);
   const pastedNames = paste.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
-  const [drag, setDrag] = useState<{from: number; to: number; step: number} | null>(null);
   const [message, setMessage] = useState("");
   const updateCandidates = (next: Candidate[]) => { const ordered = next.map((c, order) => ({ ...c, order })); setCandidates(ordered); onDraftChange?.(ordered, criteria); setMessage(""); };
   const updateCriteria = (next: Criterion[]) => { setCriteria(next); onDraftChange?.(candidates, next); setMessage(""); };
   const addNames = (names: string[]) => updateCandidates([...candidates, ...names.map(name => ({ id: crypto.randomUUID(), name, context: "", order: 0, completed: false }))]);
-  const move = (index: number, direction: number) => {
+  const reorder = useReorder<HTMLUListElement>({count: candidates.length, disabled: busy, onMove: (from, to) => {
     const next = [...candidates];
-    [next[index], next[index + direction]] = [next[index + direction], next[index]];
+    next.splice(to, 0, next.splice(from, 1)[0]);
     updateCandidates(next);
-  };
+  }});
   const shuffled = <T,>(items: T[]) => {
     const next = [...items];
     for (let i = next.length - 1; i > 0; i--) {
@@ -88,8 +87,8 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
             <button className="voting-paste-confirm" disabled={!pastedNames.length} onClick={() => {addNames(pastedNames); setPaste(""); setPasteOpen(false); pasteTrigger.current?.focus();}}>{pastedNames.length ? `Add ${pastedNames.length} ${pastedNames.length === 1 ? "candidate" : "candidates"}` : "Add candidates"}</button>
           </div>
         </div>}
-        <ul ref={listRef} className="voting-candidate-editor-list" aria-label="Candidate order">
-          {candidates.map((c, i) => <CandidateRow listRef={listRef} dragging={drag !== null} shift={drag && i !== drag.from ? (drag.from < drag.to && i > drag.from && i <= drag.to ? -drag.step : drag.from > drag.to && i >= drag.to && i < drag.from ? drag.step : 0) : 0} onDragChange={setDrag} key={c.id} candidate={c} index={i} count={candidates.length} busy={busy} onPlatform={context => updateCandidates(candidates.map(x => x.id === c.id ? {...x, context} : x))} onRename={name => updateCandidates(candidates.map(x => x.id === c.id ? {...x, name} : x))} onMove={direction => move(i, direction)} onMoveTo={target => { const next = [...candidates]; next.splice(i, 1); next.splice(target, 0, c); updateCandidates(next); }} onRemove={() => updateCandidates(candidates.filter(x => x.id !== c.id))}/>)}
+        <ul ref={reorder.listRef} className={`voting-candidate-editor-list${reorder.sorting ? " is-sorting" : ""}`} aria-label="Candidate order">
+          {candidates.map((c, i) => <CandidateRow key={c.id} reorder={reorder} candidate={c} index={i} onPlatform={context => updateCandidates(candidates.map(x => x.id === c.id ? {...x, context} : x))} onRename={name => updateCandidates(candidates.map(x => x.id === c.id ? {...x, name} : x))} onRemove={() => updateCandidates(candidates.filter(x => x.id !== c.id))}/>)}
         </ul>
       </fieldset>
       <fieldset ref={criteriaScroll} hidden={setupStep === "candidates"} disabled={busy} className="voting-admin-editor"><legend className="voting-sr-only">Criteria</legend><div className="voting-pane-heading voting-criteria-heading"><div className="voting-pane-title"><h3>Criteria <span>{criteria.length}</span></h3></div><div className="voting-criteria-actions"><button onClick={() => updateCriteria([...criteria, {id: crypto.randomUUID(), label: "", description: "", min: 1, max: 5, required: true}])}>+ Add criteria</button><button className="voting-shuffle-criteria" aria-label="Shuffle criteria order" disabled={criteria.length < 2} onClick={() => updateCriteria(shuffled(criteria))}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg>Shuffle</button></div></div>{criteria.map(c => <div className="voting-admin-criterion" key={c.id}><div className="voting-criterion-heading"><label>Criterion<input placeholder="Criterion name" value={c.label} maxLength={150} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, label: e.target.value} : x))}/></label><button className="voting-remove-criterion" aria-label={`Remove ${c.label || "criterion"}`} onClick={() => updateCriteria(criteria.filter(x => x.id !== c.id))}>×</button></div><label>Description<textarea placeholder="Short description (optional)" value={c.description} rows={2} maxLength={1000} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, description: e.target.value} : x))}/></label><label className="voting-admin-kind">Answer type<span className="m-select-wrap"><select className="m-select is-compact" value={isNotes(c) ? "notes" : "rating"} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, kind: e.target.value as "rating" | "notes"} : x))}><option value="rating">Rating scale</option><option value="notes">Short answer</option></select><Icon name="chevron"/></span></label><div className="voting-admin-scale">{!isNotes(c) && <><label>Minimum<input type="number" min={0} max={9} step={1} value={scaleDrafts[`${c.id}:min`] ?? c.min} onChange={e => editScale(c.id, "min", e.target.value)} onBlur={() => normalizeScale(c.id, "min")}/></label><label>Maximum<input type="number" min={1} max={10} step={1} value={scaleDrafts[`${c.id}:max`] ?? c.max} onChange={e => editScale(c.id, "max", e.target.value)} onBlur={() => normalizeScale(c.id, "max")}/></label></>}<label className="voting-admin-check"><input type="checkbox" checked={c.required} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, required: e.target.checked} : x))}/> Required</label></div></div>)}</fieldset>
@@ -98,51 +97,15 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
   </section>;
 }
 
-function CandidateRow({listRef, dragging, shift, onDragChange, candidate, index, count, busy, onPlatform, onRename, onMove, onMoveTo, onRemove}: {
-  listRef: RefObject<HTMLUListElement | null>;
-  dragging: boolean; shift: number; onDragChange: (drag: {from: number; to: number; step: number} | null) => void;
-  candidate: Candidate; index: number; count: number; busy: boolean;
+function CandidateRow({reorder, candidate, index, onPlatform, onRename, onRemove}: {
+  reorder: ReturnType<typeof useReorder<HTMLUListElement>>;
+  candidate: Candidate; index: number;
   onPlatform: (context: string) => void;
-  onRename: (name: string) => void; onMove: (direction: number) => void; onMoveTo: (index: number) => void; onRemove: () => void;
+  onRename: (name: string) => void; onRemove: () => void;
 }) {
-  const rowRef = useRef<HTMLLIElement>(null);
-  const gesture = useRef<{pointerId: number; startY: number; min: number; max: number; center: number; centers: number[]; target: number} | null>(null);
-  const [offset, setOffset] = useState<number | null>(null);
-  const startDrag = (event: React.PointerEvent<HTMLElement>) => {
-    if (busy || event.button !== 0 || !rowRef.current || !listRef.current) return;
-    event.preventDefault();
-    const row = rowRef.current.getBoundingClientRect();
-    const list = listRef.current.getBoundingClientRect();
-    gesture.current = {pointerId: event.pointerId, startY: event.clientY, min: list.top - row.top, max: list.bottom - row.bottom, center: row.top + row.height / 2, centers: [...listRef.current.children].map(el => { const box = el.getBoundingClientRect(); return box.top + box.height / 2; }), target: index};
-    rowRef.current.setPointerCapture(event.pointerId);
-    setOffset(0);
-    onDragChange({from: index, to: index, step: gesture.current.centers.length > 1 ? gesture.current.centers[1] - gesture.current.centers[0] : row.height});
-  };
-  const endDrag = (event: React.PointerEvent<HTMLLIElement>, commit: boolean) => {
-    const active = gesture.current;
-    if (!active || active.pointerId !== event.pointerId) return;
-    gesture.current = null; setOffset(null); onDragChange(null);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (commit && !busy && active.target !== index) onMoveTo(active.target);
-  };
-  return <li ref={rowRef} className={`voting-admin-edit-row ${offset !== null ? "is-dragging" : ""}`} style={{transform: offset !== null || shift ? `translateY(${offset ?? shift}px)` : undefined, zIndex: offset !== null ? 2 : undefined, transition: dragging && offset === null ? "transform 160ms cubic-bezier(.2,.7,.2,1), background-color 150ms" : "background-color 150ms"}} onPointerDown={event => {
-    if (!(event.target as HTMLElement).closest("input,button,textarea")) startDrag(event);
-  }} onPointerMove={event => {
-    const active = gesture.current;
-    if (!active || active.pointerId !== event.pointerId) return;
-    const delta = Math.min(active.max, Math.max(active.min, event.clientY - active.startY));
-    const previousTarget = active.target;
-    active.target = active.centers.reduce((best, center, i) => Math.abs(center - active.center - delta) < Math.abs(active.centers[best] - active.center - delta) ? i : best, index);
-    if (active.target !== previousTarget) onDragChange({from: index, to: active.target, step: active.centers.length > 1 ? active.centers[1] - active.centers[0] : 0});
-    setOffset(delta);
-  }} onPointerUp={event => endDrag(event, true)} onPointerCancel={event => endDrag(event, false)} onLostPointerCapture={event => endDrag(event, false)}>
-    <button type="button" className="voting-drag-handle" aria-label={`Reorder ${candidate.name || "candidate"}`} title="Drag to reorder. Use arrow keys to move." disabled={busy} onPointerDown={startDrag} onKeyDown={event => {
-      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-        event.preventDefault();
-        const direction = event.key === "ArrowUp" ? -1 : 1;
-        if (!busy && index + direction >= 0 && index + direction < count) onMove(direction);
-      }
-    }}><svg width="12" height="18" viewBox="0 0 12 18" fill="currentColor" aria-hidden="true">{[4,9,14].map(y => <g key={y}><circle cx="3" cy={y} r="1.2"/><circle cx="9" cy={y} r="1.2"/></g>)}</svg></button>
+  const {className, ...row} = reorder.rowProps(index);
+  return <li {...row} className={`voting-admin-edit-row ${className}`.trim()}>
+    <DragHandle label={candidate.name || "candidate"} {...reorder.handleProps(index)}/>
     <span className="voting-admin-number">{index + 1}</span>
     <label className="voting-candidate-name"><span className="voting-sr-only">Name</span><input placeholder="Candidate name" value={candidate.name} maxLength={120} onChange={e => onRename(e.target.value)}/></label>
     <div className="voting-admin-row-actions"><button className="voting-remove-candidate" aria-label={`Remove ${candidate.name || "candidate"}`} onClick={onRemove}>×</button></div>

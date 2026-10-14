@@ -1,18 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { deleteLinkAction, reorderLinksAction, saveLinkAction } from "@/app/dashboard/links/actions";
 import { isActive, normalizeSlug, slugProblem, type ShortLink } from "@/lib/link-rules";
 import { formatDay } from "@/lib/membership/config";
 import { Icon } from "@/components/membership/icons";
 import Dialog from "./Dialog";
+import { DragHandle, useReorder } from "./useReorder";
 import { Switch, Toast } from "./MembersView";
 
 const FAILED = { ok: false as const, error: "Something went wrong. Please try again." };
-
-// A row being dragged: where it started and where it would land, the pointer's travel, and every row's middle on screen.
-type Drag = { from: number; to: number; dy: number; startY: number; mids: number[]; height: number };
 
 // The Links section: short links (csc.mit.edu/<slug>) and the list on the public Links page, in one ordered list.
 export default function LinksView({ links, clicks, origin, today }: { links: ShortLink[]; clicks: Record<string, number>; origin: string; today: string }) {
@@ -20,17 +18,17 @@ export default function LinksView({ links, clicks, origin, today }: { links: Sho
   const [editing, setEditing] = useState<ShortLink | "new" | null>(null);
   // The order on screen. It changes at once on a drop, before the server saves it.
   const [order, setOrder] = useState(links);
-  const [drag, setDrag] = useState<Drag | null>(null);
-  const dragRef = useRef<Drag | null>(null);
-  const body = useRef<HTMLTableSectionElement>(null);
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const clearNotice = useCallback(() => setNotice(""), []);
   const host = origin.replace(/^https?:\/\//, "");
+  const reorder = useReorder<HTMLTableSectionElement>({ count: order.length, onMove: (from, to) => void saveOrder(from, to) });
 
-  useEffect(() => { if (!dragRef.current) setOrder(links); }, [links]);
+  useEffect(() => setOrder(links), [links]);
 
-  async function saveOrder(next: ShortLink[]) {
+  async function saveOrder(from: number, to: number) {
+    const next = [...order];
+    next.splice(to, 0, next.splice(from, 1)[0]);
     setOrder(next);
     const result = await reorderLinksAction(next.map((l) => l.id)).catch(() => FAILED);
     if (!result.ok) {
@@ -38,57 +36,6 @@ export default function LinksView({ links, clicks, origin, today }: { links: Sho
       setOrder(links);
     }
     router.refresh();
-  }
-
-  function moved(from: number, to: number) {
-    const next = [...order];
-    next.splice(to, 0, next.splice(from, 1)[0]);
-    return next;
-  }
-
-  // Dragging follows the pointer (mouse or touch) from the handle. Other rows slide aside to show where it lands.
-  function startDrag(event: PointerEvent<HTMLButtonElement>, from: number) {
-    if (event.button !== 0 || !body.current) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rects = [...body.current.rows].map((row) => row.getBoundingClientRect());
-    const start: Drag = { from, to: from, dy: 0, startY: event.clientY, mids: rects.map((r) => r.top + r.height / 2), height: rects[from].height };
-    dragRef.current = start;
-    setDrag(start);
-  }
-
-  function moveDrag(event: PointerEvent<HTMLButtonElement>) {
-    const d = dragRef.current;
-    if (!d) return;
-    const dy = Math.min(Math.max(event.clientY - d.startY, d.mids[0] - d.mids[d.from]), d.mids[d.mids.length - 1] - d.mids[d.from]);
-    const center = d.mids[d.from] + dy;
-    const to = d.mids.filter((mid, i) => i !== d.from && mid < center).length;
-    dragRef.current = { ...d, dy, to };
-    setDrag(dragRef.current);
-  }
-
-  function endDrag() {
-    const d = dragRef.current;
-    dragRef.current = null;
-    setDrag(null);
-    if (d && d.to !== d.from) void saveOrder(moved(d.from, d.to));
-  }
-
-  // Arrow keys move the focused row by one place.
-  function keyMove(event: KeyboardEvent<HTMLButtonElement>, from: number) {
-    const to = event.key === "ArrowUp" ? from - 1 : event.key === "ArrowDown" ? from + 1 : -1;
-    if (to < 0 || to >= order.length) return;
-    event.preventDefault();
-    void saveOrder(moved(from, to));
-  }
-
-  // How far a row slides while another is dragged.
-  function shift(i: number) {
-    if (!drag) return undefined;
-    if (i === drag.from) return `translateY(${drag.dy}px)`;
-    if (drag.from < drag.to && i > drag.from && i <= drag.to) return `translateY(${-drag.height}px)`;
-    if (drag.from > drag.to && i >= drag.to && i < drag.from) return `translateY(${drag.height}px)`;
-    return undefined;
   }
 
   async function copy(link: ShortLink) {
@@ -105,22 +52,18 @@ export default function LinksView({ links, clicks, origin, today }: { links: Sho
       </div>
       <p className="d-section-note">{host}/<em className="d-link-em">name</em> sends people to any page. Links you show also list on {host}/links, in this order.</p>
       <div className="d-table-wrap">
-        <table className={`d-table is-roomy d-links${drag ? " is-sorting" : ""}`}>
+        <table className={`d-table is-roomy d-links${reorder.sorting ? " is-sorting" : ""}`}>
           <thead>
             <tr><th className="d-drag-cell" aria-hidden="true" /><th>Link</th><th className="is-wide">Short link</th><th className="is-wide is-number">Clicks</th><th className="is-wide">Visibility</th><th className="is-end"><span className="d-sr">Actions</span></th></tr>
           </thead>
-          <tbody ref={body}>
+          <tbody ref={reorder.listRef}>
             {order.map((link, i) => {
               const active = isActive(link, today);
+              const { className, ...row } = reorder.rowProps(i);
               return (
-                <tr key={link.id} className={[active ? "" : "is-faded", drag?.from === i ? "is-dragging" : ""].join(" ").trim() || undefined} style={{ transform: shift(i) }}>
+                <tr key={link.id} {...row} className={[active ? "" : "is-faded", className].join(" ").trim() || undefined}>
                   <td className="d-drag-cell">
-                    <button
-                      type="button" className="d-drag-handle" aria-label={`Reorder ${link.title}. Use the arrow keys to move it.`} data-tip="Drag to reorder"
-                      onPointerDown={(e) => startDrag(e, i)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} onKeyDown={(e) => keyMove(e, i)}
-                    >
-                      <Icon name="grip" size={16} />
-                    </button>
+                    <DragHandle label={link.title} {...reorder.handleProps(i)} />
                   </td>
                   <td className={`d-link-cell${link.slug ? " has-slug" : ""}`}>
                     <button type="button" className="d-name-btn" onClick={() => setEditing(link)}>{link.title}</button>
