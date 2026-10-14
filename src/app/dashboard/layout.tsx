@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { MainNav, ProblemBanner, SignIn } from "@/components/dashboard/Shell";
 import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
 import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google/oauth";
+import { instrumentSans } from "@/components/membership/font";
 import "@/components/membership/ui.css";
 import "./dashboard.css";
 
@@ -39,7 +40,15 @@ function SignOut({ label }: { label: string }) {
   );
 }
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className={`m-font ${instrumentSans.variable}`}>
+      <DashboardContent>{children}</DashboardContent>
+    </div>
+  );
+}
+
+async function DashboardContent({ children }: { children: React.ReactNode }) {
   const email = await signedInEmail();
   if (!email) {
     return (

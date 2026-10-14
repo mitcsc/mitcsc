@@ -1,7 +1,6 @@
 /* Shared look for /join and /dashboard: Instrument Sans on near-black, pill buttons. */
-@font-face { font-family: "Instrument Sans"; font-weight: 400; font-display: swap; src: url(/font/instrument-sans/400.ttf) format("truetype"); }
-@font-face { font-family: "Instrument Sans"; font-weight: 500; font-display: swap; src: url(/font/instrument-sans/500.ttf) format("truetype"); }
-@font-face { font-family: "Instrument Sans"; font-weight: 600; font-display: swap; src: url(/font/instrument-sans/600.ttf) format("truetype"); }
+/* Holds the font variable from font.ts without adding a box. */
+.m-font { display: contents; }
 
 .m-root {
   --bg: #0c0c0d;
@@ -24,7 +23,7 @@
   min-height: 100svh;
   background: var(--bg);
   color: var(--text);
-  font-family: "Instrument Sans", Arial, sans-serif;
+  font-family: var(--font-instrument-sans), Arial, sans-serif;
   font-weight: 400;
   font-size: 15px;
   line-height: 1.5;
