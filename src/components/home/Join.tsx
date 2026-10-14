@@ -23,8 +23,11 @@ export default function Join() {
     return () => window.removeEventListener("resize", updateRadius);
   }, []);
 
+  // On phones the section is only as tall as it needs to be. Its bottom padding lets the
+  // page scroll until the panda is in the middle of the screen: half the screen, minus
+  // the 8rem footer, minus half of the 24rem circle.
   return (
-    <section className="w-full h-screen flex flex-col items-center justify-center overflow-hidden">
+    <section className="w-full pt-8 pb-[max(0px,calc(50lvh-20rem))] md:h-screen md:p-0 flex flex-col items-center justify-center overflow-hidden">
       <div className="flex flex-col w-full xl:max-w-7xl items-center justify-center">
         <motion.a
           href={membership}
