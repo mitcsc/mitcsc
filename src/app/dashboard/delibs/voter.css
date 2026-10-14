@@ -1,4 +1,4 @@
-.voter-room{--voter-red:#c5393a;--voter-ink:#f4f4f4;--voter-muted:#999999;width:100%;max-width:1000px;margin:0 auto;padding:40px 32px 64px;color:var(--voter-ink);font-family:Arial,Helvetica,sans-serif;font-weight:400;line-height:1.55}
+.voter-room{--voter-red:#c5393a;--voter-ink:#f4f4f4;--voter-muted:#999999;width:100%;max-width:1000px;margin:0 auto;padding:40px 32px 64px;color:var(--voter-ink);font-family:var(--font-instrument-sans), Arial, sans-serif;font-weight:400;line-height:1.55}
 .voter-masthead{display:flex;justify-content:space-between;gap:20px;align-items:center;border-bottom:1px solid #292929;padding-bottom:20px;font-size:12px}
 .voter-wordmark{font-weight:700;letter-spacing:.03em}
 .voter-admin-link{color:var(--voter-red)}
@@ -88,7 +88,7 @@
 
 .voter-room{--voter-red:#c5393a;--voter-ink:#f4f4f4;--voter-muted:#999;max-width:760px;padding:24px 0 48px}
 .voter-intro{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 0 28px}
-.voter-intro h1{font-family:Charlottenburg,Arial,sans-serif;font-size:clamp(36px,5vw,52px);letter-spacing:0;margin:0}
+.voter-intro h1{font-family:Charlottenburg,var(--font-instrument-sans), Arial, sans-serif;font-size:clamp(36px,5vw,52px);letter-spacing:0;margin:0}
 .voter-admin-link{font-size:13px;color:#ddd}
 .voter-panel{background:transparent;border:0;border-top:1px solid #292929;border-radius:0;box-shadow:none;padding:28px 0}
 .voter-panel h2{font-family:Canela,Georgia,serif;font-size:32px}

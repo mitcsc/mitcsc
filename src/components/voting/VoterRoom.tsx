@@ -4,8 +4,6 @@ import VotingNotice from "./VotingNotice";
 
 import WaitingPanda from "./WaitingPanda";
 
-import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { FinalBallot, RecoveredBallot, Ratings, VotingPhase, VotingState } from "@/lib/voting/types";
 
@@ -18,12 +16,12 @@ type Draft = {
   submitted: boolean;
 };
 const phases: Record<VotingPhase, { label: string; description: string }> = {
-  waiting: { label: "Waiting to begin", description: "Your admin will open the next ballot. This page updates automatically." },
+  waiting: { label: "Waiting to begin", description: "The host will open the next ballot. This page updates automatically." },
   initial: { label: "Initial ratings", description: "Record your own first impression before the discussion begins." },
   deliberation: { label: "Discussion", description: "Discuss the candidate. Ratings are paused." },
   revision: { label: "Voting open", description: "You may revise your ratings after the discussion, or keep your original choices." },
   final: { label: "Voting open", description: "Review your ratings and submit your final vote." },
-  locked: { label: "Voting closed", description: "The admin has closed this ballot. Wait here for the next candidate." },
+  locked: { label: "Voting closed", description: "The host has closed this ballot. Wait here for the next candidate." },
 };
 const prefix = "csc-voting-v1:";
 function draftKey(state: VotingState) {
@@ -62,16 +60,17 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
   }
 }
 
-export default function VoterRoom() {
-  const router = useRouter();
+// A signed-in exec's view of the open delib. Joins automatically; the Google account name is the voter's name.
+export default function VoterRoom({ onEnded }: { onEnded: () => void }) {
+  const ended = useRef(onEnded);
+  useEffect(() => { ended.current = onEnded; });
   const [state, setState] = useState<VotingState | null>(null);
   const [checking, setChecking] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
   const [joining, setJoining] = useState(false);
+  const autoJoined = useRef(false);
   const [pendingCount, setPendingCount] = useState(0);
   const inFlight = useRef(false);
   const pollAfter = useRef(0);
@@ -81,7 +80,6 @@ export default function VoterRoom() {
   const presenceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastPresence = useRef(0);
   const lastHidden = useRef<boolean | null>(null);
-  const joinToken = useRef<string | null>(null);
   const refresh = useCallback(async (): Promise<void> => {
     if (inFlight.current) {
       pendingPresenceRefresh.current = true;
@@ -95,14 +93,9 @@ export default function VoterRoom() {
       const next = await api<VotingState>(heartbeat ? `state?presence=${hidden ? "hidden" : "visible"}` : "state");
       if (heartbeat) { lastPresence.current=Date.now(); lastHidden.current=hidden; }
       pollFailures.current = 0; pollAfter.current = 0; joinRequired.current = false;
-      if (!next.active && !next.isAdmin) {
+      if (!next.active) {
         joinRequired.current = true;
-        setState(null);
-        setNeedsJoin(true);
-        setPendingCount(0);
-        setPassword("");
-        setConnected(true);
-        setError("");
+        ended.current();
         return;
       }
       setState(next);
@@ -113,11 +106,14 @@ export default function VoterRoom() {
       const failure = e as Error & { status?: number };
       setConnected(false);
       pollAfter.current = Date.now() + Math.min(60_000, 4000 * 2 ** ++pollFailures.current) + Math.random() * 2000;
-      if (failure.status === 401) {
+      if (failure.status === 404) { joinRequired.current = true; ended.current(); }
+      else if (failure.status === 401) {
         joinRequired.current = true;
-        setNeedsJoin(true);
         setState(null);
-        setError((failure.message.includes("kicked from this session") || failure.message.includes("banned from this session")) ? failure.message : "");
+        const removed = failure.message.includes("kicked from this session") || failure.message.includes("banned from this session");
+        // Joining needs no input, so a first visit joins straight away. A kicked voter chooses to rejoin.
+        if (!removed && !autoJoined.current) { autoJoined.current = true; setNeedsJoin(false); void join(); }
+        else { setNeedsJoin(true); setError(removed ? failure.message : ""); }
       } else setError(failure.message);
     } finally {
       setChecking(false);
@@ -131,9 +127,9 @@ export default function VoterRoom() {
         }
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- join only reads refs and stable setters.
   }, []);
   useEffect(() => {
-    if (state?.isAdmin) return;
     void refresh();
     const timer = window.setInterval(() => { if (!joinRequired.current && Date.now() >= pollAfter.current && (!document.hidden || Date.now() - lastPresence.current >= 20000)) void refresh(); }, state?.pollIntervalMs || 4000);
     // Visibility can fire before focus settles when returning to a tab.
@@ -163,7 +159,7 @@ export default function VoterRoom() {
       window.removeEventListener("offline", offline);
       document.removeEventListener("visibilitychange", resume);
     };
-  }, [refresh, state?.isAdmin, state?.pollIntervalMs]);
+  }, [refresh, state?.pollIntervalMs]);
   const countPending = useCallback(() => {
     if (!state?.voter) return;
     try {
@@ -179,50 +175,31 @@ export default function VoterRoom() {
     } catch { setPendingCount(0); }
   }, [state]);
   useEffect(() => { countPending(); }, [countPending]);
-  useEffect(() => {
-    if (state?.isAdmin) router.replace("/vote/admin");
-  }, [state?.isAdmin, router]);
-  async function join(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function join() {
     setJoining(true); setError("");
     try {
-      const joinBrowser = async () => {
-        let joinId: string | null = null;
-        try { joinId = localStorage.getItem("csc-voting-join-id"); } catch { /* Storage can be disabled. */ }
-        joinId ||= joinToken.current || crypto.randomUUID(); joinToken.current = joinId;
-        try { localStorage.setItem("csc-voting-join-id", joinId); } catch { /* Keep the retry identity in memory. */ }
-        await api("join", { name: name.trim(), password, joinId });
-      };
-      if (navigator.locks) await navigator.locks.request("csc-voting-join", joinBrowser);
-      else await joinBrowser();
-      setPassword("");
+      await api("join", {});
+      setNeedsJoin(false);
       lastPresence.current = 0;
       lastHidden.current = null;
       pollAfter.current = 0;
       pollFailures.current = 0;
       joinRequired.current = false;
       await refresh();
-    } catch (e) { setError((e as Error).message); }
-    finally { setJoining(false); }
+    } catch (e) { setNeedsJoin(true); setError((e as Error).message); }
+    finally { setJoining(false); setChecking(false); }
   }
-  if (state?.isAdmin) return <div className="voter-room"><p role="status">Opening admin controls…</p></div>;
   return <div className="voter-room">
 
-    {checking && <div className="voter-panel voter-wait" role="status">Connecting to the voting room…</div>}
+    {(checking || (joining && !needsJoin)) && <div className="voter-panel voter-wait" role="status">Joining the delib…</div>}
     <VotingNotice message={error} actionLabel={!error.includes("kicked from this session") && !error.includes("banned from this session") && !joining && !checking ? "Reconnect" : undefined} onAction={() => void refresh()}/>
 
-    {!checking && needsJoin && <section className="voter-panel voter-join">
-      <Image className="voter-join-logo" src="/img/logo/logo.png" alt="MIT CSC" width={144} height={144} priority/>
-
-      <form onSubmit={join}>
-        <label htmlFor="voter-name"><span className="voting-sr-only">Name</span><input placeholder="Name" id="voter-name" name="name" autoComplete="name" maxLength={100} required value={name} onChange={e => setName(e.target.value)} /></label>
-        <label htmlFor="voter-password"><span className="voting-sr-only">Code</span><input placeholder="Code" id="voter-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
-        <button className="voter-primary" disabled={joining || !name.trim() || !password}>{joining ? "Joining…" : "Join"}</button>
-      </form>
+    {!checking && needsJoin && !error.includes("banned from this session") && <section className="voter-panel voter-wait" aria-label="Join">
+      <button className="voter-primary" disabled={joining} onClick={() => void join()}>{joining ? "Joining…" : error.includes("kicked from this session") ? "Join again" : "Join"}</button>
     </section>}
     {!checking && state && <>
       <div className="voter-session-bar"><span>{state.voter?.name}</span>{!connected && <span>Connection interrupted</span>}</div>
-        <VotingNotice tone="info" message={pendingCount > 0 ? `${pendingCount} earlier ${pendingCount === 1 ? "vote is" : "votes are"} unfinished. Ask the admin to reopen submissions.` : ""}/>
+        <VotingNotice tone="info" message={pendingCount > 0 ? `${pendingCount} earlier ${pendingCount === 1 ? "vote is" : "votes are"} unfinished. Ask the host to reopen submissions.` : ""}/>
 
         {state.admissionPending ? <div className="voter-panel voter-wait" role="status"><WaitingPanda/><h2 className="voter-discussion-shimmer">Waiting for admission</h2></div> : state.votingComplete ? <section className="voter-panel voter-wait voter-complete" role="status"><WaitingPanda jumpOnly/><h2>Voting is complete.</h2><p>All candidates are finished. Thank you for participating.</p></section> : !state.currentCandidate || state.phase === "waiting" ? <div className={`voter-panel voter-wait ${state.votingStarted ? "" : "voter-lobby"}`} role="status"><WaitingPanda/>{state.votingStarted ? <><h2 className="voter-discussion-shimmer">Waiting for the next candidate</h2></> : <><h2>You’re in.</h2><p>Voting will appear here when it begins.</p><div className="voter-lobby-joined"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Joined as {state.voter?.name}</span></div></>}</div> : <VoterBallot key={draftKey(state)} state={state} connected={connected} onSubmitted={() => { countPending(); void refresh(); }} />}
     </>}
@@ -316,7 +293,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   }
   async function submit() {
     if (busy || !draft.initial || !initialAccepted || draft.submitted || !["revision", "final"].includes(state.phase) || !connected) return;
-    if (!validate(draft.final)) { setError("Your ballot does not match the current criteria. Ask the admin for help."); return; }
+    if (!validate(draft.final)) { setError("Your ballot does not match the current criteria. Ask the host for help."); return; }
     setBusy(true); setError("");
     const next = { ...draft, submissionId: draft.submissionId || crypto.randomUUID() };
     persist(next);
@@ -330,7 +307,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     finally { setBusy(false); }
   }
   const phase = phases[state.phase];
-  if (state.eligible === false) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer">{state.phase === "initial" ? "Waiting for admission" : "Waiting for the next candidate"}</p><p>{state.phase === "initial" ? "You joined after ratings opened. Ask the admin to admit you for this candidate." : "Initial ratings have closed. You can participate when the next candidate starts."}</p></section>;
+  if (state.eligible === false) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer">{state.phase === "initial" ? "Waiting for admission" : "Waiting for the next candidate"}</p><p>{state.phase === "initial" ? "You joined after ratings opened. Ask the host to admit you for this candidate." : "Initial ratings have closed. You can participate when the next candidate starts."}</p></section>;
   if (state.phase === "deliberation") return <section className="voter-discussion" aria-label="Discussion"><WaitingPanda/><h2>{state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer" role="status">Discussion in progress</p><CandidatePlatform candidate={state.currentCandidate!}/></section>;
   if (submissionVerified || state.ownBallot?.submitted) return <section className="voter-submitted" role="status"><WaitingPanda/><h2>Vote submitted for {state.currentCandidate!.name}</h2><p className="voter-discussion-shimmer">Waiting for the next candidate</p><CandidatePlatform candidate={state.currentCandidate!}/></section>;
 
@@ -355,7 +332,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
       {state.phase === "initial" && !draft.initialConfirmed && <><button className="voter-primary" disabled={busy || !connected || !state.criteria.length} onClick={() => void saveInitial()}>{busy ? "Saving…" : error ? "Retry" : "Save ratings"}</button></>}
       {state.phase === "initial" && draft.initialConfirmed && <p className="voter-action-status">Ratings saved</p>}
       {["revision", "final"].includes(state.phase) && draft.initial && initialAccepted && <><button className="voter-primary" disabled={busy || !connected} onClick={() => void submit()}>{busy ? "Sending ballot…" : error ? "Retry" : "Submit vote"}</button></>}
-      {state.phase === "locked" && draft.initial && <p className="voter-action-status">Submissions are closed. Ask the admin to reopen them if you still need to submit.</p>}
+      {state.phase === "locked" && draft.initial && <p className="voter-action-status">Submissions are closed. Ask the host to reopen them if you still need to submit.</p>}
     </div>}
   </section>;
 }

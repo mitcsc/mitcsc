@@ -1,8 +1,37 @@
-# CSC voting
+# CSC delibs
 
-The voting app uses Redis for live session state, registrations, initial submission receipts, and final ballots.
-Redis holds session settings and Google Sheets receives results when the admin closes each candidate.
-Saving initial ratings stores them in Redis. Unsubmitted revisions remain in the browser; final submission stores them in Redis too.
+Delibs is the voting tab of the exec dashboard, at `/dashboard/delibs`.
+Execs sign in with Google, the same as for the rest of the dashboard.
+There is no voting password.
+The old `/vote` and `/deliberations` links redirect to the tab.
+
+## How a delib runs
+
+1. An exec opens the Delibs tab and selects **Start a delib**.
+2. They enter a name, the criteria, and the candidates.
+3. That exec is the host. The host runs the rounds and does not vote.
+4. Every other exec who opens the tab joins automatically under their Google name.
+5. For each candidate, the host opens initial ratings, then discussion, then final voting, and then closes the round.
+6. After the last round, the host selects **End voting** and sees the full results.
+
+Only one delib can be open at a time.
+Only the host sees the results, and only for delibs they hosted.
+The host can open past results from **Your past delibs** on the Delibs tab.
+
+Execs must sign in again after this change so that the dashboard session has their Google name.
+
+## Results and export
+
+Votes stay in Redis. Nothing is written to Google Sheets or Drive while voting runs.
+On the results page, the host can:
+
+- Select **Download CSV** to download one row per ballot.
+- Select Google's **Save to Drive** button to save the same CSV to their own My Drive.
+
+Google's button fetches the CSV without the dashboard cookie.
+So the results page gives the button a link with a signed token that names the delib and its host.
+The token expires after one hour, and `MEMBERSHIP_SECRET` signs it.
+Google saves the file as a CSV file, not as a Google Sheet.
 
 ## Deployment
 
@@ -13,103 +42,54 @@ The app also accepts `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
 Use the writable REST token, not the read-only token.
 Keep eviction disabled: ballots must not be removed to make room for other keys.
 
-The existing `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY` still authorize Sheets exports.
-`VOTING_COOKIE_SECRET` optionally overrides the signing secret derived from the Google private key.
-All instances must use the same signing secret.
-Never commit credentials or include them in logs.
-The existing `GOOGLE_SHEET_ID` remains dedicated to public links.
+Delibs uses the dashboard's Google sign-in and `MEMBERSHIP_SECRET`.
+It no longer uses `VOTING_PRESIDENT_PASSWORD`, `VOTING_COOKIE_SECRET`, `VOTING_SETTINGS_SHEET_ID`, or the Google service account.
+You can delete those voting variables from Vercel.
+The service account is still used for the public links sheet.
 
-Redis is required; errors never fall back to Sheets.
-Missing Redis election data fails closed and must be restored, not reconstructed from an older export.
-The exec settings sheet and first-join admin workflow are no longer used.
+Redis is required.
+Missing Redis data fails closed and must be restored from a backup.
 
-## President-managed elections
+## Storage
 
-Set `VOTING_PRESIDENT_PASSWORD` in Vercel to a random password of at least 8 characters.
-Keep it in CSC's password manager or officer handoff records, not in a spreadsheet or source control.
-Redis and the president password are required.
-Existing election data is not imported or replaced.
-Deploy this workflow only after the existing election has finished exporting.
-Changing the environment password and redeploying invalidates president logins.
-No in-app password change is provided; Vercel remains the source of this credential.
-
-1. The president opens `/vote/admin` and enters the president password.
-2. They enter an election name, voter password and new results spreadsheet link.
-3. The spreadsheet must already be shared as Editor with the Google service account.
-4. The app verifies edit access by creating its Session marker before admitting voters.
-5. The president adds candidates and criteria, while voters join `/vote` with their name and voter password.
-6. Closing each candidate exports results to Sheets.
-7. After the last export, **End session** closes access and allows creation of the next election.
-
-Election IDs are generated automatically.
-Voters never become admin by joining first in this mode.
-Ending a session is blocked during an active round or pending export.
-An ended election cannot be restarted; its Redis data and Sheets results remain preserved.
-Use a new spreadsheet for each election.
-An already-used app-managed spreadsheet is rejected.
-A shared CSC Elections folder can simplify granting the service account access to new spreadsheets.
-Moving or renaming a spreadsheet does not change its ID; copying it does.
-
-## Storage and exports
-
-With Redis, voters and admins poll every three seconds. Hidden tabs stop polling.
-Session settings live in Redis and require no periodic Sheets reads.
+Voters and the host poll every three seconds.
+A hidden voter tab polls about every 20 seconds, so the host still sees the voter as away.
+A hidden host tab stops polling.
 
 Submitting a ballot saves it in Redis before the voter receives confirmation.
-An atomic compare-and-set validates the phase and stores the ballot together.
-A simultaneous close cannot discard a submission that has already been acknowledged.
+An atomic compare-and-set checks the phase and stores the ballot together.
+A round that closes at the same time cannot discard a submission that was already confirmed.
 Retries return the existing receipt instead of creating another ballot.
-The live documents have no expiry.
-Accepted initial ratings are authoritative; final submission cannot replace the original ratings.
-A signed-in voter can recover their own accepted ratings after losing browser drafts, but cannot retrieve another voter’s ratings.
-Late arrivals become eligible starting with the next candidate.
-
-Closing a candidate freezes submissions and exports their votes and initial receipts in one Sheets values batch.
-Tab creation, row allocation, and the summary formula can require additional setup calls.
-The app marks the candidate complete only after Sheets acknowledges the export.
-If export fails, the admin sees **Retry export to Sheets**.
-The votes remain in Redis, and another candidate cannot start until export succeeds.
-Reopening preserves existing votes and the original ballot version.
-New elections allocate contiguous row addresses in Redis for actual ballots when a candidate closes.
-Retries reuse those addresses; late submissions after reopening receive the next unused rows.
-There are no reserved 128-voter gaps. Responses follows export order; Summary follows setup order.
-Candidate and criterion IDs keep ratings correctly associated regardless of voting order.
-Existing elections without compact allocation metadata retain their old addresses. Never compact a running election.
-Summary names and formulas update together in one request, rather than clearing the report first.
-
-The app manages Candidates, Criteria, Responses, Summary, Session, Ballots, and Initial submissions tabs.
-Summary and Responses remain visible; app-managed tabs are hidden automatically on export.
-The original Sheet1 is hidden only if it is empty.
-Summary shows one candidate per row, one final-average column per criterion, and a vote count.
-Averages display to two decimal places; submitted initial/final ratings remain in Responses.
-Initial submissions also archives accepted initial ratings and voter names, including voters who never submitted a final ballot.
-Keep app-managed headers and IDs intact.
-The Summary formula computes averages from exported final ballots.
-Setup changes are saved in Redis; Sheets receives the frozen definitions with the first candidate export.
+Accepted initial ratings are authoritative; final submission cannot replace them.
+A voter can recover their own accepted ratings after losing browser drafts, but cannot read another voter's ratings.
+Late arrivals take part starting with the next candidate, unless the host admits them earlier.
+Reopening a closed candidate keeps its votes and its original ballot version.
 
 ## Verification and limits
 
-`npm run test:voting` runs security, president-login and health-check tests.
-`npm run test:voting:redis` requires `redis-server` and `redis-cli` on PATH.
-It starts an isolated local Redis server and simulates Sheets, with no external requests.
-It checks concurrent joins and submissions, phase races, retry recovery, export failure, and missing-database behavior.
-The test confirms zero Sheets calls during voting actions and status polling, excluding periodic settings refreshes.
+`npm run test:voting` runs the security, CSV export, and health check tests.
+`npm run test:voting:redis` needs `redis-server` and `redis-cli` on PATH.
+It starts a separate local Redis server and checks concurrent joins and submissions, phase races, retries, kick and ban, presence, and results.
 
-The obsolete Sheets-driven demo and live rehearsal scripts have been removed.
-Browser tests use mocked voting APIs; they never contact real Sheets or Redis.
+The browser tests in `tests/voting-*.e2e.cjs` mock the voting API, so they never touch Redis.
+Run them against a local dev server started with `DASHBOARD_DEV_EMAIL` set, for example:
 
-The app supports up to 128 voters, 100 candidates, and 20 criteria, with an 8 MB live-document ceiling.
-These input limits are not a promise that every combination fits a provider’s free allowance.
-Provider command, bandwidth, storage, and inactivity policies still apply.
+```bash
+DASHBOARD_DEV_EMAIL=exec@mit.edu npx next dev -p 3020
+```
+
+```bash
+VOTING_TEST_URL=http://localhost:3020 node tests/voting-admin.e2e.cjs
+```
+
+The app supports up to 128 voters, 100 candidates, and 20 criteria.
+These input limits do not promise that every combination fits a provider's free allowance.
+
 A Redis health check is scheduled for Monday and Thursday at 07:00 UTC in `vercel.json`.
-Vercel Hobby may invoke it within that hour; the handler adds a random 0–5-second delay.
-Set a randomly generated `CRON_SECRET` of at least 32 characters in Vercel's Production environment before deploying.
-Vercel passes that secret as the Authorization bearer token; missing or incorrect credentials fail before any Redis access.
-Each successful invocation updates only a dedicated health-check timestamp, with no election or Sheets access.
-This adds roughly nine Redis commands per month.
-Cron runs only after production deployment; adding the files alone does not activate it.
-Check Vercel cron logs after deployment; failed runs return HTTP 503 and Vercel does not automatically retry them.
-Periodic requests should avoid inactivity under Upstash's published definition, but synthetic keep-alives are not expressly guaranteed.
+Vercel Hobby may invoke it at any time within that hour; the handler adds a random 0-5 second delay.
+Set a randomly generated `CRON_SECRET` of at least 32 characters in Vercel's Production environment.
+Vercel sends that secret as the Authorization bearer token; a missing or wrong secret fails before any Redis access.
+Each successful run updates only a health check timestamp.
+Check the Vercel cron logs after deployment; failed runs return HTTP 503 and Vercel does not retry them.
 See [Vercel scheduling limits](https://vercel.com/docs/cron-jobs/usage-and-pricing) and [Upstash inactivity policy](https://upstash.com/docs/redis/help/faq#what-happens-if-my-database-is-not-used).
-Before an election, confirm the Redis database is available and run a short practice ballot.
-If Redis data is missing, restore the database instead of clearing the Sheets marker or starting over in the same election.
+Before a delib, confirm that the Redis database is available and run a short practice round.

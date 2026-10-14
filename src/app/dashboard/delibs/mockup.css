@@ -32,7 +32,7 @@
 }
 
 /* Voting pages, adapted from the supplied visual design. */
-.voting-root{background:#0c0c0d;color:#f4f3f1;font-family:"Instrument Sans",Arial,system-ui,sans-serif;--voting-accent:oklch(.58 .22 25);padding:40px 24px}
+.voting-root{background:#0c0c0d;color:#f4f3f1;font-family:var(--font-instrument-sans), Arial, sans-serif;--voting-accent:oklch(.58 .22 25);padding:40px 24px}
 .voting-root [hidden]{display:none!important}
 .voting-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 .voting-root .voting-admin{font-family:inherit;--va-red:oklch(.58 .22 25);max-width:1100px;padding:0}
@@ -75,19 +75,18 @@
 .voting-root .voting-setup-editor>.voting-admin-heading h2{font-size:15px;letter-spacing:0}
 .voting-root .voting-admin-editor{margin:0;padding:28px;border:0;min-width:0}
 .voting-root .voting-admin-editor:first-of-type{border-right:1px solid #ffffff14}
-.voting-root .voting-admin-editor>legend{float:left;width:100%;font:13px/1.5 Arial,sans-serif;color:#ffffff73;margin-bottom:16px}
+.voting-root .voting-admin-editor>legend{float:left;width:100%;font:13px/1.5 var(--font-instrument-sans), Arial, sans-serif;color:#ffffff73;margin-bottom:16px}
 .voting-root .voting-admin-editor>legend+*{clear:both}
 .voting-root .voting-admin-edit-row{padding:8px 0;margin:0;border-color:#ffffff0f;align-items:center;gap:8px}
 .voting-root .voting-admin-edit-row label{font-size:0}
 .voting-root .voting-admin-edit-row input{border-color:transparent;background:none;padding:6px 8px;font-size:15px}
 .voting-root .voting-admin-row-actions button{border:0;padding:4px;color:#ffffff66;font-size:12px}
-.voting-root .voting-admin-number{font:12px Arial,sans-serif;color:#ffffff59}
+.voting-root .voting-admin-number{font:12px var(--font-instrument-sans), Arial, sans-serif;color:#ffffff59}
 .voting-root .voting-admin-editor>button{margin-top:12px;border-radius:999px}
 .voting-root .voting-admin-criterion{border-color:#ffffff0f;padding-bottom:18px;margin-bottom:18px;gap:8px}
 .voting-root .voting-admin-save{grid-column:1/-1;padding:20px 28px;margin:0;border-color:#ffffff14}
 .voting-root .voting-admin-save button,.voting-root .voting-admin-heading>button{border-radius:999px}
 .voting-root .voting-admin-preview{margin:28px;grid-column:1/-1;background:transparent;max-width:none}
-.voting-root .voting-setup-tab>.voting-admin-card:not(.voting-setup-editor){padding:28px;margin:0;border:0}
 .voting-root .voter-room{font-family:inherit;--voter-red:oklch(.58 .22 25);max-width:480px;padding:0}
 .voting-root .voter-session-bar{display:none}
 .voting-root .voter-panel{border:0;padding:0;margin:0}
@@ -219,13 +218,8 @@
 .voting-root .voting-setup-editor{grid-template-columns:minmax(0,var(--candidate-width,50%)) 1px minmax(0,1fr)}
 .voting-root .voting-admin-editor:first-of-type{border-right:0;padding-right:24px}
 .voting-root .voting-admin-editor:nth-of-type(2){padding-left:24px}
-.voting-column-resizer{position:relative;align-self:stretch;background:#ffffff14;cursor:col-resize;touch-action:none;outline-offset:4px;z-index:3}
-.voting-column-resizer::before{content:"";position:absolute;inset:0 -7px}
-.voting-column-resizer::after{content:"";position:absolute;width:3px;height:28px;left:-1px;top:50%;transform:translateY(-50%);border-radius:3px;background:#ffffff33;transition:background .15s}
-.voting-column-resizer:hover,.voting-column-resizer.is-resizing{background:#ffffff40}
-.voting-column-resizer:hover::after,.voting-column-resizer.is-resizing::after{background:#ffffffb3}
 .voting-candidate-editor-list{position:relative}
-@media(max-width:760px){.voting-root .voting-setup-editor{grid-template-columns:minmax(0,1fr)}.voting-column-resizer{display:none}.voting-root .voting-admin-editor:first-of-type,.voting-root .voting-admin-editor:nth-of-type(2){padding-left:0;padding-right:0}}
+@media(max-width:760px){.voting-root .voting-setup-editor{grid-template-columns:minmax(0,1fr)}.voting-root .voting-admin-editor:first-of-type,.voting-root .voting-admin-editor:nth-of-type(2){padding-left:0;padding-right:0}}
 .voting-root:has(.voting-console){padding-top:8px}
 .voting-root .voting-console-header button[role=tab]{padding-top:8px;padding-bottom:12px}
 .voting-root .voting-admin-candidates .voting-candidate-toolbar{display:flex;justify-content:flex-end;margin:0 0 8px}
@@ -240,9 +234,6 @@
 .voting-root .voting-round-steps li.is-current{border-color:oklch(.58 .22 25);color:#fff}
 .voting-root .voting-round-steps li.is-current .voting-stage-marker{border-color:transparent;background:oklch(.58 .22 25);color:#fff}
 @media(max-width:760px){.voting-root .voting-round-steps{gap:8px}.voting-root .voting-round-steps li{grid-template-columns:1fr;gap:8px}.voting-root .voting-round-steps li .voting-stage-label{font-size:11px}}
-.voting-root .voting-preview-back{padding:0 0 16px;border-bottom:1px solid #ffffff14}
-.voting-root .voting-admin .voting-preview-back button{border:0;border-radius:0;padding:8px 0;color:#ffffff99;background:none;font-size:13px}
-.voting-root .voting-admin .voting-preview-back button:hover{color:#fff;background:none}
 .voting-root .voting-admin-controls{padding-top:24px}
 /* The running session is a full-height workspace, with tools anchored in its sidebar. */
 .voting-root:has(.voting-live-page){padding:0}
@@ -250,7 +241,6 @@
 .voting-root .voting-live-page .voting-admin-controls{grid-template-columns:clamp(240px,24vw,320px) minmax(0,1fr);gap:0;padding:0;min-height:100svh;align-items:stretch}
 .voting-root .voting-live-page .voting-admin-candidates{display:flex;flex-direction:column;min-height:100svh;border-right:1px solid #ffffff14;padding:24px 16px 0}
 .voting-root .voting-live-page .voting-candidate-list{margin:0 0 20px}
-.voting-root .voting-live-page .voting-preview-back{padding:0 8px 16px;border:0}
 .voting-root .voting-live-page .voting-admin-candidates>.voting-admin-muted{padding:0 12px;font-size:12px;color:#ffffff66}
 .voting-root .voting-live-page .voting-sidebar-footer{margin-top:auto;border-top:1px solid #ffffff14;padding:16px 0;display:flex;align-items:center}
 .voting-root .voting-admin .voting-sidebar-footer>button{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid transparent;border-radius:7px;color:#ffffff99;font-size:12px;min-height:40px;width:100%;text-align:left}
@@ -287,20 +277,16 @@
 .voting-root .voting-admin .voting-admin-scale>button{justify-self:end;align-self:center}
 .voting-root .voting-admin .voting-admin-edit-row{flex-wrap:nowrap;min-height:56px}
 .voting-root .voting-admin .voting-admin-row-actions{flex-shrink:0}
-.voting-root .voting-setup-editor:has(.is-resizing){user-select:none;cursor:col-resize}
 .voting-root .voting-admin .voting-admin-edit-row.is-dragging{background:#1b1b1d;box-shadow:0 8px 24px #0006;cursor:grabbing;user-select:none}
 .voting-root .voting-admin .voting-admin-edit-row{transition:background-color .15s;will-change:auto}
 
 /* Fixed workspace, independent pane scrolling, and geometry without layout animation. */
 .voting-root{height:100svh;min-height:0;overflow:hidden;box-sizing:border-box}
 .voting-root .voting-admin.voting-console{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
-.voting-root .voting-setup-tab:not([hidden]){flex:1;min-height:0;overflow:hidden}
 .voting-root .voting-setup-editor{height:100%;min-height:0;grid-template-columns:minmax(0,var(--candidate-width,38%)) 1px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;overflow:hidden}
 .voting-root .voting-setup-editor>.voting-admin-editor{min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;overscroll-behavior:contain;align-content:start}
 .voting-root .voting-admin .voting-admin-edit-row{height:56px;min-height:56px;max-height:56px;flex-shrink:0;transform:none;contain:layout}
 .voting-root .voting-admin .voting-candidate-name input{width:100%;min-width:0;box-sizing:border-box}
-.voting-root .voting-setup-editor:has(.is-resizing) .voting-admin-edit-row,
-.voting-root .voting-setup-editor:has(.is-resizing) .voting-admin-edit-row *{transition:none!important;animation:none!important}
 .voting-root .voting-live-page .voting-admin-controls{height:100%;min-height:0;margin-bottom:0;flex:1;overflow:hidden}
 .voting-root .voting-live-page .voting-admin-candidates{height:100%;min-height:0;overflow:hidden}
 .voting-root .voting-live-page .voting-candidate-list{overflow:auto;min-height:0;overscroll-behavior:contain}
@@ -337,7 +323,7 @@
 
 /* Each pane owns its editing tools; the page toolbar owns progression. */
 .voting-root .voting-admin .voting-pane-heading{position:sticky;top:0;z-index:4;background:#0c0c0d;padding:0 0 18px;margin-bottom:8px;border-bottom:1px solid #ffffff0d}
-.voting-root .voting-admin .voting-pane-heading h3{font:500 14px/1.4 "Instrument Sans",sans-serif;letter-spacing:0;margin:0;color:#dedee0}
+.voting-root .voting-admin .voting-pane-heading h3{font:500 14px/1.4 var(--font-instrument-sans), Arial, sans-serif;letter-spacing:0;margin:0;color:#dedee0}
 .voting-pane-heading h3 span{font-weight:400;color:#77777c;margin-left:6px;font-size:12px}
 .voting-root .voting-admin .voting-pane-heading .voting-candidate-add{margin-top:14px;gap:4px}
 .voting-root .voting-admin .voting-pane-heading button{font-size:12px;border-radius:6px;min-height:34px;padding:6px 10px}
@@ -357,8 +343,6 @@
 .voting-root .voting-admin .voting-criteria-heading{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:14px}
 .voting-root .voting-admin .voting-admin-scale .voting-admin-check{justify-self:start;margin-left:8px}
 
-.voting-root .voting-setup-toolbar .voting-joined-count{margin-right:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:#a2a2a6;font-weight:400}
-.voting-joined-count>span{width:6px;height:6px;border-radius:50%;background:#77777c}
 
 /* Edge-to-edge workspace chrome; padding belongs to pane content. */
 .voting-root:has(.voting-console){padding:0}
@@ -384,17 +368,11 @@
 .voting-root .voting-setup-editor{grid-template-rows:minmax(0,1fr) auto}
 .voting-root .voting-admin .voting-pane-heading{padding-top:16px;padding-bottom:14px}
 .voting-pane-title{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px;width:100%}
-.voting-root .voting-pane-title .voting-joined-count{font-size:12px;color:#8d8d92;white-space:nowrap}
-.voting-root .voting-admin .voting-pane-title .voting-start{display:inline-flex;align-items:center;gap:18px;padding:7px 16px;min-height:34px;border-radius:6px}
 .voting-root .voting-admin .voting-pane-heading .voting-candidate-add{gap:8px}
-.voting-root .voting-admin .voting-pane-heading button:not(.voting-start){background:transparent;border-color:#ffffff1a}
-.voting-root .voting-admin .voting-pane-heading button:hover:not(:disabled):not(.voting-start){background:#ffffff08;border-color:#ffffff33;color:#fff}
+.voting-root .voting-admin .voting-pane-heading button{background:transparent;border-color:#ffffff1a}
+.voting-root .voting-admin .voting-pane-heading button:hover:not(:disabled){background:#ffffff08;border-color:#ffffff33;color:#fff}
 .voting-root .voting-admin .voting-pane-heading button[aria-expanded=true]{background:#ffffff0d;border-color:#ffffff40}
 @media(max-width:760px){.voting-root .voting-setup-editor{grid-template-rows:minmax(140px,1fr) minmax(180px,1.3fr) auto}}
-.voting-root .voting-admin .voting-preview-back{padding:0 0 16px}
-.voting-root .voting-admin .voting-preview-back button{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid transparent;border-radius:6px;min-height:36px;color:#a2a2a6;font-size:12px;transition:background-color .15s,color .15s}
-.voting-root .voting-admin .voting-preview-back button:hover{background:#ffffff08;color:#f4f3f1}
-.voting-preview-back svg{flex:none}
 
 /* One bounded participation block works for both small and large groups. */
 .voting-root .voting-waiting-on{padding:20px 0;margin-top:12px;border-block:1px solid #ffffff14}
@@ -425,7 +403,6 @@
 @media(max-height:360px){.voting-root .voter-room:has(.voter-join){justify-content:flex-start}}
 .voting-pane-title{min-height:24px}
 .voting-criteria-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
-.voting-root .voting-admin .voting-criteria-actions .voting-start{display:inline-flex;align-items:center;gap:18px;padding:7px 16px;min-height:34px;border-radius:6px}
 
 @supports(background-clip:text){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer,.voting-root .voter-room .voter-submitted p.voter-discussion-shimmer{color:transparent}}
 @media(prefers-reduced-motion:reduce){.voting-root .voter-room .voter-wait h2.voter-discussion-shimmer,.voting-root .voter-room .voter-submitted p.voter-discussion-shimmer{color:#a2a2a6}}
@@ -458,6 +435,13 @@
   90%{transform:translateY(0)}
 }
 @media(prefers-reduced-motion:reduce){.voter-panda-jump-only .voter-panda-hop{animation:none}}
+/* The ground circle follows the waiting panda's sideways hop. */
+.voter-panda-track:not(.voter-panda-jump-only) .voter-panda-shadow{animation:voting-panda-shadow 1.3s infinite}
+@keyframes voting-panda-shadow{
+  0%,100%{transform:translateX(-6px) scale(1.1);opacity:1;animation-timing-function:cubic-bezier(.18,.7,.35,1)}
+  45%{transform:translateX(2px) scale(.55);opacity:.4;animation-timing-function:cubic-bezier(.55,0,.85,.35)}
+  88%{transform:translateX(6px) scale(1.1);opacity:1;animation-timing-function:ease-out}
+}
 
 .voting-root .voter-room .voter-complete{gap:8px}
 .voter-complete .voter-panda-track{margin-bottom:-6px}

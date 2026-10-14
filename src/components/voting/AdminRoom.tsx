@@ -1,10 +1,7 @@
 "use client";
 import VotingNotice from "./VotingNotice";
-
-
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useTooltip } from "@/components/ui/useTooltip";
-import AdminSetup from "@/components/voting/AdminSetup";
 import type { AdminAction, VotingPhase, VotingState } from "@/lib/voting/types";
 
 const rounds: { phase: VotingPhase; label: string; description: string; next: VotingPhase; action: string }[] = [
@@ -22,7 +19,8 @@ async function responseData(response: Response) {
   return data;
 }
 
-export default function AdminRoom({initialState, onExit, onStateChange, setupComplete = false, showVoters = false, onResults}: {onResults?: () => void; showVoters?: boolean; setupComplete?: boolean; initialState: VotingState; onExit: (state?: VotingState) => void; onStateChange?: (state: VotingState) => void}) {
+// The host's live controls. A delib is fully set up when it is created, so there is no setup step here.
+export default function AdminRoom({initialState, onExit, onStateChange, showVoters = false, onResults}: {onResults?: () => void; showVoters?: boolean; initialState: VotingState; onExit: () => void; onStateChange?: (state: VotingState) => void}) {
   const [presence, setPresence] = useState<Record<string, "online" | "away" | "offline" | "unknown">>({});
   useEffect(() => {
     if (!showVoters) return;
@@ -51,28 +49,14 @@ export default function AdminRoom({initialState, onExit, onStateChange, setupCom
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [connectionError, setConnectionError] = useState("");
-  const [displayOrder, setDisplayOrder] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  useEffect(() => {
-    setSelectedId(null);
-    try {
-      const saved = JSON.parse(localStorage.getItem(`voting-order:${serverState?.sessionId}`) || "[]");
-      setDisplayOrder(Array.isArray(saved) ? saved.filter(id => typeof id === "string") : []);
-    } catch { setDisplayOrder([]); }
-  }, [serverState?.sessionId]);
-  const candidates = [...(serverState?.candidates || [])].sort((a, b) => {
-    const ai = displayOrder.indexOf(a.id), bi = displayOrder.indexOf(b.id);
-    return (ai < 0 ? displayOrder.length + a.order : ai) - (bi < 0 ? displayOrder.length + b.order : bi);
-  });
-  const started = !!serverState?.ballotVersion || candidates.some(c => c.completed) || (!!serverState && serverState.phase !== "waiting");
+  const candidates = [...(serverState?.candidates || [])].sort((a, b) => a.order - b.order);
   const selected = candidates.find(c => c.id === selectedId) || serverState?.currentCandidate || candidates[0] || null;
   const viewingLive = selected?.id === serverState?.currentCandidate?.id;
   const selectedState = serverState?.candidateStates?.find(c => c.candidateId === selected?.id);
   const state = serverState && selected && !viewingLive ? {...serverState, currentCandidate: selected, phase: selectedState?.phase || (selected.completed ? "locked" as const : "waiting" as const), ballotVersion: selectedState?.ballotVersion || "", submittedCount: selectedState?.submittedCount || 0, participants: selectedState?.participants || []} : serverState;
   const liveIdle = serverState?.phase === "waiting" || serverState?.phase === "locked";
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"setup" | "live">(setupComplete ? "live" : "setup");
-  const [setupRevision, setSetupRevision] = useState(0);
   const pollInFlight = useRef(false);
   const pollAfter = useRef(0);
   const pollFailures = useRef(0);
@@ -94,7 +78,7 @@ export default function AdminRoom({initialState, onExit, onStateChange, setupCom
       if (response.status === 401) { onExit(); return; }
       const next: VotingState = await responseData(response);
       pollFailures.current = 0; pollAfter.current = 0;
-      if (!next.isAdmin) { onExit(next); return; }
+      if (!next.isAdmin) { onExit(); return; }
       if (revision === generation.current) {applyState(next); setConnectionError("");}
     } catch (e) {
       if (!abort.signal.aborted && revision === generation.current) {
@@ -120,14 +104,10 @@ export default function AdminRoom({initialState, onExit, onStateChange, setupCom
         const upcoming = action.phase === "locked" ? candidates.find(candidate => candidate.id !== next.currentCandidate?.id && next.candidates?.some(updated => updated.id === candidate.id && !updated.completed)) : undefined;
         setSelectedId(upcoming?.id || next.currentCandidate?.id || null);
       }
-      if (action.action === "initialize") setTab("setup");
-      if (action.action === "initialize") setSetupRevision(x => x + 1);
       return true;
     } catch (e) {setError(e instanceof Error ? e.message : "The change could not be saved."); return false;}
     finally {mutating.current = false; setBusy(false);}
   };
-  const editable = state?.initialized && !started && state.phase === "waiting";
-  const showPreview = started || tab === "live";
   const changePhase = (phase: VotingPhase) => {
     void act({action: "setPhase", phase, ...(phase === "initial" && state?.currentCandidate ? {candidateId: state.currentCandidate.id} : {})});
   };
@@ -142,13 +122,12 @@ export default function AdminRoom({initialState, onExit, onStateChange, setupCom
   const roster = serverState?.voters || [];
   const visibleVoters = [...roster.filter(v => !v.removed), ...(showRemoved ? roster.filter(v => v.removed) : [])];
   const rosterSelection = visibleVoters.filter(v => selectedVoters.includes(v.id));
-  const canAdmit = !busy && !serverState?.exportPending && !!rosterSelection.length && ["waiting", "initial"].includes(serverState?.phase || "") && rosterSelection.every(v => !v.banned && (v.removed || !v.eligible));
-  const canKick = !busy && !serverState?.exportPending && !!rosterSelection.length && rosterSelection.every(v => !v.removed);
-  const canBan = !busy && !serverState?.exportPending && !!rosterSelection.length && rosterSelection.every(v => !v.banned);
-  return <div className={`voting-admin ${state?.isAdmin && state.initialized ? `voting-console ${showPreview ? "voting-live-page" : ""}` : ""}`}>
-
+  const canAdmit = !busy && !!rosterSelection.length && ["waiting", "initial"].includes(serverState?.phase || "") && rosterSelection.every(v => !v.banned && (v.removed || !v.eligible));
+  const canKick = !busy && !!rosterSelection.length && rosterSelection.every(v => !v.removed);
+  const canBan = !busy && !!rosterSelection.length && rosterSelection.every(v => !v.banned);
+  return <div className={`voting-admin ${state?.isAdmin ? "voting-console voting-live-page" : ""}`}>
     {removedTip.tooltip}{admitTip.tooltip}
-    {setupComplete && serverState && showVoters && <div id="admin-voter-roster" className="voting-roster">
+    {serverState && showVoters && <div id="admin-voter-roster" className="voting-roster">
       <div className="voting-roster-heading"><h2>Voters{rosterSelection.length ? ` (${rosterSelection.length} selected)` : ` (${visibleVoters.length})`}</h2><div className="voting-roster-actions">
         <button className="voting-roster-visibility" aria-label="Show removed voters" aria-pressed={showRemoved} {...removedTip.triggerProps} onClick={() => {setShowRemoved(!showRemoved); setSelectedVoters([]);}}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>{!showRemoved && <path d="m3 3 18 18"/>}</svg>
@@ -168,55 +147,41 @@ export default function AdminRoom({initialState, onExit, onStateChange, setupCom
     <VotingNotice message={error}/>
     <VotingNotice message={connectionError ? `${connectionError} Retrying automatically.` : ""}/>
     {loading ? <section className="voting-admin-card"><p role="status">Connecting to your election…</p></section> : !state?.isAdmin ? null : <>
-      {!state.active && <div className="voting-admin-notice">This session has ended. Create a new session to vote again.</div>}
-      {!state.initialized ? <section className="voting-admin-card"><h2>Set up this election</h2><p>Add candidates and criteria to begin.</p><button className="voting-admin-primary" disabled={busy} onClick={() => void act({action: "initialize"})}>{busy ? "Setting up…" : "Set up election"}</button></section> : <>
-        <div className="voting-admin-controls" hidden={!showPreview}>
-          <section className="voting-admin-candidates" aria-label="Candidate selection">
-            {editable && !setupComplete && <div className="voting-preview-back"><button onClick={() => setTab("setup")}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg><span>Back to setup</span></button></div>}
-            <ol className="voting-candidate-list">{candidates.map(c => <li key={c.id}>
-              <button className={c.id === state.currentCandidate?.id ? "is-selected" : ""} aria-current={c.id === state.currentCandidate?.id ? "true" : undefined} aria-label={`View ${c.name}`} disabled={busy} onClick={() => selectCandidate(c.id)}>
-                <span className={`voting-candidate-dot ${c.completed ? "is-done" : c.id === serverState?.currentCandidate?.id ? "is-now" : ""}`} aria-hidden="true"/><span><strong>{c.name}</strong><small>{c.id === serverState?.currentCandidate?.id && !liveIdle ? "Live" : c.completed ? "Complete" : ""}</small></span>
-              </button>
-            </li>)}</ol>
+      {!state.active && <div className="voting-admin-notice">This delib has ended.</div>}
+      <div className="voting-admin-controls">
+        <section className="voting-admin-candidates" aria-label="Candidate selection">
+          <ol className="voting-candidate-list">{candidates.map(c => <li key={c.id}>
+            <button className={c.id === state.currentCandidate?.id ? "is-selected" : ""} aria-current={c.id === state.currentCandidate?.id ? "true" : undefined} aria-label={`View ${c.name}`} disabled={busy} onClick={() => selectCandidate(c.id)}>
+              <span className={`voting-candidate-dot ${c.completed ? "is-done" : c.id === serverState?.currentCandidate?.id ? "is-now" : ""}`} aria-hidden="true"/><span><strong>{c.name}</strong><small>{c.id === serverState?.currentCandidate?.id && !liveIdle ? "Live" : c.completed ? "Complete" : ""}</small></span>
+            </button>
+          </li>)}</ol>
 
 
-          </section>
-          <section className="voting-round-controls" aria-label="Round controls">
-            {!state.currentCandidate ? <div className="voting-round-empty"><h2>Choose a candidate to begin</h2><p>Select a name from the candidate list.</p></div> : <>
-              <p className="voting-current-label">{viewingLive && !liveIdle ? "Current candidate" : state.currentCandidate.completed ? "Completed candidate" : "Up next"}</p><h2 className="voting-current-name">{state.currentCandidate.name}</h2>
-              <ol className="voting-round-steps" aria-label="Voting rounds">{steps.map((label, index) => <li key={label} aria-current={stepIndex === index ? "step" : undefined} className={stepIndex === index ? "is-current" : stepIndex > index ? "is-complete" : ""}><span className="voting-stage-marker" aria-hidden="true">{stepIndex > index ? <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 3 3 7-7"/></svg> : index + 1}</span><span className="voting-stage-label">{label}</span><span className="voting-sr-only">{stepIndex > index ? ": Completed" : stepIndex === index ? ": In progress" : ": Upcoming"}</span></li>)}</ol>
-              <div className="voting-round-status" aria-live="polite"><h3 className="voting-sr-only">{state.phase === "locked" ? "Voting closed" : round?.label}</h3><p>{state.exportPending ? "Votes saved. Export to Sheets before continuing." : state.phase === "locked" ? "This candidate is complete." : round?.description}</p></div>
-              {(state.phase === "locked") && <p className="voting-submission-count"><strong>{state.submittedCount}</strong> final ballots submitted</p>}
-              {["initial", "revision", "final"].includes(state.phase) && state.participants && <div className="voting-waiting-on" aria-live="polite">
-                {(() => {
-                  const voters = state.phase === "initial" ? state.participants : state.participants.filter(voter => voter.initialSubmitted);
-                  const waiting = voters.filter(voter => state.phase === "initial" ? !voter.initialSubmitted : !voter.submitted);
-                  return voters.length === 0 ? <p>{state.phase === "initial" ? "No voters have joined yet." : "No initial ratings were submitted."}</p> : <><div className="voting-response-progress"><span><strong>{voters.length - waiting.length}</strong> / {voters.length} submitted</span><span>{state.phase === "initial" ? "Initial ratings" : "Final votes"}</span></div><progress aria-label="Submitted votes" value={voters.length - waiting.length} max={voters.length}/>{waiting.length === 0 ? <p>Everyone has submitted.</p> : <><p>Waiting on {waiting.length}</p><ul>{waiting.map(voter => <li key={voter.id}>{voter.name}</li>)}</ul></>}</>;
-                })()}
-              </div>}
+        </section>
+        <section className="voting-round-controls" aria-label="Round controls">
+          {!state.currentCandidate ? <div className="voting-round-empty"><h2>Choose a candidate to begin</h2><p>Select a name from the candidate list.</p></div> : <>
+            <p className="voting-current-label">{viewingLive && !liveIdle ? "Current candidate" : state.currentCandidate.completed ? "Completed candidate" : "Up next"}</p><h2 className="voting-current-name">{state.currentCandidate.name}</h2>
+            <ol className="voting-round-steps" aria-label="Voting rounds">{steps.map((label, index) => <li key={label} aria-current={stepIndex === index ? "step" : undefined} className={stepIndex === index ? "is-current" : stepIndex > index ? "is-complete" : ""}><span className="voting-stage-marker" aria-hidden="true">{stepIndex > index ? <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 3 3 7-7"/></svg> : index + 1}</span><span className="voting-stage-label">{label}</span><span className="voting-sr-only">{stepIndex > index ? ": Completed" : stepIndex === index ? ": In progress" : ": Upcoming"}</span></li>)}</ol>
+            <div className="voting-round-status" aria-live="polite"><h3 className="voting-sr-only">{state.phase === "locked" ? "Voting closed" : round?.label}</h3><p>{state.phase === "locked" ? "This candidate is complete." : round?.description}</p></div>
+            {(state.phase === "locked") && <p className="voting-submission-count"><strong>{state.submittedCount}</strong> final ballots submitted</p>}
+            {["initial", "revision", "final"].includes(state.phase) && state.participants && <div className="voting-waiting-on" aria-live="polite">
+              {(() => {
+                const voters = state.phase === "initial" ? state.participants : state.participants.filter(voter => voter.initialSubmitted);
+                const waiting = voters.filter(voter => state.phase === "initial" ? !voter.initialSubmitted : !voter.submitted);
+                return voters.length === 0 ? <p>{state.phase === "initial" ? "No voters have joined yet." : "No initial ratings were submitted."}</p> : <><div className="voting-response-progress"><span><strong>{voters.length - waiting.length}</strong> / {voters.length} submitted</span><span>{state.phase === "initial" ? "Initial ratings" : "Final votes"}</span></div><progress aria-label="Submitted votes" value={voters.length - waiting.length} max={voters.length}/>{waiting.length === 0 ? <p>Everyone has submitted.</p> : <><p>Waiting on {waiting.length}</p><ul>{waiting.map(voter => <li key={voter.id}>{voter.name}</li>)}</ul></>}</>;
+              })()}
+            </div>}
 
-              <div className="voting-round-actions">
-              {round && <button className="voting-admin-primary voting-round-next" disabled={busy || (!viewingLive && !liveIdle) || !state.active || (round.next === "initial" && state.currentCandidate.completed) || !state.criteria.length} onClick={() => changePhase(round.next)}>{busy ? "Updating…" : round.action}</button>}
-              {state.exportPending && <button className="voting-admin-primary voting-round-next" disabled={busy} onClick={() => void act({action: "setPhase", phase: "locked"})}>{busy ? "Exporting…" : "Retry export to Sheets"}</button>}
-              {state.phase === "locked" && !state.exportPending && candidates.length > 0 && candidates.every(c => c.completed) && onResults && <button className="voting-admin-primary voting-round-next" onClick={onResults} disabled={busy}>Continue to results →</button>}
-              {state.phase === "locked" && !state.exportPending && <button className="voting-admin-primary voting-round-next voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? "Reopening…" : "Reopen final submission"}</button>}
-              {!viewingLive && !liveIdle && <p className="voting-admin-muted">Another candidate is live. Close that round before opening this one.</p>}
-              {state.phase === "locked" && !state.exportPending && !nextCandidate && <p className="voting-admin-muted">All candidates are complete.</p>}
-              </div>
-            </>}
-          </section>
-        </div>
-        <div hidden={showPreview} className="voting-setup-tab">{editable ? <AdminSetup key={`${state.sessionId}-${setupRevision}`} candidates={candidates} criteria={state.criteria} busy={busy} joinedCount={serverState?.participants?.length || 0} onContinue={() => setTab("live")} onSave={async (nextCandidates, criteria) => {
-          const originalOrder = new Map((serverState?.candidates || []).map(c => [c.id, c.order]));
-          const canonical = [...nextCandidates].sort((a, b) => (originalOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (originalOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER)).map((c, order) => ({...c, order}));
-          if (!await act({action: "saveSetup", candidates: canonical, criteria})) return false;
-          const order = nextCandidates.map(c => c.id);
-          setDisplayOrder(order);
-          try { localStorage.setItem(`voting-order:${state.sessionId}`, JSON.stringify(order)); } catch { /* Keep the order for this visit. */ }
-          setSelectedId(order[0] || null);
-          return true;
-        }}/> : <section className="voting-admin-card"><h2>Criteria</h2><p className="voting-admin-muted">Setup is locked once voting begins.</p><div className="voting-admin-read-criteria">{state.criteria.map(c => <div key={c.id}><strong>{c.label}</strong><span>{c.min}–{c.max} · {c.required ? "Required" : "Optional"}</span><p>{c.description}</p></div>)}</div></section>}</div>
-      </>}
+            <div className="voting-round-actions">
+            {round && <button className="voting-admin-primary voting-round-next" disabled={busy || (!viewingLive && !liveIdle) || !state.active || (round.next === "initial" && state.currentCandidate.completed) || !state.criteria.length} onClick={() => changePhase(round.next)}>{busy ? "Updating…" : round.action}</button>}
+            {state.phase === "locked" && candidates.length > 0 && candidates.every(c => c.completed) && onResults && <button className="voting-admin-primary voting-round-next" onClick={onResults} disabled={busy}>Continue to results →</button>}
+            {state.phase === "locked" && <button className="voting-admin-primary voting-round-next voting-reopen-action" disabled={busy || !liveIdle} onClick={() => reopenCandidate(state.currentCandidate!.id)}>{busy ? "Reopening…" : "Reopen final submission"}</button>}
+            {!viewingLive && !liveIdle && <p className="voting-admin-muted">Another candidate is live. Close that round before opening this one.</p>}
+            {state.phase === "locked" && !nextCandidate && <p className="voting-admin-muted">All candidates are complete.</p>}
+            </div>
+          </>}
+        </section>
+      </div>
     </>}
   </div>;
 }

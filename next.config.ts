@@ -28,7 +28,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/deliberations/:path*", destination: "/vote/:path*", permanent: true },
+      { source: "/deliberations/:path*", destination: "/dashboard/delibs", permanent: true },
+      { source: "/vote/:path*", destination: "/dashboard/delibs", permanent: true },
       {
         source: "/link",
         destination: "/links",

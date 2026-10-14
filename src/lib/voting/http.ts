@@ -1,38 +1,25 @@
-import { PRESIDENT_COOKIE, requirePresident } from "./president";
-import { presidentIdentity, presidentPoll, voterPoll } from "./redis-service";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { COOKIE, readIdentity, VotingError } from "./security";
-import { canonicalIdentity } from "./admin-identity";
+import { MembershipError } from "@/lib/membership/errors";
+import { requireExecPerson } from "@/lib/membership/exec-auth";
+import { identityFor, type Person } from "./redis-service";
+import { VotingError } from "./security";
 import { authorize, settings } from "./service";
 export function json(value: unknown, status = 200) {
   return NextResponse.json(value, { status, headers: { "Cache-Control": "private, no-store, max-age=0", "Vary": "Cookie", "X-Content-Type-Options": "nosniff" } });
 }
-export async function session(admin = false) {
-  const jar = await cookies();
-  if (jar.get(PRESIDENT_COOKIE)) {
-    requirePresident(jar.get(PRESIDENT_COOKIE)?.value);
-    const config = await settings();
-    return {config, identity: await presidentIdentity(config)};
+// The signed-in exec, from the dashboard session. Only exec can take part in delibs.
+export async function person(): Promise<Person> {
+  try { return await requireExecPerson(); }
+  catch (error) {
+    if (error instanceof MembershipError) throw new VotingError(error.message, error.status);
+    throw error;
   }
-  const raw = readIdentity(jar.get(COOKIE)?.value);
-  if (!raw) throw new VotingError("Join the session.", 401);
-  const config = await settings();
-  if (raw.role === "admin") throw new VotingError("Enter the president password.", 401);
-  const admitted = authorize(raw, config);
-  const identity = await canonicalIdentity(config, admitted);
-  authorize(identity, config, admin);
-  return { config, identity };
 }
-export async function pollingSession() {
-  const jar = await cookies();
-  if (jar.get(PRESIDENT_COOKIE)) {
-    requirePresident(jar.get(PRESIDENT_COOKIE)?.value);
-    return presidentPoll();
-  }
-  const identity = readIdentity(jar.get(COOKIE)?.value);
-  if (!identity) throw new VotingError("Join the session.",401);
-  return voterPoll(identity);
+// The open delib and the signed-in exec's place in it.
+export async function session(admin = false) {
+  const signedIn = await person();
+  const config = await settings();
+  return { config, person: signedIn, identity: authorize(identityFor(config, signedIn), config, admin) };
 }
 export function failure(error: unknown) {
   if (error instanceof VotingError) {
@@ -42,4 +29,3 @@ export function failure(error: unknown) {
   }
   return json({ error: "Voting is temporarily unavailable. Please retry; your local draft is preserved." }, 503);
 }
-export const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" as const, path: "/api/voting", maxAge: 24 * 3600 };

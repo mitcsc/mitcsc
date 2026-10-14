@@ -8,55 +8,54 @@ require.extensions['.ts'] = (module, filename) => {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText, filename);
 };
-process.env.VOTING_COOKIE_SECRET = 'unit-test-only-secret-that-is-at-least-32-characters';
-const { signIdentity, readIdentity, requireOrigin, limitJoin } = require('./security.ts');
+const { requireOrigin } = require('./security.ts');
 const { authorize, validateRatings } = require('./service.ts');
-const data = { role: 'voter', name: 'Alex', sessionId: 'fall', sheetId: 'election-sheet' };
-const config = { sessionId: 'fall', sheetId: 'election-sheet', password: 'new password' };
-test('signed cookies reject tampering and remain admitted after password rotation', () => {
-  const signed = signIdentity(data);
-  const identity = readIdentity(signed);
-  assert.equal(identity.name, 'Alex');
-  assert.equal(authorize(identity, config), identity);
-  const [payload, signature] = signed.split('.');
-  const changed = Buffer.from(JSON.stringify({ ...identity, role: 'admin' })).toString('base64url');
-  assert.equal(readIdentity(`${changed}.${signature}`), null);
-  assert.equal(readIdentity(`${payload}.bogus`), null);
-  assert.throws(() => authorize(identity, { ...config, sessionId: 'spring' }), /password/);
-  assert.throws(() => authorize(identity, { ...config, sheetId: 'other' }), /password/);
-  assert.throws(() => authorize(identity, config, true), /Admin/);
+const { resultRows, toCsv, exportFileName } = require('./export.ts');
+const config = { sessionId: 'fall', name: 'Fall delibs', host: 'host@mit.edu', hostName: 'Host', open: true, createdAt: 0 };
+
+test('identities only work in their own delib, and host actions need the host', () => {
+  const voter = { id: 'v1', name: 'Alex', role: 'voter', sessionId: 'fall' };
+  assert.equal(authorize(voter, config), voter);
+  assert.throws(() => authorize(voter, { ...config, sessionId: 'spring' }), /Join the session/);
+  assert.throws(() => authorize(null, config), /Join the session/);
+  assert.throws(() => authorize(voter, config, true), /Only the host/);
+  assert.doesNotThrow(() => authorize({ ...voter, role: 'admin' }, config, true));
 });
 test('mutation origin must match the application origin', () => {
   assert.doesNotThrow(() => requireOrigin(new Request('https://club.test/api/voting/submit', { headers: { origin: 'https://club.test' } })));
   assert.throws(() => requireOrigin(new Request('https://club.test/api/voting/submit', { headers: { origin: 'https://attacker.test' } })), /origin/);
   assert.throws(() => requireOrigin(new Request('https://club.test/api/voting/submit')), /origin/);
+  assert.doesNotThrow(() => requireOrigin(new Request('http://localhost:3000/api/voting/submit', { headers: { origin: 'http://127.0.0.1:3000', host: '127.0.0.1:3000' } })));
+  assert.throws(() => requireOrigin(new Request('http://localhost:3000/api/voting/submit', { headers: { origin: 'https://attacker.test', host: '127.0.0.1:3000' } })), /origin/);
+  assert.throws(() => requireOrigin(new Request('https://club.test/api/voting/submit', { headers: { origin: 'null' } })), /origin/);
 });
 test('ratings enforce original criterion IDs, required fields, integer scale and optional abstention', () => {
   const criteria = [{ id: 'fit', label: 'Fit', min: 1, max: 5, required: true }, { id: 'experience', label: 'Experience', min: 0, max: 3, required: false }];
   assert.doesNotThrow(() => validateRatings({ fit: 5, experience: null }, criteria));
   for (const ratings of [{ fit: 6 }, { fit: 1.5 }, { fit: null }, { fit: 1, extra: 3 }, { fit: '3' }, {}]) assert.throws(() => validateRatings(ratings, criteria));
 });
-test('successful joins on shared Wi-Fi do not consume failed-password budget', () => {
-  const request = new Request('https://club.test/api/voting/join', { headers: { 'x-forwarded-for': 'test-shared-wifi' } });
-  for (let i = 0; i < 100; i++) limitJoin(request);
-  for (let i = 0; i < 29; i++) limitJoin(request, true);
-  assert.throws(() => limitJoin(request, true), /Too many/);
-});
-
-test('existing Google credential can sign session cookies without a new environment variable', () => {
-  const oldSecret = process.env.VOTING_COOKIE_SECRET;
-  const oldKey = process.env.GOOGLE_PRIVATE_KEY;
-  try {
-    delete process.env.VOTING_COOKIE_SECRET;
-    process.env.GOOGLE_PRIVATE_KEY = 'test-private-key';
-    const signed = signIdentity(data);
-    assert.equal(readIdentity(signed).name, 'Alex');
-    process.env.GOOGLE_PRIVATE_KEY = 'changed-key';
-    assert.equal(readIdentity(signed), null);
-  } finally {
-    if (oldSecret === undefined) delete process.env.VOTING_COOKIE_SECRET;
-    else process.env.VOTING_COOKIE_SECRET = oldSecret;
-    if (oldKey === undefined) delete process.env.GOOGLE_PRIVATE_KEY;
-    else process.env.GOOGLE_PRIVATE_KEY = oldKey;
-  }
+test('the CSV has one row per vote with no gaps, and cannot run formulas', () => {
+  const results = {
+    sessionId: 'fall', name: 'Fall: delibs/1', ended: true, voterCount: 2,
+    criteria: [{ id: 'fit', label: 'Fit' }, { id: 'drive', label: 'Drive, "grit"' }],
+    candidates: [
+      { candidate: { name: '=HYPERLINK("x")' }, ballots: [
+        { voterName: 'Alex', initial: { fit: 3, drive: null }, final: { fit: 4, drive: 2 }, submittedAt: '2026-10-14T16:00:00.000Z' },
+        { voterName: 'Sam', initial: { fit: 5, drive: 5 }, final: { fit: 5, drive: null }, submittedAt: '2026-10-14T16:01:00.000Z' },
+      ] },
+      { candidate: { name: 'No votes' }, ballots: [] },
+      { candidate: { name: 'Bo' }, ballots: [{ voterName: '@Lee', initial: { fit: 1, drive: 1 }, final: { fit: 2, drive: 1 }, submittedAt: '2026-10-14T16:02:00.000Z' }] },
+    ],
+  };
+  const rows = resultRows(results);
+  assert.deepEqual(rows[0], ['Candidate', 'Voter', 'Fit', 'Drive, "grit"', 'Fit (initial)', 'Drive, "grit" (initial)', 'Submitted']);
+  assert.equal(rows.length, 4, 'one header and one row per vote');
+  assert.deepEqual(rows[1].slice(0, 6), ['=HYPERLINK("x")', 'Alex', '4', '2', '3', '']);
+  assert.equal(rows[1][6], '10/14/2026, 12:00:00 PM', 'times use the club time zone');
+  const csv = toCsv(rows).split('\r\n');
+  assert.equal(csv[0], 'Candidate,Voter,Fit,"Drive, ""grit""",Fit (initial),"Drive, ""grit"" (initial)",Submitted');
+  assert.ok(csv[1].startsWith(`"'=HYPERLINK(""x"")",Alex,4,2,3,,`));
+  assert.ok(csv[3].startsWith("Bo,'@Lee,2,1,1,1,"));
+  assert.equal(exportFileName('Fall: delibs/1'), 'Fall delibs1.csv');
+  assert.equal(exportFileName('///'), 'Delibs.csv');
 });
