@@ -176,6 +176,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-crumb-sep { margin: 0 4px; color: #ffffff59; }
 .d-path-text { color: #c3c3c8; }
 .d-path-text > span { white-space: nowrap; }
+.d-path-text .d-crumb-sep { color: inherit; opacity: 0.75; }
 .d-drive-list { max-height: min(360px, 50svh); overflow-y: auto; border-top: 1px solid var(--line); }
 .d-drive-list li { border-bottom: 1px solid var(--line); }
 .d-drive-list button { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 4px; border: 0; background: none; text-align: left; color: var(--text); }
