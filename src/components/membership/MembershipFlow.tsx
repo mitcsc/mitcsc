@@ -69,7 +69,7 @@ function Closed({ year }: { year?: string }) {
         <h1 className="mp-title">Signups are closed</h1>
         <p className="mp-muted">{year ? `Membership signups for ${year} are closed right now.` : "Membership signups are not open yet."} Check back soon.</p>
       </div>
-      <p className="mp-footnote">{year && <>Already a member? <Link href="/join/card">Get your card</Link> · </>}Questions? <Email /></p>
+      <p className="mp-footnote">{year && <span>Already a member? <Link href="/join/card">Get your card</Link></span>}<span>Questions? <Email /></span></p>
     </main>
   );
 }
@@ -182,7 +182,7 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
         <button type="submit" className="m-btn is-block mp-continue" disabled={busy || taken}>{busy ? "Saving…" : "Continue"}</button>
       </form>
 
-      <p className="mp-footnote">Already a member? <Link href="/join/card">Get your card</Link> · Questions? <Email /></p>
+      <p className="mp-footnote"><span>Already a member? <Link href="/join/card">Get your card</Link></span><span>Questions? <Email /></span></p>
     </main>
   );
 }

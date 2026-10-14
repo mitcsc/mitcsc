@@ -62,7 +62,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`antialiased font-primary font-bold flex flex-col items-center w-full min-h-screen bg-[#0c0c0c]`}
+        className={`antialiased font-primary font-bold flex flex-col items-center w-full min-h-svh bg-[#0c0c0c]`}
       >
         <SiteChrome><Nav /></SiteChrome>
         {children}
