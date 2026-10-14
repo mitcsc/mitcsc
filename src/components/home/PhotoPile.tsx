@@ -12,6 +12,16 @@ const MOUSE_SLOP = 3;
 const TOUCH_HOLD_MS = 180;
 /** A finger that moves this far during the hold is scrolling, not dragging. */
 const TOUCH_SLOP = 8;
+/** A released polaroid slows down by a factor of e every this many ms, like a flicked scroll view. */
+const GLIDE_DECAY_MS = 325;
+/** The share of its speed a polaroid keeps when it bounces off an edge. */
+const BOUNCE = 0.45;
+/** Speeds in px/ms. A glide starts above MIN_FLING and stops below STOP. */
+const MAX_SPEED = 4;
+const MIN_FLING = 0.1;
+const STOP = 0.01;
+/** The release speed comes from the pointer moves in this last stretch of the drag, ms. */
+const VELOCITY_WINDOW_MS = 100;
 
 interface Box {
   /** Centre without the drag offset, in pile coordinates. */
@@ -59,6 +69,30 @@ function limits(box: Box, width: number, height: number) {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+interface Sample { t: number; x: number; y: number }
+
+// The pointer speed at release, in px/ms. A pointer that stopped before letting go has none.
+function releaseVelocity(samples: Sample[], now: number) {
+  const recent = samples.filter((s) => now - s.t <= VELOCITY_WINDOW_MS);
+  if (recent.length < 2) return { vx: 0, vy: 0 };
+  const first = recent[0];
+  const last = recent.at(-1)!;
+  const dt = Math.max(last.t - first.t, 16);
+  const vx = (last.x - first.x) / dt;
+  const vy = (last.y - first.y) / dt;
+  const speed = Math.hypot(vx, vy);
+  const cap = speed > MAX_SPEED ? MAX_SPEED / speed : 1;
+  return { vx: vx * cap, vy: vy * cap };
+}
+
+// Move along one axis, bouncing off either end.
+function step(position: number, velocity: number, dt: number, min: number, max: number) {
+  const next = position + velocity * dt;
+  if (next < min) return [min, -velocity * BOUNCE];
+  if (next > max) return [max, -velocity * BOUNCE];
+  return [next, velocity];
+}
+
 /**
  * The hero's photo pile. Every polaroid stays fully inside it, and visitors can drag them around.
  * The last one dragged lands on top.
@@ -71,9 +105,37 @@ export default function PhotoPile({ className, children }: { className: string; 
     if (!root) return;
     const polaroids = () => [...root.querySelectorAll<HTMLElement>(".hero-polaroid")].filter((p) => p.offsetParent);
     let top = 30;
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+    // The animation frame of each polaroid still sliding after a release.
+    const glides = new Map<HTMLElement, number>();
+
+    function stopGlide(polaroid: HTMLElement) {
+      cancelAnimationFrame(glides.get(polaroid)!);
+      glides.delete(polaroid);
+    }
+
+    // After a fling, the polaroid keeps sliding, slows down, and bounces off the edges of the pile.
+    function glide(polaroid: HTMLElement, vx: number, vy: number, bounds: ReturnType<typeof limits>) {
+      let { dx, dy } = offset(polaroid);
+      let last = performance.now();
+      const frame = (now: number) => {
+        const dt = Math.min(now - last, 50);
+        last = now;
+        [dx, vx] = step(dx, vx, dt, bounds.minX, bounds.maxX);
+        [dy, vy] = step(dy, vy, dt, bounds.minY, bounds.maxY);
+        const decay = Math.exp(-dt / GLIDE_DECAY_MS);
+        vx *= decay;
+        vy *= decay;
+        setOffset(polaroid, dx, dy);
+        if (Math.hypot(vx, vy) < STOP) glides.delete(polaroid);
+        else glides.set(polaroid, requestAnimationFrame(frame));
+      };
+      glides.set(polaroid, requestAnimationFrame(frame));
+    }
 
     // Pull every polaroid inside the pile, for example after the window shrinks.
     function fitAll() {
+      glides.forEach((_, polaroid) => stopGlide(polaroid));
       const { clientWidth: width, clientHeight: height } = root!;
       for (const polaroid of polaroids()) {
         const box = measure(polaroid);
@@ -88,7 +150,7 @@ export default function PhotoPile({ className, children }: { className: string; 
 
     let drag: {
       polaroid: HTMLElement; pointerId: number; touch: boolean; active: boolean; holdTimer?: number;
-      startX: number; startY: number; dx: number; dy: number; bounds: ReturnType<typeof limits>;
+      startX: number; startY: number; dx: number; dy: number; bounds: ReturnType<typeof limits>; samples: Sample[];
     } | null = null;
 
     function start() {
@@ -102,10 +164,12 @@ export default function PhotoPile({ className, children }: { className: string; 
     function onDown(event: PointerEvent) {
       const polaroid = (event.target as HTMLElement).closest<HTMLElement>(".hero-polaroid");
       if (!polaroid || !root!.contains(polaroid) || (event.pointerType === "mouse" && event.button !== 0)) return;
+      // A tap catches a sliding polaroid.
+      stopGlide(polaroid);
       const { dx, dy } = offset(polaroid);
       drag = {
         polaroid, pointerId: event.pointerId, touch: event.pointerType === "touch", active: false,
-        startX: event.clientX, startY: event.clientY, dx, dy, bounds: limits(measure(polaroid), root!.clientWidth, root!.clientHeight),
+        startX: event.clientX, startY: event.clientY, dx, dy, bounds: limits(measure(polaroid), root!.clientWidth, root!.clientHeight), samples: [],
       };
       if (drag.touch) drag.holdTimer = window.setTimeout(start, TOUCH_HOLD_MS);
     }
@@ -116,18 +180,24 @@ export default function PhotoPile({ className, children }: { className: string; 
       const moveY = event.clientY - drag.startY;
       if (!drag.active) {
         const distance = Math.hypot(moveX, moveY);
-        if (drag.touch && distance > TOUCH_SLOP) return end();
+        if (drag.touch && distance > TOUCH_SLOP) return end(event);
         if (!drag.touch && distance > MOUSE_SLOP) start();
         if (!drag.active) return;
       }
       const { minX, maxX, minY, maxY } = drag.bounds;
       setOffset(drag.polaroid, clamp(drag.dx + moveX, minX, maxX), clamp(drag.dy + moveY, minY, maxY));
+      drag.samples.push({ t: event.timeStamp, x: event.clientX, y: event.clientY });
+      if (drag.samples.length > 20) drag.samples.shift();
     }
 
-    function end() {
-      if (!drag) return;
+    function end(event?: PointerEvent) {
+      if (!drag || (event && event.pointerId !== drag.pointerId)) return;
       window.clearTimeout(drag.holdTimer);
       drag.polaroid.classList.remove("is-dragging");
+      if (drag.active && event?.type === "pointerup" && !calm.matches) {
+        const { vx, vy } = releaseVelocity(drag.samples, event.timeStamp);
+        if (Math.hypot(vx, vy) > MIN_FLING) glide(drag.polaroid, vx, vy, drag.bounds);
+      }
       drag = null;
     }
 
@@ -143,6 +213,7 @@ export default function PhotoPile({ className, children }: { className: string; 
     root.addEventListener("touchmove", onTouchMove, { passive: false });
     return () => {
       resize.disconnect();
+      glides.forEach((_, polaroid) => stopGlide(polaroid));
       root.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", end);
