@@ -241,6 +241,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
         <section className="d-section">
           <div className="d-section-head is-table">
             <h2 className="d-h2">All members</h2>
+            <button type="button" className="d-chip-btn d-add-btn" onClick={() => setAdding(true)}><Icon name="plus" size={14} />Add member</button>
             <div className="d-table-tools">
               <div role="tablist" aria-label="Filter" className="d-filters">
                 {([["all", `All ${members.length}`], ["paid", `Paid ${paid.length}`], ["pending", `Pending ${pending.length}`]] as const).map(([key, label]) => (
@@ -248,7 +249,6 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 ))}
               </div>
               <input className="d-search" aria-label="Search members" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
-              <button type="button" className="d-chip-btn d-add-btn" onClick={() => setAdding(true)}><Icon name="plus" size={14} />Add member</button>
             </div>
           </div>
           <div className="d-table-wrap">
