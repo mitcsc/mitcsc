@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useRef, useCallback } from "react";
 
 interface LinkItem {
@@ -115,9 +116,8 @@ export default function LinkList({
   }, []);
 
   const show = useCallback((url: string) => {
-    const newCorner = getRandomCorner(pandaCorners[url]);
     setTransitioning((prev) => ({ ...prev, [url]: true }));
-    setPandaCorners((prev) => ({ ...prev, [url]: newCorner }));
+    setPandaCorners((prev) => ({ ...prev, [url]: getRandomCorner(prev[url]) }));
 
     if (rafRef.current[url]) cancelAnimationFrame(rafRef.current[url]);
     rafRef.current[url] = requestAnimationFrame(() => {
@@ -157,9 +157,12 @@ export default function LinkList({
             onPointerEnter={isMobile ? undefined : () => show(link.url)}
             onPointerLeave={isMobile ? undefined : () => hide(link.url)}
           >
-            <img
+            <Image
               src="/img/logo/panda.png"
               alt=""
+              width={PANDA_SIZE}
+              height={PANDA_SIZE}
+              loading="eager"
               draggable={false}
               style={{
                 position: "absolute",

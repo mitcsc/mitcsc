@@ -1,0 +1,99 @@
+/* The member signup at /membership. Each screen fills the viewport; text keeps a phone-width column. */
+.mp-page { display: flex; flex-direction: column; gap: 32px; padding: 48px max(24px, calc((100% - 440px) / 2)) 40px; }
+.mp-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.mp-logo { width: 88px; height: 88px; object-fit: contain; margin-bottom: 12px; }
+.mp-title { font-size: 22px; font-weight: 500; line-height: 1.3; }
+.mp-title.is-large { font-size: 26px; line-height: 1.2; letter-spacing: -0.02em; }
+.mp-muted { color: var(--muted); }
+.mp-bad { color: oklch(0.72 0.17 25); }
+.mp-nowrap { white-space: nowrap; }
+.mp-price-now { color: var(--text); font-weight: 500; }
+.m-hint .m-strike { font-size: 11px; }
+.mp-footnote { margin-top: auto; text-align: center; font-size: 13px; color: #ffffff73; }
+
+/* Benefits on the pay screen: a labeled strip of chips that scrolls sideways. The block fades up on load. */
+.mp-benefits { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; animation: mp-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms backwards; }
+.mp-benefits-title { font-size: 13px; font-weight: 500; color: var(--soft); }
+.mp-marquee {
+  min-width: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+}
+.mp-marquee-track { display: flex; width: max-content; animation: mp-marquee 30s linear infinite; }
+.mp-marquee:hover .mp-marquee-track { animation-play-state: paused; }
+.mp-marquee ul { display: flex; gap: 8px; padding-right: 8px; }
+.mp-marquee li { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 10px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 13px; line-height: 1.3; color: #ffffffcc; white-space: nowrap; }
+.mp-marquee li svg { color: var(--green-text); }
+@keyframes mp-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes mp-rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .mp-marquee { -webkit-mask-image: none; mask-image: none; }
+  .mp-marquee-track { width: auto; }
+  .mp-marquee ul { flex-wrap: wrap; padding: 0; }
+  .mp-marquee ul[aria-hidden] { display: none; }
+}
+
+.mp-form { display: flex; flex-direction: column; gap: 16px; }
+.mp-continue { margin-top: 8px; }
+.mp-kerb { display: flex; align-items: center; min-height: 56px; padding: 0 18px; border: 1px solid var(--border); border-radius: 10px; transition: border-color 0.15s; }
+.mp-kerb:focus-within { border-color: #ffffff70; }
+.mp-kerb.is-invalid { border-color: var(--accent); }
+.mp-kerb input { flex: 1; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; font-size: 16px; }
+/* The box shows focus, so the input inside must not draw its own ring. */
+.mp-kerb input:focus-visible { outline: none; }
+.mp-kerb span { color: #77777d; }
+.mp-kerb-note { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.m-input.is-other { border-color: #ffffff50; }
+.mp-choices { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.mp-choice { display: flex; align-items: center; gap: 12px; min-height: 48px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.mp-choice input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+
+/* Paying. On a phone the buttons sit at the bottom of the screen; on a laptop a QR code opens Venmo on the phone. */
+.mp-pay { display: flex; }
+.mp-pay-inner { flex: 1; display: flex; flex-direction: column; gap: 28px; width: 100%; max-width: 440px; margin: 0 auto; padding: 24px 24px 32px; }
+.mp-pay-grid { flex: 1; display: flex; }
+.mp-pay-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 28px; }
+.mp-pay-head { display: flex; flex-direction: column; gap: 4px; }
+.mp-pay-title { font-size: 34px; font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; }
+.mp-pay-title .m-strike { font-size: 20px; letter-spacing: 0; text-decoration-thickness: 1.5px; }
+.mp-pay-who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; color: var(--muted); }
+.mp-details { display: flex; flex-direction: column; gap: 12px; }
+.mp-details .m-row-value { overflow-wrap: anywhere; }
+/* The note must be copied exactly, so keep it on one line where it fits. */
+.mp-details .mp-note-value { font-size: 14px; white-space: nowrap; }
+@media (max-width: 370px) { .mp-details .mp-note-value { white-space: normal; } }
+.mp-note { font-size: 13px; color: #ffffff73; }
+.mp-actions { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
+.mp-qr-slot { display: none; }
+
+@media (min-width: 900px) {
+  .mp-pay-inner { max-width: 1016px; padding: 32px 48px 64px; gap: 32px; }
+  /* The form keeps one width. The QR slot grows and shrinks, so the whole unit slides as the QR code comes and goes. */
+  .mp-pay-grid { flex: none; justify-content: center; align-items: flex-start; }
+  .mp-pay-main { flex: 0 0 480px; }
+  .mp-qr-slot { display: block; flex: none; width: 0; overflow: hidden; transition: width 480ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .mp-qr-slot.is-shown { width: 404px; }
+  .mp-actions { margin-top: -8px; flex-direction: row; }
+  .mp-actions .m-btn { width: auto; padding: 0 28px; }
+  .mp-actions .m-error { align-self: center; }
+  .has-qr .mp-open-venmo { display: none; }
+  .mp-qr { width: 340px; margin-left: 64px; opacity: 0; transform: translateX(24px); transition: opacity 220ms ease-out, transform 480ms cubic-bezier(0.22, 1, 0.36, 1); display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 28px; border: 1px solid var(--line-strong); border-radius: 16px; text-align: center; }
+  .mp-qr-slot.is-shown .mp-qr { opacity: 1; transform: none; transition-delay: 60ms; }
+  /* Line the QR panel up with the price heading, below the Back link (44px tall + 28px gap). */
+  .mp-pay-main:has(> .m-back) + .mp-qr-slot .mp-qr { margin-top: 72px; }
+  .mp-qr-code { width: 228px; padding: 14px; border-radius: 12px; background: #fff; }
+  .mp-qr-code svg { display: block; width: 100%; height: auto; }
+  .mp-qr-title { font-weight: 500; }
+  .mp-qr-text { font-size: 13px; color: var(--muted); }
+}
+
+/* Centered screens: done, pending, closed */
+.mp-center { display: flex; flex-direction: column; align-items: center; padding: 48px 24px; text-align: center; }
+.mp-center-body { flex: 1; width: 100%; max-width: 392px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.mp-status-actions { width: 100%; margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.mp-status-actions .m-btn { font-size: 15px; }
+.mp-status-actions .m-btn + .m-btn { margin-top: 4px; }
+.mp-soft-link { min-height: 44px; display: inline-flex; align-items: center; padding: 0; border: 0; background: none; font-size: 14px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.m-root a.mp-soft-link { color: var(--muted); }
+.m-root a.mp-soft-link:hover, .mp-soft-link:hover { color: var(--text); }
+.mp-center .mp-footnote { margin-top: 24px; }

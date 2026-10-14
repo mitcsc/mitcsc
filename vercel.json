@@ -1,5 +1,6 @@
 {
   "crons": [
-    {"path": "/api/cron/redis-health", "schedule": "0 7 * * 1,4"}
+    {"path": "/api/cron/redis-health", "schedule": "0 7 * * 1,4"},
+    {"path": "/api/cron/membership", "schedule": "0 13 * * *"}
   ]
 }
