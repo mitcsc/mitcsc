@@ -14,7 +14,7 @@ const FULL_HERO = 16;
 
 const THUMB_WIDTHS = [256, 384, 512];
 
-// failures maps a photo id to why the home page could not load it. missing lists photos that are on but left the folder.
+// failures maps a photo id to why the home page could not load it. missing lists active photos that left the folder.
 export default function PhotoLibraryView({ photos, thumbnails, failures, missing, shown: initialShown, folder, folderPath, problem }: {
   photos: HomePhoto[];
   thumbnails: Record<string, string>;
@@ -100,7 +100,7 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
     const ids = [...selected];
     if (!(await apply(ids, on))) return;
     setSelected(new Set());
-    setNotice(`${on ? "Turned on" : "Turned off"} ${ids.length} ${ids.length === 1 ? "photo" : "photos"}.`);
+    setNotice(`Set ${ids.length} ${ids.length === 1 ? "photo" : "photos"} ${on ? "active" : "inactive"}.`);
   }
 
   const allVisibleSelected = visible.length > 0 && visible.every((p) => selected.has(p.id));
@@ -117,19 +117,19 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
       </p>
       {problem && <p className="m-error" role="alert">{problem}</p>}
       {photos.length > 0 && onCount === 0 && <p className="d-photos-hint">No photos are currently active, so the home page is showing fallback photos.</p>}
-      {onCount > 0 && onCount < FULL_HERO && <p className="d-photos-hint">Turn on at least {FULL_HERO} photos so the home page fills on every screen size.</p>}
+      {onCount > 0 && onCount < FULL_HERO && <p className="d-photos-hint">Set at least {FULL_HERO} photos active so the home page fills on every screen size.</p>}
 
       {gone.length > 0 && (
         <div className="d-photos-alert" role="alert">
           <Icon name="alert" size={18} />
           <div>
             <p>
-              {gone.length === 1 ? "1 photo that is on is" : `${gone.length} photos that are on are`} no longer in the Drive folder, so the home page skips {gone.length === 1 ? "it" : "them"}:{" "}
+              {gone.length === 1 ? "1 active photo is" : `${gone.length} active photos are`} no longer in the Drive folder, so the home page skips {gone.length === 1 ? "it" : "them"}:{" "}
               <span className="d-photos-alert-names">{gone.map((p) => p.name).join(", ")}</span>
             </p>
             <button type="button" className="d-chip-btn" disabled={busy} onClick={async () => {
-              if (await apply(gone.map((p) => p.id), false)) setNotice(`Turned off ${gone.length} missing ${gone.length === 1 ? "photo" : "photos"}.`);
-            }}>Turn {gone.length === 1 ? "it" : "them"} off</button>
+              if (await apply(gone.map((p) => p.id), false)) setNotice(`Set ${gone.length} missing ${gone.length === 1 ? "photo" : "photos"} inactive.`);
+            }}>Set {gone.length === 1 ? "it" : "them"} inactive</button>
           </div>
         </div>
       )}
@@ -152,7 +152,7 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
         <>
           <div className="d-photos-bar">
             <div role="tablist" aria-label="Filter" className="d-filters">
-              {([["all", `All ${photos.length}`], ["on", `On ${onCount}`], ["off", `Off ${photos.length - onCount}`], ...(failedCount || filter === "failed" ? [["failed", `Failed ${failedCount}`] as const] : [])] as const).map(([key, label]) => (
+              {([["all", `All ${photos.length}`], ["on", `Active ${onCount}`], ["off", `Inactive ${photos.length - onCount}`], ...(failedCount || filter === "failed" ? [["failed", `Failed ${failedCount}`] as const] : [])] as const).map(([key, label]) => (
                 <button key={key} type="button" role="tab" aria-selected={filter === key} onClick={() => { setFilter(key); setSelected(new Set()); setAnchor(null); }}>{label}</button>
               ))}
             </div>
@@ -160,8 +160,8 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
               {selected.size > 0 && (
                 <>
                   <span className="d-photos-count">{selected.size} selected</span>
-                  <button type="button" className="d-chip-btn" onClick={() => applySelected(true)} disabled={busy}>Turn on</button>
-                  <button type="button" className="d-chip-btn" onClick={() => applySelected(false)} disabled={busy}>Turn off</button>
+                  <button type="button" className="d-chip-btn" onClick={() => applySelected(true)} disabled={busy}>Set active</button>
+                  <button type="button" className="d-chip-btn" onClick={() => applySelected(false)} disabled={busy}>Set inactive</button>
                 </>
               )}
               {!allVisibleSelected && <button type="button" className="d-text-btn" title="Ctrl+A or ⌘A" onClick={() => setSelected(new Set(visible.map((p) => p.id)))}>Select all</button>}
@@ -199,7 +199,7 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
               );
             })}
           </ul>
-          {visible.length === 0 && <p className="d-empty-row">{{ all: "", on: "No photos are on.", off: "Every photo is on.", failed: "Every photo loads." }[filter]}</p>}
+          {visible.length === 0 && <p className="d-empty-row">{{ all: "", on: "No photos are active.", off: "Every photo is active.", failed: "Every photo loads." }[filter]}</p>}
         </>
       )}
       <Toast message={notice} onDone={clearNotice} />
