@@ -18,7 +18,7 @@ export function CardButtonContent({ wallets, height = 14 }: { wallets: Wallet[];
           <img key={w} src={WALLETS[w].icon} alt="" height={height} width={Math.round((WALLETS[w].width * height) / 14)} />
         ))}
       </span>
-      Already a member? Add your card to {names}
+      Already a member? Add to {names}
     </>
   );
 }
