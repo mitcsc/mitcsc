@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { checkVenmoNow, confirmPayment, markUnpaid, removeSignup, syncSheetNow, updateSettings } from "@/app/dashboard/actions";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { addMember, checkVenmoNow, confirmPayment, lookUpNewMember, markUnpaid, removeSignup, syncSheetNow, updateSettings, type NewMemberKerb } from "@/app/dashboard/actions";
 import { formatDay, formatStamp, money, venmoNote } from "@/lib/membership/config";
 import type { SyncStatus } from "@/lib/membership/sync";
 import type { Member, PaymentMethod, Question } from "@/lib/membership/types";
@@ -17,6 +17,9 @@ interface YearInfo {
   signupsOpen: boolean;
   closesOn: string | null;
   questions: Question[];
+  // The choices for class year and dorm, as on the signup form.
+  classYears: string[];
+  dorms: string[];
 }
 
 const PENDING_PREVIEW = 5;
@@ -69,6 +72,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [pendingOpen, setPendingOpen] = useState(true);
   // Animate only after the first click, so a saved collapsed state does not animate on load.
   const [collapseMoved, setCollapseMoved] = useState(false);
@@ -213,7 +217,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 <div className="d-pending" key={m.kerb}>
                   <div className="d-pending-who">
                     <button type="button" className="d-name-btn" onClick={() => setOpen(m.kerb)}>{m.name}</button>
-                    <span className="d-tags"><span className="m-tag">{m.kerb}</span><span className="m-tag">{m.classYear}</span><span className="m-tag">{m.type === "returning" ? "Returning" : "New"}</span></span>
+                    <span className="d-tags"><span className="m-tag">{m.kerb}</span>{m.classYear && <span className="m-tag">{m.classYear}</span>}<span className="m-tag">{m.type === "returning" ? "Returning" : "New"}</span></span>
                   </div>
                   <div className="d-pending-pay">
                     <span>{money(m.price)} {m.method === "cash" ? "in cash" : `by ${METHOD_NAMES[m.method]}`}</span>
@@ -244,6 +248,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 ))}
               </div>
               <input className="d-search" aria-label="Search members" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <button type="button" className="d-chip-btn d-add-btn" onClick={() => setAdding(true)}><Icon name="plus" size={14} />Add member</button>
             </div>
           </div>
           <div className="d-table-wrap">
@@ -275,6 +280,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
 
       <Toast message={notice} onDone={clearNotice} />
       {selected && <MemberDialog member={selected} year={year} onClose={() => setOpen(null)} run={run} remove={remove} busy={busy} />}
+      {adding && <AddMemberDialog year={year} onClose={() => setAdding(false)} onAdded={(name) => { setNotice(`Added ${name}.`); router.refresh(); }} />}
       {showQr && (
         <Dialog title="Signup QR code" onClose={() => setShowQr(false)}>
           <div className="d-qr" dangerouslySetInnerHTML={{ __html: signup.qr }} />
@@ -306,9 +312,9 @@ function MemberDialog({ member: m, year, onClose, run, remove, busy }: {
     <Dialog title={m.name} onClose={onClose}>
       {(close) => (
         <>
-          <span className="d-tags"><span className="m-tag">{m.kerb}</span><span className="m-tag">{m.classYear}</span><span className="m-tag">{m.type === "returning" ? "Returning" : "New"}</span><StatusPill member={m} /></span>
+          <span className="d-tags"><span className="m-tag">{m.kerb}</span>{m.classYear && <span className="m-tag">{m.classYear}</span>}<span className="m-tag">{m.type === "returning" ? "Returning" : "New"}</span><StatusPill member={m} /></span>
           <dl className="d-detail">
-            <div><dt>Lives in</dt><dd>{m.dorm}</dd></div>
+            {m.dorm && <div><dt>Lives in</dt><dd>{m.dorm}</dd></div>}
             {answers.map((a) => <div key={a.label}><dt>{a.label}</dt><dd>{a.value}</dd></div>)}
             <div><dt>Price</dt><dd>{money(m.price)}</dd></div>
             <div><dt>Signed up</dt><dd>{formatStamp(m.createdAt)}</dd></div>
@@ -340,5 +346,97 @@ function MemberDialog({ member: m, year, onClose, run, remove, busy }: {
         </>
       )}
     </Dialog>
+  );
+}
+
+const PAID_CHOICES = [["none", "Not paid"], ["venmo", "Venmo"], ["zelle", "Zelle"], ["cash", "Cash"]] as const;
+
+// Adds someone by hand, for example a member who paid before the site took signups.
+function AddMemberDialog({ year, onClose, onAdded }: { year: YearInfo; onClose: () => void; onAdded: (name: string) => void }) {
+  const [kerb, setKerb] = useState("");
+  const [name, setName] = useState("");
+  const [classYear, setClassYear] = useState("");
+  const [dorm, setDorm] = useState("");
+  const [paid, setPaid] = useState<PaymentMethod | "none">("none");
+  const [status, setStatus] = useState<NewMemberKerb | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  // Look up the price, or an existing signup, once typing pauses.
+  useEffect(() => {
+    setStatus(null);
+    if (!kerb.trim()) return;
+    let current = true;
+    const timer = window.setTimeout(async () => {
+      const result = await lookUpNewMember(kerb).catch(() => null);
+      if (current && result?.ok) setStatus(result.value);
+    }, 300);
+    return () => { current = false; window.clearTimeout(timer); };
+  }, [kerb]);
+
+  const note = !status ? null
+    : status.status === "taken" ? <p className="m-error" role="alert">{kerb.trim().toLowerCase()} is already signed up for {year.year}.</p>
+    : status.status === "invalid" ? null
+    : <span className="d-field-note">{status.status === "returning" ? "Returning member" : "New member"}, {money(status.price)}</span>;
+
+  async function submit(event: FormEvent, close: (then?: () => void) => void) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    const result = await addMember({ kerb, name, classYear, dorm, paidVia: paid === "none" ? null : paid })
+      .catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
+    setSaving(false);
+    if (!result.ok) return setError(result.error);
+    close(() => { onClose(); onAdded(result.value.name); });
+  }
+
+  return (
+    <Dialog title="Add member" onClose={onClose}>
+      {(close) => (
+        <form className="d-dialog-form" onSubmit={(e) => submit(e, close)}>
+          <label className="d-field">
+            <span className="m-label">Kerb</span>
+            <input className="m-input is-compact" value={kerb} required data-autofocus autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={60} placeholder="kerb" onChange={(e) => setKerb(e.target.value)} />
+            {note}
+          </label>
+          <label className="d-field">
+            <span className="m-label">Full name</span>
+            <input className="m-input is-compact" value={name} required maxLength={100} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <div className="d-field-row is-tight">
+            <Choice label="Class year" value={classYear} options={year.classYears} onChange={setClassYear} />
+            <Choice label="Lives in" value={dorm} options={year.dorms} onChange={setDorm} />
+          </div>
+          <div className="d-field">
+            <span className="m-label" id="add-paid">Paid by</span>
+            <div className="m-segments" role="radiogroup" aria-labelledby="add-paid">
+              {PAID_CHOICES.map(([key, label]) => (
+                <button key={key} type="button" role="radio" aria-checked={paid === key} onClick={() => setPaid(key)}>{label}</button>
+              ))}
+            </div>
+            <span className="d-field-note">{paid === "none" ? "They show up in Pending confirmation and pay at an event." : "They are marked paid now."}</span>
+          </div>
+          {error && <p className="m-error" role="alert">{error}</p>}
+          <button type="submit" className="m-btn is-medium" disabled={saving || status?.status === "taken"}>
+            {saving ? "Adding…" : paid !== "none" && status && status.status !== "invalid" && status.status !== "taken" ? `Add member, ${money(status.price)} received` : "Add member"}
+          </button>
+        </form>
+      )}
+    </Dialog>
+  );
+}
+
+function Choice({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+  return (
+    <label className="d-field">
+      <span className="m-label">{label}<span className="m-label-note">Optional</span></span>
+      <span className="m-select-wrap">
+        <select className="m-select is-compact" value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">Not set</option>
+          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <Icon name="chevron" />
+      </span>
+    </label>
   );
 }

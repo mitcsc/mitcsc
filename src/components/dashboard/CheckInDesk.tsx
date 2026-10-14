@@ -156,7 +156,7 @@ function PersonRow({ person: p, record, busy, admit, undo }: { person: Person; r
       <div className="d-person-top">
         <div className="d-person-who">
           <span className="d-person-name">{p.name}</span>
-          <span className="d-tags">{status}<span className="m-tag">{p.kerb}</span><span className="m-tag">{p.classYear}</span></span>
+          <span className="d-tags">{status}<span className="m-tag">{p.kerb}</span>{p.classYear && <span className="m-tag">{p.classYear}</span>}</span>
         </div>
         {record && (
           <span className="d-person-side">
