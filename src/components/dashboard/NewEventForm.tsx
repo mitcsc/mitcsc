@@ -9,7 +9,8 @@ import DrivePicker, { type DriveChoice } from "./DrivePicker";
 
 type Target = { kind: "default" } | { kind: "folder"; choice: DriveChoice } | { kind: "sheet"; choice: DriveChoice };
 
-export default function NewEventForm({ today, googleReady, eventsFolder }: { today: string; googleReady: boolean; eventsFolder: DriveChoice | null }) {
+// clubFolder is the "MIT CSC" folder, or null when the club Google account is not connected; then attendance stays on this site only.
+export default function NewEventForm({ today, clubFolder }: { today: string; clubFolder: DriveChoice | null }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [date, setDate] = useState(today);
@@ -24,7 +25,7 @@ export default function NewEventForm({ today, googleReady, eventsFolder }: { tod
     setError("");
     const result = await createEventAction({
       name, date,
-      folderId: target.kind === "folder" ? target.choice.id : null,
+      folderId: target.kind === "folder" ? target.choice.id : target.kind === "default" ? clubFolder?.id ?? null : null,
       sheetId: target.kind === "sheet" ? target.choice.id : null,
     }).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
     if (!result.ok) {
@@ -35,7 +36,7 @@ export default function NewEventForm({ today, googleReady, eventsFolder }: { tod
     router.push(`/dashboard/events/${result.value}`);
   }
 
-  const path = target.kind === "default" ? eventsFolder?.path || [] : target.choice.path;
+  const path = target.kind === "default" ? clubFolder?.path || [] : target.choice.path;
   return (
     <main className="d-phone">
       <form className="d-phone-body" onSubmit={submit}>
@@ -43,13 +44,13 @@ export default function NewEventForm({ today, googleReady, eventsFolder }: { tod
         <h1 className="d-phone-title">New event</h1>
         <label className="m-field">
           <span className="m-label">Name</span>
-          <input className="m-input" value={name} required maxLength={100} placeholder="Mooncake study break" onChange={(e) => setName(e.target.value)} />
+          <input className="m-input" value={name} required maxLength={100} placeholder="Event name" onChange={(e) => setName(e.target.value)} />
         </label>
         <label className="m-field">
           <span className="m-label">Date</span>
           <input className="m-input" type="date" value={date} required onChange={(e) => setDate(e.target.value)} />
         </label>
-        {googleReady ? (
+        {clubFolder ? (
           <div className="m-field">
             <span className="m-label">Save attendance in</span>
             <div className="d-location is-large">
@@ -74,7 +75,7 @@ export default function NewEventForm({ today, googleReady, eventsFolder }: { tod
       {picking && (
         <DrivePicker
           title={picking === "sheet" ? "Pick a sheet" : "Save attendance in"}
-          start={target.kind === "default" ? eventsFolder?.id : target.choice.id}
+          start={target.kind === "default" ? clubFolder?.id : target.choice.id}
           pick={picking}
           onClose={() => setPicking(null)}
           onPick={(choice) => { setTarget({ kind: picking, choice }); setPicking(null); }}

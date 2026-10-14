@@ -28,10 +28,12 @@ export default function DrivePicker({ title, start, pick, onPick, onClose }: {
     browseDrive(folder, pick === "sheet").then((result) => {
       if (!current) return;
       if (result.ok) setListing(result.value);
+      // A starting folder that moved out of the club folder opens the club folder instead.
+      else if (folder && folder === start) setFolder("");
       else setError(result.error);
     });
     return () => { current = false; };
-  }, [folder, pick]);
+  }, [folder, pick, start]);
 
   async function createFolder() {
     if (!naming?.trim()) return;

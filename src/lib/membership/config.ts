@@ -92,7 +92,6 @@ export function newYearConfig(year: string, previous: YearConfig | null): YearCo
     cashAllowed: previous?.cashAllowed ?? true,
     form: previous ? carryForm(previous.form, previous.year, year) : defaultForm(year),
     folderId: null,
-    eventsFolderId: null,
     sheetId: null,
     sheetName: `CSC ${year} Membership`,
     createdAt: Date.now(),

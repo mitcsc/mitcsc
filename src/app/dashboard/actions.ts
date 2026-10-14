@@ -212,12 +212,9 @@ export async function createEventAction(input: { name: string; date: string; fol
       if (sheet.mimeType !== SPREADSHEET) throw new MembershipError("Pick a Google Sheet.");
       sheetTab = await addTab(sheet.id, name.slice(0, 90), clubEmail());
       sheetId = sheet.id;
-    } else if (input.folderId || config.eventsFolderId || config.folderId) {
-      const folderId = input.folderId || config.eventsFolderId || config.folderId!;
-      await clubPath(folderId);
+    } else if (input.folderId) {
+      const { id: folderId } = (await clubPath(input.folderId)).at(-1)!;
       sheetId = await createSheet(name, folderId, sheetTab, clubEmail());
-      // The next event starts in the same folder.
-      if (folderId !== config.eventsFolderId) await updateYear(config.year, (c) => ({ ...c, eventsFolderId: folderId }));
     }
     const event = await createEvent({ year: config.year, name, date: input.date, sheetId, sheetTab, createdBy: by });
     syncEventLater(event.id);
