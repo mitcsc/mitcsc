@@ -5,13 +5,13 @@ import { MembershipError } from "@/lib/membership/errors";
 import { execAccess, requireExec } from "@/lib/membership/exec-auth";
 import { clubFolder, clubPath, createFolder, getItem, listChildren, FOLDER } from "@/lib/membership/google/drive";
 import { clubEmail } from "@/lib/membership/google/oauth";
-import { createSheet, readFirstTab } from "@/lib/membership/google/sheets";
+import { createSheet } from "@/lib/membership/google/sheets";
 import { cleanForm, text } from "@/lib/membership/form";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
 import {
   attendanceCount, checkIn, createEvent, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
-  removePastSheet, requireCurrentYear, savePastSheet, unmarkPaidEver, updateEvent, updateMember, updateYear,
+  requireCurrentYear, unmarkPaidEver, updateEvent, updateMember, updateYear,
 } from "@/lib/membership/store";
 import { syncEventLater, syncMembersLater, syncMembersNow } from "@/lib/membership/sync";
 import type { Attendance, FormConfig, Member, PaymentMethod, YearConfig } from "@/lib/membership/types";
@@ -300,41 +300,6 @@ export async function refreshExecAccess(): Promise<Result<null>> {
   return attempt(async () => {
     await requireExec();
     await execAccess(true);
-    return null;
-  });
-}
-
-// Adds every kerb in an old membership sheet to the list of past members.
-// Reads the kerbs on an old membership sheet. Importing the same sheet again replaces its kerbs.
-export async function importPastMembers(sheetId: string): Promise<Result<{ found: number }>> {
-  return attempt(async () => {
-    const by = await requireExec();
-    const path = await clubPath(sheetId);
-    const rows = await readFirstTab(sheetId);
-    const header = (rows[0] || []).map((h) => String(h).toLowerCase());
-    let column = header.findIndex((h) => /kerb/.test(h));
-    if (column < 0) column = header.findIndex((h) => /e-?mail/.test(h));
-    if (column < 0) throw new MembershipError("The first tab needs a Kerberos or email column.");
-    const kerbs = new Set<string>();
-    for (const row of rows.slice(1)) {
-      const raw = String(row[column] || "").toLowerCase().replace(/\s/g, "");
-      if (raw.includes("@") && !raw.endsWith("@mit.edu")) continue;
-      const kerb = normalizeKerb(raw);
-      if (isKerb(kerb)) kerbs.add(kerb);
-    }
-    if (!kerbs.size) throw new MembershipError("No kerbs found in the first tab.");
-    const name = path.at(-1)?.name || "Untitled sheet";
-    await savePastSheet({ id: sheetId, name, count: kerbs.size, importedAt: Date.now(), importedBy: by }, [...kerbs]);
-    return { found: kerbs.size };
-  });
-}
-
-// People only on this sheet lose the returning price. People also on another sheet,
-// or who paid on this site, keep it.
-export async function removePastMembers(sheetId: string): Promise<Result<null>> {
-  return attempt(async () => {
-    await requireExec();
-    await removePastSheet(String(sheetId));
     return null;
   });
 }

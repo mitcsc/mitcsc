@@ -12,11 +12,8 @@ export const keys = {
   cardLink: (id: string) => `${PREFIX}:card-link:${id}`,
   // Everyone who paid on this site in any year. They get the returning price.
   paidEver: `${PREFIX}:paid-ever`,
-  // Past members read from old sheets: details per sheet, the kerbs of each sheet, and all of them together.
-  pastSheets: `${PREFIX}:past-sheets`,
-  pastSheet: (id: string) => `${PREFIX}:past-sheet:${id}`,
+  // Kerbs imported once from the old Google Form sheets. They also get the returning price.
   pastImported: `${PREFIX}:past-imported`,
-  pastMoved: `${PREFIX}:past-moved`,
   venmoMessage: (messageId: string) => `${PREFIX}:venmo-message:${messageId}`,
   venmoCheck: (year: string) => `${PREFIX}:venmo-check:${year}`,
   events: (year: string) => `${PREFIX}:events:${year}`,
