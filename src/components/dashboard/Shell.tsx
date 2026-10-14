@@ -49,14 +49,21 @@ export function MobileNav({ email }: { email: string }) {
       </button>
       {open && <div className="d-mobile-backdrop" onClick={() => setOpen(false)} />}
       <nav id="d-mobile-menu" aria-label="Dashboard" className={`d-mobile-menu${open ? " is-open" : ""}`} inert={!open}>
-        {SECTIONS.map((s) => s.tabs ? (
-          <div key={s.href} className="d-mobile-group">
-            <p className="d-mobile-group-title">{s.label}</p>
-            {s.tabs.map((t) => <Link key={t.href} href={t.href} aria-current={tabActive(pathname, t) ? "page" : undefined}>{t.label}</Link>)}
-          </div>
-        ) : (
-          <Link key={s.href} href={s.href} className="is-top" aria-current={sectionActive(pathname, s) ? "page" : undefined}>{s.label}</Link>
-        ))}
+        {/* Each section links to its first tab. Its other tabs sit indented below it. */}
+        {SECTIONS.map((s) => {
+          const [first, ...rest] = s.tabs || [];
+          const current = first ? tabActive(pathname, first) : sectionActive(pathname, s);
+          return (
+            <div key={s.href} className="d-mobile-group">
+              <Link href={s.href} className="d-mobile-top" aria-current={current ? "page" : undefined}>{s.label}</Link>
+              {rest.length > 0 && (
+                <div className="d-mobile-subs">
+                  {rest.map((t) => <Link key={t.href} href={t.href} className="d-mobile-sub" aria-current={tabActive(pathname, t) ? "page" : undefined}>{t.label}</Link>)}
+                </div>
+              )}
+            </div>
+          );
+        })}
         <div className="d-mobile-account">
           <span>{email}</span>
           <form action="/api/auth/signout" method="post">
