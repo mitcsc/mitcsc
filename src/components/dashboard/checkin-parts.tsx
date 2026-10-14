@@ -19,3 +19,5 @@ export function oweNote(person: Person) {
 }
 
 export type Admit = (kerb: string, mode: "check-in" | "confirm" | "anyway") => Promise<CheckInResult | null>;
+// Resolves true when the check-in was taken back.
+export type Undo = (kerb: string) => Promise<boolean>;
