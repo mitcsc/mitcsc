@@ -1,5 +1,6 @@
 import Link from "next/link";
 import EventActions from "@/components/dashboard/EventActions";
+import LiveData from "@/components/dashboard/LiveData";
 import NoYear from "@/components/dashboard/NoYear";
 import { formatDay, localDate } from "@/lib/membership/config";
 import { sheetUrl } from "@/lib/membership/google/drive";
@@ -12,6 +13,7 @@ export default async function EventsPage() {
   const today = localDate(new Date());
   return (
     <main className="d-page">
+      <LiveData renderedAt={Date.now()} />
       <div className="d-section-head">
         <h1 className="d-h2">Events</h1>
         <Link className="m-btn is-medium" href="/dashboard/events/new">New event</Link>

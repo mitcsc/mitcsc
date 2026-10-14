@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import LiveData from "@/components/dashboard/LiveData";
 import MembersView, { type MemberRow } from "@/components/dashboard/MembersView";
 import NoYear from "@/components/dashboard/NoYear";
 import { sheetUrl } from "@/lib/membership/google/drive";
@@ -20,12 +21,15 @@ export default async function MembersPage() {
     method: m.method, status: m.status, reportedAt: m.reportedAt, paidAt: m.paidAt, paidVia: m.paidVia, confirmedBy: m.confirmedBy, createdAt: m.createdAt,
   }));
   return (
-    <MembersView
-      year={{ year: config.year, signupsOpen: config.signupsOpen, closesOn: config.closesOn, questions: config.form.questions.filter((q) => !q.builtin) }}
-      members={rows}
-      sheet={config.sheetId ? { url: sheetUrl(config.sheetId), sync } : null}
-      venmoCheckedAt={venmoCheckedAt}
-      signup={{ url: signupUrl, label: `${host}/join`, qr: qrSvg(signupUrl, "QR code for the membership signup page") }}
-    />
+    <>
+      <LiveData renderedAt={Date.now()} />
+      <MembersView
+        year={{ year: config.year, signupsOpen: config.signupsOpen, closesOn: config.closesOn, questions: config.form.questions.filter((q) => !q.builtin) }}
+        members={rows}
+        sheet={config.sheetId ? { url: sheetUrl(config.sheetId), sync } : null}
+        venmoCheckedAt={venmoCheckedAt}
+        signup={{ url: signupUrl, label: `${host}/join`, qr: qrSvg(signupUrl, "QR code for the membership signup page") }}
+      />
+    </>
   );
 }
