@@ -70,7 +70,7 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
               </div>
               {error && <p id="card-error" className="m-error" role="alert">{error}</p>}
               <div className="mp-card-buttons">
-                <button type="submit" className="m-btn is-block" disabled={busy}>{busy ? "Sending…" : "Email my card link"}</button>
+                <button type="submit" className="m-btn is-block" disabled={busy}>{busy ? "Sending…" : "Send me the link"}</button>
                 <Link href="/join" className="m-btn is-outline is-block">Not a member yet? Sign up</Link>
               </div>
             </form>
