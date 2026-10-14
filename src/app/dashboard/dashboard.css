@@ -116,6 +116,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-table :is(th, td):first-child { padding-left: 0; }
 .d-table :is(th, td):last-child { padding-right: 0; }
 .d-table .is-end { text-align: right; }
+.d-row-actions { display: inline-flex; align-items: center; gap: 16px; }
 .d-table .is-action { width: 1%; padding-top: 6px; padding-bottom: 6px; text-align: right; }
 .d-table .is-soft { color: #ffffffb3; }
 .d-table .is-faint { color: var(--muted); font-variant-numeric: tabular-nums; }

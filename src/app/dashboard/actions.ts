@@ -10,7 +10,7 @@ import { cleanForm, text } from "@/lib/membership/form";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
 import {
-  attendanceCount, checkIn, createEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
+  attendanceCount, checkIn, createEvent, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
   removePastSheet, requireCurrentYear, savePastSheet, unmarkPaidEver, updateEvent, updateMember, updateYear,
 } from "@/lib/membership/store";
 import { syncEventLater, syncMembersLater, syncMembersNow } from "@/lib/membership/sync";
@@ -231,6 +231,15 @@ export async function renameEvent(id: string, name: string): Promise<Result<null
     const clean = text(name, 100);
     if (!clean) throw new MembershipError("Name the event.");
     await updateEvent(id, (e) => ({ ...e, name: clean }));
+    return null;
+  });
+}
+
+export async function deleteEventAction(id: string): Promise<Result<null>> {
+  return attempt(async () => {
+    await requireExec();
+    const event = await getEvent(String(id));
+    if (event) await deleteEvent(event);
     return null;
   });
 }
