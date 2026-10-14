@@ -270,7 +270,8 @@ function Preview({ year, form }: { year: string; form: FormConfig }) {
               options.slice(0, 5).map((o) => <div className="d-preview-choice" key={o}><span className={q.type === "multiple" ? "is-round" : ""} />{o}</div>)
             ) : (
               <div className={`d-preview-box${q.type === "long" ? " is-long" : ""}`}>
-                {q.builtin === "kerb" && <span className="d-preview-suffix">@mit.edu</span>}
+                {q.builtin === "kerb" && <><span className="d-preview-placeholder">panda</span><span className="d-preview-suffix">@mit.edu</span></>}
+                {q.builtin === "name" && <span className="d-preview-placeholder">Xiong Mao</span>}
                 {q.type === "dropdown" && <Icon name="chevron" size={12} />}
               </div>
             )}

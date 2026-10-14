@@ -179,7 +179,7 @@ function SignupForm({ year, member, cards, onDone }: {
                 <label htmlFor={`q-${q.id}`} className="m-label">{q.label}</label>
                 <div className={`mp-kerb${taken ? " is-invalid" : ""}`}>
                   <input
-                    id={`q-${q.id}`} name="kerb" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required
+                    id={`q-${q.id}`} name="kerb" placeholder="panda" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required
                     value={String(answers[q.id] || "")} onChange={(e) => setAnswer(q.id, e.target.value)}
                     aria-invalid={taken || undefined} aria-describedby={taken ? "kerb-note" : undefined}
                   />
@@ -261,7 +261,7 @@ function QuestionField({ question: q, year, value, other, onChange, onOther }: {
     return (
       <div className="m-field">
         {label}
-        <input id={id} className="m-input" value={text} onChange={(e) => onChange(e.target.value)} required={required} maxLength={q.builtin === "name" ? 100 : 200} autoComplete={q.builtin === "name" ? "name" : "off"} />
+        <input id={id} className="m-input" value={text} onChange={(e) => onChange(e.target.value)} required={required} maxLength={q.builtin === "name" ? 100 : 200} autoComplete={q.builtin === "name" ? "name" : "off"} placeholder={q.builtin === "name" ? "Xiong Mao" : undefined} />
       </div>
     );
   }

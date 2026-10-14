@@ -62,7 +62,7 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
                 <label htmlFor="card-kerb" className="m-label">Kerberos</label>
                 <div className={`mp-kerb${error ? " is-invalid" : ""}`}>
                   <input
-                    id="card-kerb" name="kerb" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required
+                    id="card-kerb" name="kerb" placeholder="panda" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required
                     value={kerb} onChange={(e) => setKerb(e.target.value)} aria-invalid={!!error || undefined} aria-describedby={error ? "card-error" : undefined}
                   />
                   <span>@mit.edu</span>
