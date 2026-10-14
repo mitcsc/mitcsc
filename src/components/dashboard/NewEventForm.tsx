@@ -64,7 +64,7 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
             </span>
             <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>Change</button>
           </div>
-          <span className="d-field-note is-large">Creates a new sheet named “{name.trim() || "the event name"}”.</span>
+          <span className="d-field-note is-large">{name.trim() ? `Creates a new Google Sheet named “${name.trim()}”.` : "Creates a new Google Sheet with the same name as the event."}</span>
         </div>
       ) : (
         <p className="d-field-note is-large">Attendance is saved here only. Connect the club Google account in Settings to also save it to a Google Sheet.</p>
