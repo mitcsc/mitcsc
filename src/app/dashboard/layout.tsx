@@ -4,6 +4,7 @@ import { MainNav, ProblemBanner, SignIn } from "@/components/dashboard/Shell";
 import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
 import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google/oauth";
 import { instrumentSans } from "@/components/membership/font";
+import { Icon } from "@/components/membership/icons";
 import "@/components/membership/ui.css";
 import "./dashboard.css";
 
@@ -32,10 +33,12 @@ async function ConnectionBanner() {
   );
 }
 
-function SignOut({ label }: { label: string }) {
+function SignOut({ label, icon }: { label: string; icon?: boolean }) {
   return (
     <form action="/api/auth/signout" method="post">
-      <button type="submit" className="d-signout">{label}</button>
+      {icon
+        ? <button type="submit" className="d-signout is-icon" aria-label={label} title={label}><Icon name="signout" size={18} /></button>
+        : <button type="submit" className="d-signout">{label}</button>}
     </form>
   );
 }
@@ -75,7 +78,7 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
         <MainNav />
         <span className="d-account">
           <span className="d-account-email">{email}</span>
-          <SignOut label="Sign out" />
+          <SignOut label="Sign out" icon />
         </span>
       </header>
       <ConnectionBanner />
