@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
-import { lookUpKerb, refreshStatus, reportPayment, signUp, walletLink, type KerbStatus } from "@/app/membership/actions";
+import { lookUpKerb, refreshStatus, reportPayment, signUp, walletLink, type KerbStatus } from "@/app/join/actions";
 import WaitingPanda from "@/components/voting/WaitingPanda";
 import { CLUB_EMAIL, isKerb, money, normalizeKerb, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { MemberView } from "@/lib/membership/members";

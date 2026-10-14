@@ -51,7 +51,7 @@ export default function YearSettings({ config, nextYear }: { config: YearConfig;
         <div className="d-toggle-row">
           <div>
             <span className="d-toggle-title">Accepting signups</span>
-            <span className="d-toggle-note">{values.signupsOpen ? "The signup page is open at csc.mit.edu/membership." : "The signup page says signups are closed."}</span>
+            <span className="d-toggle-note">{values.signupsOpen ? "The signup page is open at csc.mit.edu/join." : "The signup page says signups are closed."}</span>
           </div>
           <Switch checked={values.signupsOpen} label="Accepting signups" onChange={(open) => { set("signupsOpen", open); commit({ signupsOpen: open }); }} />
         </div>

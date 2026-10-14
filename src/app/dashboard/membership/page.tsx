@@ -14,7 +14,7 @@ export default async function MembersPage() {
     listMembers(config.year), syncStatus(`members:${config.year}`), lastVenmoCheck(config.year), headers(),
   ]);
   const host = list.get("host") || "csc.mit.edu";
-  const signupUrl = `${host.startsWith("localhost") ? "http" : "https"}://${host}/membership`;
+  const signupUrl = `${host.startsWith("localhost") ? "http" : "https"}://${host}/join`;
   const rows: MemberRow[] = members.map((m) => ({
     kerb: m.kerb, name: m.name, classYear: m.classYear, dorm: m.dorm, answers: m.answers, type: m.type, price: m.price,
     method: m.method, status: m.status, reportedAt: m.reportedAt, paidAt: m.paidAt, paidVia: m.paidVia, confirmedBy: m.confirmedBy, createdAt: m.createdAt,
@@ -25,7 +25,7 @@ export default async function MembersPage() {
       members={rows}
       sheet={config.sheetId ? { url: sheetUrl(config.sheetId), sync } : null}
       venmoCheckedAt={venmoCheckedAt}
-      signup={{ url: signupUrl, label: `${host}/membership`, qr: qrSvg(signupUrl, "QR code for the membership signup page") }}
+      signup={{ url: signupUrl, label: `${host}/join`, qr: qrSvg(signupUrl, "QR code for the membership signup page") }}
     />
   );
 }

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Become a member of the MIT Chinese Students Club for the school year.",
 };
 
-export default async function MembershipPage() {
+export default async function JoinPage() {
   const config = await currentYear();
   if (!config) {
     // Until exec set up the first school year here, keep sending people to the old signup form.
