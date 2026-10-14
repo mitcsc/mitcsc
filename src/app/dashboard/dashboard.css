@@ -119,7 +119,9 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-search { width: 180px; height: 34px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; background: transparent; font-size: 13px; }
 .d-search:focus { outline: none; border-color: #ffffff70; }
 .d-search::placeholder { color: #77777d; }
-.d-add-btn { gap: 6px; }
+/* A quiet text button, like the filters: the table is the focus, adding is occasional. */
+.d-add-btn { gap: 6px; padding: 6px 10px; border-color: transparent; color: var(--muted); }
+.d-add-btn:hover:not(:disabled) { border-color: transparent; background: #ffffff0d; }
 .d-table-wrap { overflow-x: auto; }
 .d-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
 .d-table th { padding: 10px 12px; font-size: 12px; font-weight: 400; color: var(--faint); text-align: left; }
