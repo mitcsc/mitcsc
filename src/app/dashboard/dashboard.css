@@ -331,6 +331,9 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 @media (max-width: 720px) {
   .d-header { padding: 10px 16px; gap: 8px 16px; }
   .d-account-email { display: none; }
+  /* Sign out sits beside the brand, and the tabs get their own row. */
+  .d-account { order: 1; }
+  .d-main-nav { order: 2; width: 100%; }
   .d-banner, .d-subnav { padding-left: 16px; padding-right: 16px; }
   .d-subnav-meta { margin-left: 0; }
   .d-aside { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--line); padding: 16px 6px; }
