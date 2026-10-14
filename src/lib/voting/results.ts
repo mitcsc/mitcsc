@@ -1,7 +1,9 @@
 import type { Candidate, Criterion, Ratings } from './types';
 export interface ResultBallot { voterId: string; voterName: string; initial: Ratings; final: Ratings; submittedAt: string }
 export interface ElectionResults {
-  sessionId: string; ended: boolean; spreadsheetUrl: string; voterCount: number;
+  sessionId: string; name: string; ended: boolean; voterCount: number;
+  // Signs the "Save to Drive" link. Only the host's copy of the results has it.
+  exportToken?: string;
   criteria: Criterion[];
   candidates: {candidate: Candidate; initialCount: number; ballots: ResultBallot[]; stats: {criterionId: string; count: number; initialAverage: number | null; average: number | null; median: number | null; min: number | null; max: number | null; distribution: {rating: number; count: number}[]}[]}[];
 }

@@ -1,6 +1,7 @@
 /* Run against a local dev server:
  * PLAYWRIGHT_MODULE_PATH=/path/to/node_modules/playwright \
  * VOTING_TEST_URL=http://localhost:3112 node tests/voting-voter.e2e.cjs
+ * Start the server with DASHBOARD_DEV_EMAIL set so the dashboard lets the test in.
  * All voting API traffic is intercepted. No Google credentials or writes are used.
  */
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -34,7 +35,7 @@ async function main() {
   await page.route('**/api/voting/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const reply = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-    if (path.endsWith('/president')) return reply(200,{enabled:true,election:{sessionId:state.sessionId,name:'Test election',open:true}});
+    if (path.endsWith('/delibs')) return reply(200,{me:{name:'Test Voter'},election:state.active?{sessionId:state.sessionId,name:'Test delib',hostName:'Host Exec',isHost:false}:null,hosted:[]});
     if (path.endsWith('/state')) {
       stateRequests++;
       return authenticated ? reply(200, state) : reply(401, { error: 'Join the session.' });
@@ -48,7 +49,7 @@ async function main() {
     if (path.endsWith('/submit')) {
       const ballot = route.request().postDataJSON(); submissions.push(ballot);
       if (rejectSubmission) return reply(409, {error:'Submission is closed.'});
-      if (transientFailures-- === 2) return reply(503, {error:'Temporary spreadsheet failure.'});
+      if (transientFailures-- === 2) return reply(503, {error:'Temporary server failure.'});
       if (transientFailures === 0) return route.abort('failed');
       state.ownBallot = {initialSubmitted:true,submitted:true};
       return reply(200, {ok:true, submissionId:ballot.submissionId});
@@ -65,19 +66,16 @@ async function main() {
     await page.locator('.voter-phase').filter({ hasText: ({ initial: 'Initial ratings', deliberation: 'Discussion', revision: 'Voting open', final: 'Voting open', locked: 'Voting closed' })[phase] }).waitFor();
   };
   try {
-    await page.goto(`${baseURL}/vote`);
-    await page.getByLabel('Name').fill('Test Voter');
-    await page.getByLabel('Code').fill('private-test-password');
-    await page.getByRole('button', { name: 'Join' }).click();
+    // The dev server signs in as DASHBOARD_DEV_EMAIL, then a signed-in exec joins without a form.
+    await page.goto(`${baseURL}/api/auth/google/start?next=/dashboard/delibs`);
     await page.getByRole('heading', { name: 'You’re in.' }).waitFor();
+    await waitText('Hosted by Host Exec');
     await waitText('Joined as Test Voter');
     state.votingStarted = true;
     await refreshPhase('initial');
     await page.getByRole('heading', { name: 'Alex Chen' }).waitFor();
     assert.equal(joinRequests.length, 1);
-    assert.equal(joinRequests[0].name, 'Test Voter');
-    assert.equal(joinRequests[0].password, 'private-test-password');
-    assert.match(joinRequests[0].joinId, /^[0-9a-f-]{36}$/);
+    assert.deepEqual(joinRequests[0], {});
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: 'Not enough information' }).count(), 0);
     assert.equal(await fieldset('Experience').getByRole('radio', { name: 'Not enough information' }).count(), 1);
     await page.getByRole('button', { name: 'Save ratings' }).click();
@@ -195,15 +193,14 @@ async function main() {
     await page.getByText('Initial ratings have closed. You can participate when the next candidate starts.',{exact:true}).waitFor();
     assert.equal(await page.getByText('Discussion in progress',{exact:true}).count(),0);
     state.eligible=true;
-    // Presidents are routed to controls and never receive a ballot.
-    state.isAdmin = true;
+    // When the host ends the delib, voters return to the Delibs home.
+    state.active = false;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await page.locator('.voting-console').waitFor();
-    assert.equal(new URL(page.url()).pathname,'/vote/admin');
+    await page.getByRole('heading', {name: 'No delib is running', exact: true}).waitFor();
     assert.equal(await page.getByRole('button', {name: 'Submit vote'}).count(), 0);
     assert.equal(submissions.length, 4);
     assert.deepEqual(errors, [], 'No uncaught browser errors');
-    console.log('PASS: join, polling, required/optional validation, local refresh persistence, original/revised separation, retry identity/payload, confirmed submission persistence, pending-ballot advance, and admin redirect.');
+    console.log('PASS: join, polling, required/optional validation, local refresh persistence, original/revised separation, retry identity/payload, confirmed submission persistence, pending-ballot advance, and return home when the delib ends.');
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

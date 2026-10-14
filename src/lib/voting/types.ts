@@ -15,8 +15,6 @@ export interface VotingState {
   submittedCount: number;
   voter: { id: string; name: string } | null;
   isAdmin: boolean;
-  initialized: boolean;
-  exportPending?: boolean;
   ownBallot?: {initialSubmitted: boolean; submitted: boolean};
   eligible?: boolean;
   admissionPending?: boolean;
@@ -25,7 +23,6 @@ export interface VotingState {
   participants?: { id: string; name: string; submitted: boolean; initialSubmitted?: boolean }[];
   candidateStates?: {candidateId: string; phase: VotingPhase; ballotVersion: string; submittedCount: number; participants: NonNullable<VotingState["participants"]>}[];
   candidates?: Candidate[];
-  spreadsheetUrl?: string;
 }
 export interface FinalBallot {
   submissionId: string;
@@ -37,10 +34,6 @@ export interface FinalBallot {
 }
 export type AdminAction =
   | { action: "removeVoters" | "banVoters" | "admitVoters"; voterIds: string[] }
-  | { action: "removeVoter" | "admitVoter"; voterId: string }
-  | { action: "initialize" }
-  | { action: "saveSetup"; candidates: Candidate[]; criteria: Criterion[] }
-  | { action: "setPhase"; phase: VotingPhase; candidateId?: string }
-  | { action: "setContext"; visible: boolean };
+  | { action: "setPhase"; phase: VotingPhase; candidateId?: string };
 
 export interface RecoveredBallot { initialRatings: Ratings | null; finalRatings: Ratings | null; submissionId: string | null }

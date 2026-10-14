@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   if (!code) return back(request, state.next, url.searchParams.get("error") === "access_denied" ? undefined : "Google sign-in failed. Please try again.");
   try {
-    const { email, tokens } = await exchangeCode(code, url.origin);
+    const { email, name, tokens } = await exchangeCode(code, url.origin);
     if (state.flow === "connect") {
       const by = await requireExec();
       if (email !== clubEmail()) return back(request, state.next, `Connect ${clubEmail()}, not ${email}.`);
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     }
     if (!(await hasExecAccess(email))) return back(request, "/dashboard", "This Google account does not have access.");
     const response = back(request, state.next);
-    const cookie = sessionCookie(email);
+    const cookie = sessionCookie(email, name);
     response.cookies.set(cookie.name, cookie.value, cookie.options);
     return response;
   } catch (error) {

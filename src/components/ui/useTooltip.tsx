@@ -3,6 +3,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+// The dashboard sets its font on a wrapper (`.m-font`), so the tooltip renders inside it to use the same font.
+const fontRoot = (anchor: HTMLElement) => anchor.closest<HTMLElement>(".m-font") ?? document.body;
+
 /** Lightweight portal tooltip: fast hover, immediate focus, no layout changes. */
 export function useTooltip(text: string) {
   const id = useId();
@@ -42,6 +45,6 @@ export function useTooltip(text: string) {
       onFocus: (event: React.FocusEvent<HTMLElement>) => open(event.currentTarget, 0),
       onBlur: close,
     },
-    tooltip: anchor ? createPortal(<div ref={bubble} id={id} role="tooltip" className="csc-tooltip" data-side={position?.above ? "top" : "bottom"} style={{left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? "visible" : "hidden"}}>{text}<span className="csc-tooltip-arrow" style={{left: position?.arrow ?? 0}}/></div>, document.body) : null,
+    tooltip: anchor ? createPortal(<div ref={bubble} id={id} role="tooltip" className="csc-tooltip" data-side={position?.above ? "top" : "bottom"} style={{left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? "visible" : "hidden"}}>{text}<span className="csc-tooltip-arrow" style={{left: position?.arrow ?? 0}}/></div>, fontRoot(anchor)) : null,
   };
 }

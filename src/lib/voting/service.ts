@@ -1,21 +1,14 @@
 import { redisEnabled } from "./redis";
-import { presidentEnabled } from "./president";
 import { redisSettings, redisState, redisAdminAction, redisSubmit, redisRecoverBallot } from "./redis-service";
 import { Identity, VotingError, text } from "./security";
 import type { Candidate, Criterion, Ratings } from "./types";
 
-export const HEADERS = {
-  Candidates: ["id", "name", "context", "order", "completed"],
-  Criteria: ["id", "label", "description", "min", "max", "required"],
-  Responses: ["submission_id", "session_id", "candidate_id", "candidate_name", "voter_id", "voter_name", "ballot_version", "criterion_id", "criterion_label", "initial_rating", "final_rating", "submitted_at"],
-  Session: ["key", "value"],
-  Ballots: ["candidate_id", "ballot_version", "candidate_name", "candidate_context", "criteria_json"],
-  Summary: ["session_id", "candidate_id", "candidate_name", "criterion", "initial_average", "final_average", "ratings_count"],
-};
-export interface Settings { sessionId: string; password: string; sheetId: string; settingsSheetId: string; name?: string; presidentManaged?: boolean }
+// One delib. `host` is the email of the exec who created it and runs it. `open` turns false when the host ends it.
+// Votes stay in Redis only. Only the host can read full results, in the dashboard.
+export interface Settings { sessionId: string; name: string; host: string; hostName: string; open: boolean; createdAt: number; endedAt?: number }
 export function authorize(identity: Identity | null, config: Settings, admin = false): Identity {
-  if (!identity || identity.sessionId !== config.sessionId || identity.sheetId !== config.sheetId) throw new VotingError("Enter the session password to join.", 401);
-  if (admin && identity.role !== "admin") throw new VotingError("Admin access required.", 403);
+  if (!identity || identity.sessionId !== config.sessionId) throw new VotingError("Join the session.", 401);
+  if (admin && identity.role !== "admin") throw new VotingError("Only the host can do that.", 403);
   return identity;
 }
 export function validateSetup(candidates: Candidate[], criteria: Criterion[]) {
@@ -45,7 +38,7 @@ export function validateRatings(value: unknown, criteria: Criterion[]): asserts 
 }
 
 export async function settings(): Promise<Settings> {
-  if (!presidentEnabled() || !redisEnabled()) throw new VotingError("Configure the president password and Redis before opening voting.", 503);
+  if (!redisEnabled()) throw new VotingError("Configure Redis before opening voting.", 503);
   return redisSettings();
 }
 export const getState = redisState;

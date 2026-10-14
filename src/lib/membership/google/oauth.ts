@@ -5,7 +5,8 @@ import { getJson, redis, updateJson } from "../redis";
 
 // Exec sign in asks only for the email address. Connecting the club account asks for
 // Drive (folders, sheets, sharing), read-only Gmail (Venmo emails), and Gmail send (card links).
-export const SIGN_IN_SCOPES = ["openid", "email"];
+// "profile" shares the person's name, which Delibs shows to the host.
+export const SIGN_IN_SCOPES = ["openid", "email", "profile"];
 export const GMAIL_SEND = "https://www.googleapis.com/auth/gmail.send";
 export const CLUB_SCOPES = ["openid", "email", "https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/gmail.readonly", GMAIL_SEND];
 
@@ -84,7 +85,7 @@ export async function exchangeCode(code: string, origin: string) {
   const ticket = await new OAuth2Client(client().id).verifyIdToken({ idToken: data.id_token, audience: client().id });
   const payload = ticket.getPayload();
   if (!payload?.email || !payload.email_verified) throw new MembershipError("Google did not share a verified email address.", 401);
-  return { email: payload.email.toLowerCase(), tokens: data };
+  return { email: payload.email.toLowerCase(), name: payload.name?.trim() || null, tokens: data };
 }
 
 export async function clubConnection() {

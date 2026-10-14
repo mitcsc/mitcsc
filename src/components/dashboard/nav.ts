@@ -30,6 +30,7 @@ export const MEMBERSHIP_TABS: NavTab[] = [
 export const SECTIONS: NavSection[] = [
   { href: "/dashboard/check-in", label: "Check-in", also: "/dashboard/events", tabs: CHECK_IN_TABS },
   { href: "/dashboard/membership", label: "Members", tabs: MEMBERSHIP_TABS },
+  { href: "/dashboard/delibs", label: "Delibs" },
   { href: "/dashboard/photos", label: "Photos" },
   { href: "/dashboard/settings", label: "Settings" },
 ];

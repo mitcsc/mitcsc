@@ -1,5 +1,5 @@
-> Superseded setup paths: the settings-sheet fallback, its polling cache, first-join admin admission, and old demo/rehearsal scripts have since been removed.
-> All elections now require Redis and the president password; no existing data was deleted.
+> This audit is historical. Voting has since moved to the dashboard's Delibs tab, with Google sign-in and no Sheets export.
+> See [deliberations.md](deliberations.md) for how it works now.
 
 # Voting audit, September 2026
 

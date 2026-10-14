@@ -1,4 +1,4 @@
-.voting-admin{--va-paper:#111111;--va-ink:#f4f4f4;--va-muted:#999999;--va-line:#292929;--va-red:#c5393a;max-width:1200px;margin:0 auto;padding:68px 28px 88px;color:var(--va-ink);font-family:Arial,Helvetica,sans-serif;background:var(--va-paper);border-radius:4px;line-height:1.55}
+.voting-admin{--va-paper:#111111;--va-ink:#f4f4f4;--va-muted:#999999;--va-line:#292929;--va-red:#c5393a;max-width:1200px;margin:0 auto;padding:68px 28px 88px;color:var(--va-ink);font-family:var(--font-instrument-sans), Arial, sans-serif;background:var(--va-paper);border-radius:4px;line-height:1.55}
 
 .voting-admin *{box-sizing:border-box}
 .voting-admin-header{display:flex;align-items:start;justify-content:space-between;gap:24px;margin-bottom:32px}
@@ -39,7 +39,7 @@
 .voting-admin-phase-list small{margin-left:auto;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
 .voting-admin blockquote{margin:16px 0 0;padding:14px;border-left:2px solid var(--va-red);background:#111111;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
 .voting-admin label{display:grid;gap:7px;font-size:12px;font-weight:600}
-.voting-admin input:not([type=checkbox]):not([type=radio]),.voting-admin textarea{width:100%;min-width:0;background:#111111;border:1px solid #292929;border-radius:4px;padding:10px 12px;font:14px/1.45 Arial,Helvetica,sans-serif;color:var(--va-ink)}
+.voting-admin input:not([type=checkbox]):not([type=radio]),.voting-admin textarea{width:100%;min-width:0;background:#111111;border:1px solid #292929;border-radius:4px;padding:10px 12px;font:14px/1.45 var(--font-instrument-sans), Arial, sans-serif;color:var(--va-ink)}
 .voting-admin textarea{resize:vertical}
 .voting-admin input[type=checkbox],.voting-admin input[type=radio]{accent-color:var(--va-red);width:17px;height:17px}
 .voting-admin label.voting-admin-check{display:flex;align-items:center;gap:9px;font-weight:400}
@@ -53,7 +53,7 @@
 .voting-admin-number{font-family:Georgia,serif;color:var(--va-muted);font-size:17px}
 .voting-admin-editor{border:0;border-top:1px solid var(--va-line);margin:25px 0;padding:20px 0 0;min-width:0}
 .voting-admin-editor>legend{padding:0 10px 0 0;font-size:18px;font-family:Canela,Georgia,serif}
-.voting-admin-editor>legend span{font:11px Arial,sans-serif;color:var(--va-muted)}
+.voting-admin-editor>legend span{font:11px var(--font-instrument-sans), Arial, sans-serif;color:var(--va-muted)}
 .voting-admin-edit-row{display:flex;gap:16px;padding:16px 0 22px;border-bottom:1px solid var(--va-line);margin-bottom:18px}
 .voting-admin-fields{flex:1;display:grid;gap:12px;min-width:0}
 .voting-admin-row-actions{display:flex;align-items:start;gap:5px}
@@ -93,7 +93,7 @@
 }
 
 .voting-admin{--va-paper:#0c0c0c;--va-ink:#f4f4f4;--va-muted:#999;--va-line:#292929;--va-red:#c5393a;padding:24px 0 48px;max-width:1080px;background:transparent}
-.voting-admin h1{font-family:Charlottenburg,Arial,sans-serif;font-size:clamp(36px,5vw,52px);letter-spacing:0}
+.voting-admin h1{font-family:Charlottenburg,var(--font-instrument-sans), Arial, sans-serif;font-size:clamp(36px,5vw,52px);letter-spacing:0}
 .voting-admin h2{font-size:26px}
 .voting-admin-header{align-items:center;margin-bottom:28px}
 .voting-admin-header h1{margin:0}
@@ -122,7 +122,7 @@
 @media(max-width:760px){.voting-admin{padding:16px 0 32px}.voting-admin-header{display:flex}.voting-admin-header-links{margin:0}.voting-admin-grid{gap:0}.voting-admin-card{padding:24px 0}.voting-admin-login{margin:32px auto}.voting-admin h1{font-size:34px}}
 .voting-admin-controls{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,2fr);gap:48px;margin-bottom:48px}
 .voting-admin-candidates{min-width:0}
-.voting-admin-candidates .voting-admin-heading h2{font:18px/1.4 Arial,sans-serif;letter-spacing:0}
+.voting-admin-candidates .voting-admin-heading h2{font:18px/1.4 var(--font-instrument-sans), Arial, sans-serif;letter-spacing:0}
 .voting-admin-candidates .voting-admin-heading>button{padding:4px 0;border:0;color:#999}
 .voting-candidate-list{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:8px}
 .voting-candidate-list button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:16px;border-color:transparent;border-radius:8px;min-height:74px}
@@ -141,7 +141,7 @@
 .voting-round-steps .is-current{border-color:#c5393a;color:white}
 .voting-round-steps .is-current>span{color:#ef7777}
 .voting-round-steps .is-complete{border-color:#777;color:#aaa}
-.voting-admin .voting-round-status h3{font:500 21px/1.4 Arial,sans-serif;letter-spacing:0;margin:0 0 10px}
+.voting-admin .voting-round-status h3{font:500 21px/1.4 var(--font-instrument-sans), Arial, sans-serif;letter-spacing:0;margin:0 0 10px}
 .voting-round-status p,.voting-round-empty p{color:#999;font-size:14px;max-width:450px}
 .voting-admin button.voting-round-next{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;margin-top:28px;padding:16px 18px;font-size:14px;border-radius:7px;text-align:left}
 .voting-submission-count{color:#aaa;font-size:14px;margin-top:24px!important}

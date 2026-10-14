@@ -7,7 +7,7 @@ export function presenceStatus(lastSeen: number, hidden: boolean, now = Date.now
   if (age > 30_000) return 'offline';
   return hidden || age > 25_000 ? 'away' : 'online';
 }
-const key = (config: Settings, id: string) => redisKey('presence',config.sessionId,config.sheetId,id);
+const key = (config: Settings, id: string) => redisKey('delib-presence',config.sessionId,id);
 export async function recordPresence(config: Settings, id: string, hidden: boolean) {
   await redisCommand('SET',key(config,id),JSON.stringify({at:Date.now(),hidden}),'EX',120);
 }

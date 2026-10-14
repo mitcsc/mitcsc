@@ -5,10 +5,12 @@ const assert = require('node:assert/strict');
 (async () => { const browser = await chromium.launch(); try {
     const page = await browser.newPage();
     let phase = 'initial', confirmed = false;
-    await page.route('**/api/voting/**', r => { const u = r.request().url(); if (u.includes('/initial'))
+    await page.route('**/api/voting/**', r => { const u = r.request().url(); if (u.includes('/delibs'))
+        return r.fulfill({ json: { me: { name: 'Tester' }, election: { sessionId: 'unconfirmed-test', name: 'Test delib', hostName: 'Host Exec', isHost: false }, hosted: [] } }); if (u.includes('/initial'))
         return r.fulfill({ status: 409, json: { error: 'Initial ratings have closed for this candidate.' } }); if (u.includes('/ballot'))
         return r.fulfill({ json: { initialRatings: { c: 4 }, finalRatings: null } }); return r.fulfill({ json: { active: true, sessionId: 'unconfirmed-test', isAdmin: false, voter: { id: 'v', name: 'Tester' }, phase, votingComplete: phase === 'locked', ballotVersion: 'one', currentCandidate: { id: 'a', name: 'Candidate', context: '' }, eligible: true, ownBallot: { initialSubmitted: confirmed, submitted: false }, criteria: [{ id: 'c', label: 'Rating', min: 1, max: 5, required: true }], pollIntervalMs: 3000 } }); });
-    await page.goto(`${process.env.VOTING_TEST_URL || 'http://localhost:3112'}/vote`);
+    // The dev server signs in as DASHBOARD_DEV_EMAIL.
+    await page.goto(`${process.env.VOTING_TEST_URL || 'http://localhost:3112'}/api/auth/google/start?next=/dashboard/delibs`);
     await page.getByRole('radio', { name: '4', exact: true }).check();
     await page.getByRole('button', { name: 'Save ratings' }).click();
     await page.getByRole('alert').filter({ hasText: 'Initial ratings have closed' }).waitFor();

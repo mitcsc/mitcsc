@@ -46,6 +46,7 @@ export default function WaitingPanda({ jumpOnly = false }: { jumpOnly?: boolean 
   }
   return <span className={`voter-panda-track${jumpOnly ? " voter-panda-jump-only" : ""}`} onClick={jumpOnly ? celebrate : undefined} role={jumpOnly ? "button" : undefined} tabIndex={jumpOnly ? 0 : undefined} aria-label={jumpOnly ? "Celebrate with confetti" : undefined} aria-hidden={jumpOnly ? undefined : true} onKeyDown={event => { if (jumpOnly && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); celebrate(); } }}>
     {bursts.map(id => <ConfettiBurst key={id} id={id} onDone={removeBurst}/>)}
+    <span className="voter-panda-shadow" aria-hidden="true"/>
     <span className="voter-panda-hop"><Image draggable={false} className="voter-waiting-panda" src="/img/logo/panda.png" alt="" aria-hidden="true" width={64} height={64}/></span>
   </span>;
 }

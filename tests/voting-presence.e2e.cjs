@@ -11,20 +11,20 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
   const heartbeats=[];
   await page.route('**/api/voting/**',async route=>{
    const url=new URL(route.request().url());
+   if(url.pathname.endsWith('/delibs'))return route.fulfill({json:{me:{name:'Tester'},election:{sessionId:session,name:'Test delib',hostName:'Host Exec',isHost:false},hosted:[]}});
    if(url.pathname.endsWith('/join')){kicked=false;return route.fulfill({json:{ok:true}});}
    if(kicked)return route.fulfill({status:401,json:{error:'You were kicked from this session. You can join again.'}});
    if(url.searchParams.has('presence'))heartbeats.push({session,visibility:url.searchParams.get('presence')});
    return route.fulfill({json:{sessionId:session,active:true,phase:'waiting',criteria:[],voter:{id:session+'-voter',name:'Tester'},isAdmin:false,pollIntervalMs:500}});
   });
-  await page.goto(`${process.env.VOTING_TEST_URL}/vote`);
+  // The dev server signs in as DASHBOARD_DEV_EMAIL.
+  await page.goto(`${process.env.VOTING_TEST_URL}/api/auth/google/start?next=/dashboard/delibs`);
   await page.getByRole('heading',{name:'You’re in.'}).waitFor();
   kicked=true;
   await page.clock.runFor(600);
-  await page.getByRole('button',{name:'Join',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Join again',exact:true}).waitFor();
   session='new';
-  await page.getByPlaceholder('Name',{exact:true}).fill('Returning voter');
-  await page.getByPlaceholder('Code',{exact:true}).fill('new-code');
-  await page.getByRole('button',{name:'Join',exact:true}).click();
+  await page.getByRole('button',{name:'Join again',exact:true}).click();
   await page.getByRole('heading',{name:'You’re in.'}).waitFor();
   assert.ok(heartbeats.some(h=>h.session==='new'),'Rejoin sends presence immediately, without waiting for old timer');
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});

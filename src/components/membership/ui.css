@@ -129,4 +129,12 @@
   45% { transform: translateY(-24px); animation-timing-function: cubic-bezier(.6, 0, .8, .35); }
   90% { transform: translateY(0); }
 }
-@media (prefers-reduced-motion: reduce) { .voter-panda-confetti { display: none; } }
+/* A soft circle on the ground that shrinks and fades while the panda is in the air. It runs in step with the jump. */
+.voter-panda-shadow { position: absolute; left: 50%; bottom: 0; width: 44px; height: 10px; margin-left: -22px; border-radius: 50%; background: radial-gradient(closest-side, #ffffff2e, #ffffff00); pointer-events: none; }
+.voter-panda-jump-only .voter-panda-shadow { animation: m-panda-shadow 1.3s infinite; }
+@keyframes m-panda-shadow {
+  0%, 100% { transform: scale(1); opacity: 1; animation-timing-function: cubic-bezier(.2, .65, .4, 1); }
+  45% { transform: scale(.55); opacity: .4; animation-timing-function: cubic-bezier(.6, 0, .8, .35); }
+  90% { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .voter-panda-confetti { display: none; } .voter-panda-shadow { animation: none !important; } }

@@ -17,10 +17,10 @@ export interface ExecAccess {
   checkedAt: number;
 }
 
-export function sessionCookie(email: string) {
+export function sessionCookie(email: string, name: string | null = null) {
   return {
     name: SESSION_COOKIE,
-    value: sign("dashboard-session", { email }, SESSION_MS),
+    value: sign("dashboard-session", { email, name }, SESSION_MS),
     options: { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge: SESSION_MS / 1000 },
   };
 }
@@ -62,9 +62,19 @@ export async function hasExecAccess(email: string) {
   return !!access?.people.some((p) => p.email === email);
 }
 
+async function session() {
+  return verify<{ email: string; name?: string | null }>("dashboard-session", (await cookies()).get(SESSION_COOKIE)?.value);
+}
+
 export async function signedInEmail() {
-  const session = verify<{ email: string }>("dashboard-session", (await cookies()).get(SESSION_COOKIE)?.value);
-  return session?.email || null;
+  return (await session())?.email || null;
+}
+
+// The signed-in exec, with the name from their Google account. Sessions from before names were saved
+// fall back to the part of the email before the @.
+export async function requireExecPerson() {
+  const email = await requireExec();
+  return { email, name: (await session())?.name || email.split("@")[0] };
 }
 
 // Every dashboard action calls this first.
