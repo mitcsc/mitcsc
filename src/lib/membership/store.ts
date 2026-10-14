@@ -97,11 +97,12 @@ export async function createEvent(input: Omit<EventInfo, "id" | "createdAt">) {
   return event;
 }
 
-// The event on this date. The club holds at most one event per day.
-export async function eventOn(year: string, date: string) {
+// The events on this date, earliest first. Events on the same day never overlap.
+export async function eventsOn(year: string, date: string) {
   const score = dayScore(date);
-  const [id] = await redis<string[]>("ZRANGE", keys.events(year), score, score, "BYSCORE");
-  return id ? getEvent(id) : null;
+  const ids = await redis<string[]>("ZRANGE", keys.events(year), score, score, "BYSCORE");
+  const events = (await getManyJson<EventInfo>(ids.map(keys.event))).filter((e): e is EventInfo => !!e);
+  return events.sort((a, b) => (a.starts || "").localeCompare(b.starts || ""));
 }
 
 export async function getEvent(id: string) {

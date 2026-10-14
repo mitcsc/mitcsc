@@ -19,6 +19,7 @@ const { cleanForm } = require('../src/lib/membership/form.ts');
 const { newYearConfig, canStartNextYear, formTitle, carryForm } = require('../src/lib/membership/config.ts');
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
+const hours = require('../src/lib/membership/event-times.ts');
 const { walletButtons } = require('../src/lib/membership/wallet.ts');
 const { renameFile, trashFile } = require('../src/lib/membership/google/drive.ts');
 const { redeemCardLink } = require('../src/lib/membership/card-link.ts');
@@ -248,10 +249,14 @@ test('a kerb can sign up once, and check-in records the first scan', async () =>
 });
 
 test('Deleting an event removes it and its check-ins only', async () => {
-  const make = (name, date) => store.createEvent({ year: YEAR, name, date, sheetId: null, sheetTab: 'Check-ins', createdBy: 'a@mit.edu' });
-  const [keep, gone] = [await make('Keep', '2026-10-13'), await make('Gone', '2026-10-14')];
-  assert.equal((await store.eventOn(YEAR, '2026-10-13')).name, 'Keep', 'Each day has at most one event');
-  assert.equal(await store.eventOn(YEAR, '2026-10-15'), null);
+  const make = (name, date, starts = null, ends = null) => store.createEvent({ year: YEAR, name, date, starts, ends, sheetId: null, sheetTab: 'Check-ins', createdBy: 'a@mit.edu' });
+  const [keep, gone] = [await make('Keep', '2026-10-13', '19:00', '21:00'), await make('Gone', '2026-10-14')];
+  const later = await make('Later', '2026-10-13', '21:00', '22:00');
+  const early = await make('Early', '2026-10-13', '12:00', '13:00');
+  assert.deepEqual((await store.eventsOn(YEAR, '2026-10-13')).map((e) => e.name), ['Early', 'Keep', 'Later'], 'A day can hold several events, earliest first');
+  assert.deepEqual(await store.eventsOn(YEAR, '2026-10-15'), []);
+  await store.deleteEvent(later);
+  await store.deleteEvent(early);
   const record = { kerb: 'jchen', name: 'Jamie', classYear: '2029', paid: true, at: 1, by: 'a@mit.edu' };
   await store.checkIn(keep.id, record);
   await store.checkIn(gone.id, record);
@@ -262,7 +267,40 @@ test('Deleting an event removes it and its check-ins only', async () => {
   assert.equal(await store.attendanceCount(gone.id), 0);
   assert.equal(db.has(`${keys.sync(`event:${gone.id}`)}:status`), false);
   assert.deepEqual((await store.listEvents(YEAR)).map((e) => [e.event.name, e.count]), [['Keep', 1]]);
-  assert.equal(await store.eventOn(YEAR, '2026-10-14'), null, 'A deleted event frees its day');
+  assert.deepEqual(await store.eventsOn(YEAR, '2026-10-14'), [], 'A deleted event frees its day');
+});
+
+test('check-in hours: overlaps, open and closed, and an exec choice', () => {
+  const day = '2026-10-13';
+  const at = (time) => new Date(`${day}T${time}:00-04:00`); // EDT, the club's time zone in October
+  const party = { date: day, starts: '19:00', ends: '21:00' };
+  assert.equal(hours.clashes(party, { date: day, starts: '20:30', ends: '22:00' }), true);
+  assert.equal(hours.clashes(party, { date: day, starts: '21:00', ends: '22:00' }), false, 'Back-to-back events do not overlap');
+  assert.equal(hours.clashes(party, { date: day }), true, 'An event without times takes the whole day');
+  assert.equal(hours.clashes(party, { date: '2026-10-14' }), false);
+  assert.equal(hours.formatHours(party), '7:00 – 9:00 PM');
+  assert.equal(hours.formatHours({ date: day, starts: '11:30', ends: '13:00' }), '11:30 AM – 1:00 PM');
+  assert.match(hours.clashNote({ ...party, name: 'Mixer' }), /^“Mixer” is on Oct 13, 7:00 – 9:00 PM\. Events on the same day cannot overlap\.$/);
+
+  assert.deepEqual(hours.checkInState(party, at('18:59')), { open: false, note: 'Opens at 7:00 PM', toggle: 'Open check-in now' });
+  assert.deepEqual(hours.checkInState(party, at('19:00')), { open: true, note: 'Closes at 9:00 PM', toggle: 'Close check-in' });
+  assert.deepEqual(hours.checkInState(party, at('21:00')), { open: false, note: 'Closed at 9:00 PM', toggle: 'Reopen check-in' });
+  assert.deepEqual(hours.checkInState(party, new Date('2026-10-12T20:00:00-04:00')), { open: false, note: 'Opens Oct 13 at 7:00 PM', toggle: 'Open check-in now' });
+  assert.equal(hours.checkInState({ date: day }, new Date('2027-01-01T00:00:00Z')).open, true, 'Without times, check-in stays open');
+  assert.equal(hours.checkInState({ ...party, checkIn: 'closed' }, at('20:00')).open, false, 'An exec can close it early');
+  assert.equal(hours.checkInState({ ...party, checkIn: 'open' }, at('23:00')).open, true, 'An exec can reopen it late');
+  assert.deepEqual(hours.checkInState({ date: day }, new Date(at('23:59').getTime() - 86_400_000)), { open: false, note: 'Opens Oct 13', toggle: 'Open check-in now' }, 'Without times, check-in opens on the day');
+
+  // Starting soon: within a day of opening, with a countdown.
+  assert.equal(hours.opensAt(party), at('19:00').getTime());
+  assert.equal(hours.opensAt({ date: day }), at('00:00').getTime(), 'Without times, check-in opens at midnight');
+  assert.equal(hours.opensAt({ date: '2026-11-01', starts: '03:00', ends: '04:00' }), new Date('2026-11-01T03:00:00-05:00').getTime(), 'After the clocks go back');
+  assert.equal(hours.startsSoon(party, at('19:00').getTime() - 86_400_000), true);
+  assert.equal(hours.startsSoon(party, at('19:00').getTime() - 86_400_001), false, 'More than a day away');
+  assert.equal(hours.startsSoon(party, at('19:00').getTime()), false, 'Already open');
+  assert.equal(hours.formatCountdown(18 * 3600_000 + 51 * 60_000 + 30_000), '18h 51m');
+  assert.equal(hours.formatCountdown(12 * 60_000 + 29_100), '12m 30s');
+  assert.equal(hours.formatCountdown(-5), '0s');
 });
 
 test('the Venmo check confirms each payment once and only for the right amount', async () => {
