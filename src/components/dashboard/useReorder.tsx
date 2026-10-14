@@ -125,6 +125,8 @@ export function useReorder<T extends HTMLElement>({ count, onMove, disabled = fa
     handleProps(i: number) {
       return {
         disabled,
+        // No hint while it cannot move, or while a row is being dragged.
+        "data-tip": disabled || drag ? undefined : "Drag to reorder",
         onPointerDown: (e: PointerEvent<HTMLButtonElement>) => start(e, i),
         onPointerMove: move,
         onPointerUp: () => end(true),
@@ -141,7 +143,7 @@ type HandleProps = ReturnType<ReturnType<typeof useReorder>["handleProps"]>;
 // The six-dot handle every reorderable list in the dashboard uses.
 export function DragHandle({ label, ...props }: HandleProps & { label: string }) {
   return (
-    <button type="button" className="d-drag-handle" aria-label={`Reorder ${label}`} aria-keyshortcuts="ArrowUp ArrowDown" data-tip={props.disabled ? undefined : "Drag to reorder"} {...props}>
+    <button type="button" className="d-drag-handle" aria-label={`Reorder ${label}`} aria-keyshortcuts="ArrowUp ArrowDown" {...props}>
       <Icon name="grip" size={16} />
     </button>
   );
