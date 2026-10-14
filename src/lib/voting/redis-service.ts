@@ -270,6 +270,19 @@ export async function endElection(sessionId: string, host: Person) {
   if (!await redisCommand("EVAL", "if redis.call('GET',KEYS[1]) == ARGV[1] then redis.call('SET',KEYS[1],ARGV[2]); return 1 else return 0 end", 1, activeElectionKey(), JSON.stringify(config), JSON.stringify(ended))) throw new VotingError("The delib changed. Reload before continuing.", 409);
 }
 
+// Removes an ended delib and all of its votes. Only its host can do this.
+export async function deleteElection(sessionId: string, host: Person) {
+  const raw = await redisCommand<string | null>("HGET", historyKey(), sessionId);
+  const config = raw ? JSON.parse(raw) as Settings : null;
+  if (!raw || !config) throw new VotingError("This delib does not exist.", 404);
+  if (config.host !== host.email) throw new VotingError("Only the host can delete this delib.", 403);
+  if (config.open) throw new VotingError("End the delib before deleting it.", 409);
+  // One atomic step, and only if the delib has not changed since it was read.
+  // The last delib to end stays in the active key, so it is cleared there too.
+  const script = "if redis.call('HGET',KEYS[1],ARGV[1]) ~= ARGV[2] then return 0 end; redis.call('HDEL',KEYS[1],ARGV[1]); redis.call('DEL',KEYS[2],KEYS[3]); if redis.call('GET',KEYS[4]) == ARGV[2] then redis.call('DEL',KEYS[4]) end; return 1";
+  if (!await redisCommand("EVAL", script, 4, historyKey(), keyFor(config), `${keyFor(config)}:view`, activeElectionKey(), sessionId, raw)) throw new VotingError("The delib changed. Reload before continuing.", 409);
+}
+
 // Every delib, newest first.
 export async function allElections() {
   const flat = await redisCommand<string[]>("HGETALL", historyKey());

@@ -5,6 +5,7 @@ import VotingNotice from "./VotingNotice";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTooltip } from "@/components/ui/useTooltip";
+import { Icon } from "@/components/membership/icons";
 import AdminRoom from "./AdminRoom";
 import AdminSetup from "./AdminSetup";
 import VoterRoom from "./VoterRoom";
@@ -130,7 +131,7 @@ export default function DelibsRoom() {
   if (election && state) return <div className="president-room">{votersTip.tooltip}
     <header className="president-live-header">
       <div className="president-live-title"><h1>{election.name}</h1><span className="president-round-label">Round {state.currentCandidate ? Math.max(1, (state.candidates?.filter(c => c.completed).length || 0) + (state.currentCandidate.completed ? 0 : 1)) : 0}/{state.candidates?.length || 0}</span></div>
-      <div className="president-live-actions"><button ref={votersButton} className="president-voters-toggle" aria-label="Manage voters" {...votersTip.triggerProps} aria-expanded={showVoters} aria-controls="admin-voter-roster" onClick={() => setShowVoters(!showVoters)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M21 20v-2a6 6 0 0 0-3-5"/></svg><span>{(state.voters || state.participants || []).filter(v => !("removed" in v && v.removed)).length}</span></button><button className="voting-end-session" disabled={busy || !["waiting", "locked"].includes(state.phase)} onClick={() => void end()}>{busy ? "Ending…" : "End voting"}</button></div>
+      <div className="president-live-actions"><CopyLink sessionId={election.sessionId}/><button ref={votersButton} className="president-voters-toggle" aria-label="Manage voters" {...votersTip.triggerProps} aria-expanded={showVoters} aria-controls="admin-voter-roster" onClick={() => setShowVoters(!showVoters)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M21 20v-2a6 6 0 0 0-3-5"/></svg><span>{(state.voters || state.participants || []).filter(v => !("removed" in v && v.removed)).length}</span></button><button className="voting-end-session" disabled={busy || !["waiting", "locked"].includes(state.phase)} onClick={() => void end()}>{busy ? "Ending…" : "End voting"}</button></div>
     </header>
     <VotingNotice message={error}/>
     <AdminRoom onResults={() => void showResults(election.sessionId)} showVoters={showVoters} key={state.sessionId} initialState={state} onExit={() => void refresh()} onStateChange={setState}/>
@@ -169,6 +170,19 @@ export default function DelibsRoom() {
     <VotingNotice message={error}/>
     <button className="m-btn is-medium delibs-start" onClick={startSetup}>Start a delib</button>
   </div></main>;
+}
+
+// Copies the delib's own link. Execs who open it sign in and land in this delib, ready to vote.
+function CopyLink({sessionId}: {sessionId: string}) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    await navigator.clipboard.writeText(`${location.origin}/dashboard/delibs/${sessionId}`).catch(() => undefined);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+  return <button type="button" className="president-copy-link" aria-label={copied ? "Copied" : "Copy link"} onClick={() => void copy()}>
+    <Icon name={copied ? "check" : "link"} size={16}/><span className="president-copy-text" aria-hidden="true">{copied ? "Copied" : "Copy link"}</span>
+  </button>;
 }
 
 function SetupProgress({step}: {step: 1 | 2 | 3}) {

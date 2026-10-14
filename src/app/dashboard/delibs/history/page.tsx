@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DelibActions from "@/components/voting/DelibActions";
 import { formatDay, localDate } from "@/lib/membership/config";
 import { requireExecPerson } from "@/lib/membership/exec-auth";
 import { allElections } from "@/lib/voting/redis-service";
@@ -13,7 +14,7 @@ export default async function PastDelibsPage() {
       <div className="d-section-head">
         <h1 className="d-h2">History</h1>
       </div>
-      <p className="d-section-note">Every delib shows up here. Only the host can see a delib&apos;s results, after it ends.</p>
+      <p className="d-section-note">Every delib shows up here. Only the host can see a delib&apos;s results, or delete it, after it ends.</p>
       <div className="d-table-wrap">
         <table className="d-table is-roomy d-events">
           <thead>
@@ -32,7 +33,7 @@ export default async function PastDelibsPage() {
                   </td>
                   <td className="is-soft is-wide">{day}</td>
                   <td className="is-soft is-wide">{delib.hostName}</td>
-                  <td className="is-action">{canOpen && <Link className="d-chip-btn" href={href}>Results</Link>}</td>
+                  <td className="is-action">{canOpen && <DelibActions id={delib.sessionId} name={delib.name} />}</td>
                 </tr>
               );
             })}
