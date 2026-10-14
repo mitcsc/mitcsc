@@ -166,7 +166,7 @@ export default function FormEditor({ year, form: initial }: { year: string; form
       <aside className="d-preview-pane">
         <div className="d-preview-head">
           <span>Preview</span>
-          <a href="/membership" target="_blank" rel="noreferrer">Open page</a>
+          <a href="/join" target="_blank" rel="noreferrer">Open page</a>
         </div>
         <Preview year={year} form={form} />
       </aside>
@@ -220,7 +220,7 @@ function QuestionEditor({ draft, onChange, onCancel, onDone }: { draft: Question
   );
 }
 
-// A small, non-interactive copy of /membership.
+// A small, non-interactive copy of /join.
 function Preview({ year, form }: { year: string; form: FormConfig }) {
   return (
     <div className="d-preview" aria-hidden="true">

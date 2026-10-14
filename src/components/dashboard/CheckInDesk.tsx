@@ -82,7 +82,7 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
         <div className="d-people">
           {query.trim() ? (
             matches.length ? matches.map((p) => <PersonRow key={p.kerb} person={p} record={byKerb.get(p.kerb) || null} busy={busy === p.kerb} admit={admit} />)
-              : <p className="d-empty-row">Nobody signed up matches “{query.trim()}”. New members can sign up at csc.mit.edu/membership.</p>
+              : <p className="d-empty-row">Nobody signed up matches “{query.trim()}”. New members can sign up at csc.mit.edu/join.</p>
           ) : recent.length ? (
             recent.map((r) => {
               const p = people.find((x) => x.kerb === r.kerb) || { kerb: r.kerb, name: r.name, classYear: r.classYear, price: 0, method: "cash" as const, paid: r.paid, reportedAt: null };

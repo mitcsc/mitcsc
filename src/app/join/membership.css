@@ -1,4 +1,4 @@
-/* The member signup at /membership. Each screen fills the viewport; text keeps a phone-width column. */
+/* The member signup at /join. Each screen fills the viewport; text keeps a phone-width column. */
 .mp-page { display: flex; flex-direction: column; gap: 32px; padding: 48px max(24px, calc((100% - 440px) / 2)) 40px; }
 .mp-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
 .mp-logo { width: 88px; height: 88px; object-fit: contain; margin-bottom: 12px; }
