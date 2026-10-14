@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import { Suspense } from "react";
 import { MainNav, ProblemBanner, SignIn } from "@/components/dashboard/Shell";
 import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
@@ -74,7 +76,7 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="m-root d-shell">
       <header className="d-header">
-        <span className="d-brand">Dashboard</span>
+        <Link className="d-brand" href="/dashboard" aria-label="Dashboard home"><Image src="/img/logo/logo-with-panda.png" alt="" width={28} height={28} priority /></Link>
         <MainNav />
         <span className="d-account">
           <span className="d-account-email">{email}</span>

@@ -6,7 +6,8 @@
 
 /* Header */
 .d-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; min-height: 61px; padding: 12px 28px; border-bottom: 1px solid #ffffff18; background: var(--raised); }
-.d-brand { font-size: 14px; font-weight: 500; white-space: nowrap; }
+.d-brand { flex: none; display: block; }
+.d-brand img { display: block; width: 28px; height: 28px; object-fit: contain; }
 .d-main-nav { display: flex; gap: 4px; }
 .d-main-nav a { padding: 7px 14px; border-radius: 999px; font-size: 14px; text-decoration: none; white-space: nowrap; }
 .m-root .d-main-nav a { color: var(--muted); }
@@ -297,6 +298,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-phone-body { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 20px; padding: 24px 24px 32px; }
 .d-phone-title { font-size: 26px; font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .d-phone-submit { margin-top: 8px; }
+.d-start-head { display: flex; flex-direction: column; gap: 8px; }
 .d-start-text { font-size: 15px; line-height: 1.5; color: var(--muted); }
 .d-checkin-head { display: flex; flex-direction: column; gap: 4px; }
 .d-checkin-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
@@ -341,7 +343,8 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 @media (max-width: 720px) {
   /* One row: the tabs, then the sign-out icon. The tabs scroll sideways if a phone is too narrow. */
   .d-header { flex-wrap: nowrap; gap: 8px; padding: 10px 16px; }
-  .d-brand, .d-account-email { display: none; }
+  .d-account-email { display: none; }
+  .d-brand img { width: 26px; height: 26px; }
   .d-main-nav { flex: 1; min-width: 0; margin-left: -6px; overflow-x: auto; scrollbar-width: none; }
   .d-main-nav::-webkit-scrollbar { display: none; }
   .d-main-nav a { padding: 7px 12px; }

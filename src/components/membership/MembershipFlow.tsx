@@ -9,6 +9,7 @@ import WaitingPanda from "@/components/voting/WaitingPanda";
 import { CLUB_EMAIL, formTitle, isKerb, money, normalizeKerb, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { MemberView } from "@/lib/membership/members";
 import type { FormConfig, PaymentMethod, Question } from "@/lib/membership/types";
+import CardButton from "./CardButton";
 import { Icon } from "./icons";
 import WalletButtons, { type WalletInfo } from "./WalletButtons";
 
@@ -52,9 +53,9 @@ export default function MembershipFlow({ year, member: initial, venmo, wallet }:
     }
   }
 
-  if (!year || (!member && !year.open)) return <Closed year={year?.year} />;
+  if (!year || (!member && !year.open)) return <Closed year={year?.year} cards={year?.wallet ? wallet.buttons : null} />;
   if (!member || step === "form") {
-    return <SignupForm year={year} member={member} onDone={(view) => { setMember(view); setStep("pay"); }} />;
+    return <SignupForm year={year} member={member} cards={year.wallet ? wallet.buttons : null} onDone={(view) => { setMember(view); setStep("pay"); }} />;
   }
   if (step === "pay") {
     return (
@@ -74,23 +75,19 @@ function firstStep(member: MemberView | null): Step {
   return !member ? "form" : member.status === "paid" || member.reported ? "status" : "pay";
 }
 
-function Closed({ year }: { year?: string }) {
+// cards: the wallets to offer, or null when membership cards are not set up.
+function Closed({ year, cards }: { year?: string; cards: WalletInfo["buttons"] | null }) {
   return (
     <main className="m-root mp-center">
       <div className="mp-center-body">
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
         <h1 className="mp-title">Signups are closed</h1>
         <p className="mp-muted">{year ? `Membership signups for ${year} are closed right now.` : "Membership signups are not open yet."} Check back soon.</p>
-        {year && <CardButton />}
+        {cards && <CardButton wallets={cards} />}
       </div>
       <p className="mp-footnote">Questions? <Email /></p>
     </main>
   );
-}
-
-// Members open their card from an emailed link, so it works on any phone.
-function CardButton() {
-  return <Link className="m-btn is-outline is-small mp-card-button" href="/join/card"><Icon name="card" />Already a member? Get your card</Link>;
 }
 
 // The signup form
@@ -114,7 +111,9 @@ function initialAnswers(form: FormConfig, year: string, member: MemberView | nul
   return { answers, other };
 }
 
-function SignupForm({ year, member, onDone }: { year: PublicYear; member: MemberView | null; onDone: (view: MemberView) => void }) {
+function SignupForm({ year, member, cards, onDone }: {
+  year: PublicYear; member: MemberView | null; cards: WalletInfo["buttons"] | null; onDone: (view: MemberView) => void;
+}) {
   const router = useRouter();
   const [{ answers, other }, setState] = useState(() => initialAnswers(year.form, year.year, member));
   const [lookup, setLookup] = useState<KerbStatus | null>(null);
@@ -164,7 +163,7 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
         <h1 className="mp-title is-large">{formTitle(year.form)}</h1>
         {year.form.intro && <p className="mp-muted">{year.form.intro}</p>}
-        <CardButton />
+        {cards && <CardButton wallets={cards} />}
       </header>
 
       <form className="mp-form" onSubmit={submit}>
