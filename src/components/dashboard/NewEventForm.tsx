@@ -92,10 +92,10 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
             <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>Change</button>
           </div>
           <span className="d-field-note is-large">
-            <span className="d-note-line">For example, <PathText path={[`MIT CSC ${schoolYearOn(new Date(`${date || today}T12:00:00Z`))}`, "9/4 Midway"]} />.</span>
-            <span className="d-note-line">No folder yet? Select <PathText path={["Change", "New folder"]} />.</span>
+            {name.trim() ? `Creates a new Google Sheet named “${name.trim()}” in this folder.` : "Creates a new Google Sheet named after the event in this folder."}{" "}
+            <span className="d-nowrap">For example, <PathText path={[`MIT CSC ${schoolYearOn(new Date(`${date || today}T12:00:00Z`))}`, "9/4 Midway"]} />.</span>{" "}
+            No folder yet? Select <PathText path={["Change", "New folder"]} />.
           </span>
-          <span className="d-field-note is-large">{name.trim() ? `Creates a new Google Sheet named “${name.trim()}”.` : "Creates a new Google Sheet named after the event."}</span>
         </div>
       ) : (
         <p className="d-field-note is-large">Attendance is saved here only. Connect the club Google account in Settings to also save it to a Google Sheet.</p>
