@@ -100,3 +100,15 @@ export function formatCountdown(ms: number) {
   const [h, m, s] = [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60];
   return h ? `${h}h ${m}m` : m ? `${m}m ${s}s` : `${s}s`;
 }
+
+// The event the Check In tab shows: one open now, else the next to open within a day, else today's latest.
+// Only today's events, those opening within a day, and later ones an exec opened early count.
+// So an old event left open does not take over the tab.
+// Null means there is none, and the tab shows the New event form.
+export function homeEvent<T extends EventHours>(events: T[], now: Date): T | null {
+  const ms = now.getTime();
+  const today = localDate(now);
+  const soon = (e: T) => opensAt(e) > ms && opensAt(e) - ms <= SOON_MS;
+  const relevant = events.filter((e) => e.date === today || soon(e) || (e.checkIn === "open" && e.date > today)).sort((a, b) => opensAt(a) - opensAt(b));
+  return relevant.find((e) => checkInState(e, now).open) || relevant.find(soon) || relevant.at(-1) || null;
+}
