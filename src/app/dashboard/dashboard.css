@@ -258,6 +258,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-preview-hero img { width: 48px; height: 48px; object-fit: contain; margin-bottom: 6px; }
 .d-preview-title { font-size: 18px; font-weight: 500; }
 .d-preview-intro { font-size: 12px; color: var(--muted); }
+.d-preview-card { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 10px; font-weight: 500; }
 .d-preview-field { display: flex; flex-direction: column; gap: 5px; }
 .d-preview-label { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 500; color: var(--soft); }
 .d-preview-label span { font-weight: 400; color: #ffffff59; }

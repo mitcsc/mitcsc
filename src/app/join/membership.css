@@ -1,6 +1,8 @@
 /* The member signup at /join. Each screen fills the viewport; text keeps a phone-width column. */
 .mp-page { display: flex; flex-direction: column; gap: 32px; padding: 48px max(24px, calc((100% - 440px) / 2)) 40px; }
 .mp-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.mp-card-button { gap: 8px; margin-top: 12px; }
+.mp-center-body .mp-card-button { margin-top: 24px; }
 .mp-logo { width: 88px; height: 88px; object-fit: contain; margin-bottom: 12px; }
 .mp-title { font-size: 22px; font-weight: 500; line-height: 1.3; }
 .mp-title.is-large { font-size: 26px; line-height: 1.2; letter-spacing: -0.02em; }
