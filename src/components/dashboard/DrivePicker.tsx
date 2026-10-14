@@ -53,7 +53,7 @@ export default function DrivePicker({ title, start, pick, onPick, onClose }: {
           <nav className="d-crumbs" aria-label="Folder">
             {path.map((p, i) => (
               <span key={p.id}>
-                {i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}
+                {i > 0 && <span className="d-crumb-sep" aria-hidden="true">›</span>}
                 <button type="button" onClick={() => setFolder(p.id)} aria-current={i === path.length - 1 ? "page" : undefined}>{p.name}</button>
               </span>
             ))}

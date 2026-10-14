@@ -1,14 +1,10 @@
 import { SubNav } from "@/components/dashboard/Shell";
-
-const TABS = [
-  { href: "/dashboard/check-in", label: "Check in" },
-  { href: "/dashboard/events", label: "Events", nested: true },
-];
+import { CHECK_IN_TABS } from "@/components/dashboard/nav";
 
 export default function CheckInLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SubNav label="Check-in" tabs={TABS} />
+      <SubNav label="Check-in" tabs={CHECK_IN_TABS} />
       {children}
     </>
   );

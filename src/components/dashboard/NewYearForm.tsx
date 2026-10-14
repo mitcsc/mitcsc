@@ -52,7 +52,7 @@ export default function NewYearForm({ year, previous, prices, pastMembers }: {
             <div className="d-location">
               <span className={`d-location-path${folder ? "" : " is-empty"}`}>
                 {folder
-                  ? (folder.path.length ? folder.path : ["My Drive"]).map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}{s}</span>)
+                  ? (folder.path.length ? folder.path : ["My Drive"]).map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">›</span>}{s}</span>)
                   : "No folder picked"}
               </span>
               <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>{folder ? "Change" : "Pick folder"}</button>

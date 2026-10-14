@@ -3,47 +3,92 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Icon } from "@/components/membership/icons";
-
-// Check-in comes first: it is what exec open the dashboard for at events. Its Events sub-tab lives at /dashboard/events.
-const MAIN_TABS = [
-  { href: "/dashboard/check-in", label: "Check-in", also: "/dashboard/events" },
-  { href: "/dashboard/membership", label: "Members" },
-  { href: "/dashboard/photos", label: "Photos" },
-  { href: "/dashboard/settings", label: "Settings" },
-];
-
-function within(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { SECTIONS, sectionActive, tabActive, type NavTab } from "./nav";
 
 export function MainNav() {
   const pathname = usePathname();
   return (
     <nav aria-label="Dashboard" className="d-main-nav">
-      {MAIN_TABS.map((tab) => (
-        <Link key={tab.href} href={tab.href} aria-current={within(pathname, tab.href) || (!!tab.also && within(pathname, tab.also)) ? "page" : undefined}>{tab.label}</Link>
+      {SECTIONS.map((section) => (
+        <Link key={section.href} href={section.href} aria-current={sectionActive(pathname, section) ? "page" : undefined}>{section.label}</Link>
       ))}
     </nav>
   );
 }
 
-// Sub-tabs under a main tab, with the save status on the right. A nested tab stays selected on its sub-pages.
-export function SubNav({ label, tabs, children }: { label: string; tabs: { href: string; label: string; nested?: boolean }[]; children?: React.ReactNode }) {
+// Phones: one button names the current page and opens a menu of every page.
+export function MobileNav({ email }: { email: string }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [openedAt, setOpenedAt] = useState(pathname);
+  // Following a link closes the menu.
+  if (open && openedAt !== pathname) setOpen(false);
+  const section = SECTIONS.find((s) => sectionActive(pathname, s));
+  const tab = section?.tabs?.find((t) => tabActive(pathname, t));
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
+
+  return (
+    <div className="d-mobile-nav">
+      <button
+        type="button" className="d-mobile-nav-btn" aria-expanded={open} aria-controls="d-mobile-menu"
+        onClick={() => { setOpenedAt(pathname); setOpen(!open); }}
+      >
+        <span className="d-mobile-nav-label">
+          {section?.label || "Dashboard"}
+          {tab && tab !== section?.tabs?.[0] && <span className="d-mobile-nav-sub">{tab.label}</span>}
+        </span>
+        <Icon name="chevron" size={18} className="d-mobile-nav-icon" />
+      </button>
+      {open && <div className="d-mobile-backdrop" onClick={() => setOpen(false)} />}
+      <nav id="d-mobile-menu" aria-label="Dashboard" className={`d-mobile-menu${open ? " is-open" : ""}`} inert={!open}>
+        {SECTIONS.map((s) => s.tabs ? (
+          <div key={s.href} className="d-mobile-group">
+            <p className="d-mobile-group-title">{s.label}</p>
+            {s.tabs.map((t) => <Link key={t.href} href={t.href} aria-current={tabActive(pathname, t) ? "page" : undefined}>{t.label}</Link>)}
+          </div>
+        ) : (
+          <Link key={s.href} href={s.href} className="is-top" aria-current={sectionActive(pathname, s) ? "page" : undefined}>{s.label}</Link>
+        ))}
+        <div className="d-mobile-account">
+          <span>{email}</span>
+          <form action="/api/auth/signout" method="post">
+            <button type="submit" className="d-mobile-signout"><Icon name="signout" size={16} />Sign out</button>
+          </form>
+        </div>
+      </nav>
+    </div>
+  );
+}
+
+// The autosave status, for the header on phones. Desktop shows it in the sub-tab row.
+export function SaveStatus() {
   const status = useContext(SaveContext).status;
+  if (status.state === "saving") return <span className="d-save">Saving…</span>;
+  if (status.state === "saved") return <span className="d-save"><Icon name="check" size={12} strokeWidth={2.4} />Saved</span>;
+  if (status.state === "error") return <span className="d-save is-error" role="alert">{status.message}</span>;
+  return null;
+}
+
+// Sub-tabs under a main tab, with the save status on the right. A nested tab stays selected on its sub-pages.
+export function SubNav({ label, tabs, children }: { label: string; tabs: NavTab[]; children?: React.ReactNode }) {
+  const pathname = usePathname();
   return (
     <div className="d-subnav">
       <nav aria-label={label} className="d-sub-tabs">
         {tabs.map((tab) => (
-          <Link key={tab.href} href={tab.href} aria-current={(tab.nested ? within(pathname, tab.href) : pathname === tab.href) ? "page" : undefined}>{tab.label}</Link>
+          <Link key={tab.href} href={tab.href} aria-current={tabActive(pathname, tab) ? "page" : undefined}>{tab.label}</Link>
         ))}
       </nav>
       <span className="d-subnav-meta">
-        {status.state === "saving" && <span className="d-save">Saving…</span>}
-        {status.state === "saved" && <span className="d-save"><Icon name="check" size={12} strokeWidth={2.4} />Saved</span>}
-        {status.state === "error" && <span className="d-save is-error" role="alert">{status.message}</span>}
+        <SaveStatus />
         {children}
       </span>
     </div>
@@ -80,14 +125,21 @@ export function ProblemBanner() {
   );
 }
 
-// Autosave status shared by the settings and form editor pages.
+// Autosave status shared by the settings and form editor pages, and shown in the header on phones.
 
 type SaveState = { state: "idle" | "saving" | "saved" } | { state: "error"; message: string };
 
 const SaveContext = createContext<{ status: SaveState; setStatus: (s: SaveState) => void }>({ status: { state: "idle" }, setStatus: () => {} });
 
 export function SaveStatusProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [status, setStatus] = useState<SaveState>({ state: "idle" });
+  const [statusPath, setStatusPath] = useState(pathname);
+  // A save status belongs to the page that saved.
+  if (statusPath !== pathname) {
+    setStatusPath(pathname);
+    setStatus({ state: "idle" });
+  }
   return <SaveContext.Provider value={{ status, setStatus }}>{children}</SaveContext.Provider>;
 }
 
