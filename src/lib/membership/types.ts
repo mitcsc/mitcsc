@@ -30,7 +30,6 @@ export interface YearConfig {
   cashAllowed: boolean;
   form: FormConfig;
   folderId: string | null; // holds the membership sheet, inside the club's "MIT CSC" folder
-  eventsFolderId: string | null; // where the last event sheet was saved
   sheetId: string | null;
   sheetName: string;
   createdAt: number;

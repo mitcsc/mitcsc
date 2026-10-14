@@ -9,8 +9,8 @@ import DrivePicker, { type DriveChoice } from "./DrivePicker";
 
 type Target = { kind: "default" } | { kind: "folder"; choice: DriveChoice } | { kind: "sheet"; choice: DriveChoice };
 
-// eventsFolder is null when the club Google account is not connected; then attendance stays on this site only.
-export default function NewEventForm({ today, eventsFolder }: { today: string; eventsFolder: DriveChoice | null }) {
+// clubFolder is the "MIT CSC" folder, or null when the club Google account is not connected; then attendance stays on this site only.
+export default function NewEventForm({ today, clubFolder }: { today: string; clubFolder: DriveChoice | null }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [date, setDate] = useState(today);
@@ -25,7 +25,7 @@ export default function NewEventForm({ today, eventsFolder }: { today: string; e
     setError("");
     const result = await createEventAction({
       name, date,
-      folderId: target.kind === "folder" ? target.choice.id : target.kind === "default" ? eventsFolder?.id ?? null : null,
+      folderId: target.kind === "folder" ? target.choice.id : target.kind === "default" ? clubFolder?.id ?? null : null,
       sheetId: target.kind === "sheet" ? target.choice.id : null,
     }).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
     if (!result.ok) {
@@ -36,7 +36,7 @@ export default function NewEventForm({ today, eventsFolder }: { today: string; e
     router.push(`/dashboard/events/${result.value}`);
   }
 
-  const path = target.kind === "default" ? eventsFolder?.path || [] : target.choice.path;
+  const path = target.kind === "default" ? clubFolder?.path || [] : target.choice.path;
   return (
     <main className="d-phone">
       <form className="d-phone-body" onSubmit={submit}>
@@ -50,7 +50,7 @@ export default function NewEventForm({ today, eventsFolder }: { today: string; e
           <span className="m-label">Date</span>
           <input className="m-input" type="date" value={date} required onChange={(e) => setDate(e.target.value)} />
         </label>
-        {eventsFolder ? (
+        {clubFolder ? (
           <div className="m-field">
             <span className="m-label">Save attendance in</span>
             <div className="d-location is-large">
@@ -75,7 +75,7 @@ export default function NewEventForm({ today, eventsFolder }: { today: string; e
       {picking && (
         <DrivePicker
           title={picking === "sheet" ? "Pick a sheet" : "Save attendance in"}
-          start={target.kind === "default" ? eventsFolder?.id : target.choice.id}
+          start={target.kind === "default" ? clubFolder?.id : target.choice.id}
           pick={picking}
           onClose={() => setPicking(null)}
           onPick={(choice) => { setTarget({ kind: picking, choice }); setPicking(null); }}
