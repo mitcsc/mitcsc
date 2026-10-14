@@ -32,7 +32,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
   if (!config) {
     // Until exec set up the first school year here, keep sending people to the old signup form.
     const fallback = await resolveShortlink("membership");
-    if (fallback) redirect(fallback);
+    if (fallback) redirect(fallback.url);
     return <MembershipFlow year={null} member={null} venmo={null} wallet={wallet} />;
   }
   const member = view === "signup" || problem ? await ownMember(config) : null;

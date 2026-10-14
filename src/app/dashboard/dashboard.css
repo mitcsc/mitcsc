@@ -154,12 +154,44 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-table .is-soft { color: #ffffffb3; }
 .d-table .is-faint { color: var(--muted); font-variant-numeric: tabular-nums; }
 .d-table .is-number { font-variant-numeric: tabular-nums; }
+/* Links: the title over its address, and the short link with a copy button. Expired links fade. */
+.d-links tr.is-faded td:not(.is-action) { opacity: 0.55; }
+.d-link-cell { max-width: 0; width: 45%; }
+.d-link-cell .d-name-btn { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.d-link-url { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: var(--muted); text-decoration: none; }
+.d-link-url:hover { color: var(--text); }
+.d-link-em { font-style: normal; color: #c3c3c8; }
+.d-link-meta { display: none; }
+.d-slug { display: inline-flex; align-items: center; gap: 4px; }
+.d-slug a { color: #c3c3c8; text-decoration: none; }
+.d-slug a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.d-slug-copy { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); }
+.d-slug-copy:hover { background: #ffffff14; color: var(--text); }
+.d-link-status { display: inline-flex; align-items: center; gap: 8px; }
+.d-more-btn:disabled { opacity: 0.3; pointer-events: none; }
+/* A text field with a fixed prefix, like "csc.mit.edu/". */
+.d-prefix-input { display: flex; align-items: center; min-height: 48px; padding: 0 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 15px; transition: border-color 0.15s; }
+.d-prefix-input:focus-within { border-color: #ffffff70; }
+.d-prefix-input.is-invalid { border-color: var(--accent-text); }
+.d-prefix-input > span { flex: none; color: var(--muted); }
+.d-prefix-input input { flex: 1; min-width: 0; height: 46px; padding: 0; border: 0; background: none; font: inherit; color: var(--text); outline: none; }
+.d-prefix-input input::placeholder { color: #77777d; }
+/* The whole field shows focus, not the input inside it. */
+.d-prefix-input input:focus-visible { outline: none; }
+.d-field-error { font-size: 12px; color: var(--accent-text); }
+.d-dialog-form .d-aside-switch { min-height: 36px; padding: 0; font-size: 15px; }
 .d-event-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
 .d-event-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* On phones the date and count move under the name, so Check in stays on screen. */
 .d-event-meta, .d-member-meta { display: none; }
 @media (max-width: 640px) {
   .d-events { min-width: 0; white-space: normal; }
+  .d-links { min-width: 0; }
+  .d-links .is-wide { display: none; }
+  /* On phones the short link replaces the address under the title. */
+  .d-link-cell { width: auto; }
+  .d-link-cell.has-slug .d-link-url { display: none; }
+  .d-link-meta { display: block; margin-top: 2px; font-size: 13px; color: #c3c3c8; }
   .d-events .is-wide { display: none; }
   .d-events .d-event-meta { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
   /* Members: name, kerb, and payment fit without scrolling sideways. */

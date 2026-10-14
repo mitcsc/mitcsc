@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLinks, LinkItem } from "@/lib/links";
-
-let cache: { data: LinkItem[]; timestamp: number } | null = null;
-const CACHE_TTL = 60_000;
+import { getLinks } from "@/lib/links";
 
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
 const RATE_WINDOW = 60_000;
@@ -33,12 +30,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const now = Date.now();
-  if (cache && now - cache.timestamp < CACHE_TTL) {
-    return NextResponse.json(cache.data);
-  }
-
-  const links = await getLinks();
-  cache = { data: links, timestamp: now };
-  return NextResponse.json(links);
+  // getLinks reads Next's data cache, so polling does not reach Redis.
+  return NextResponse.json(await getLinks());
 }

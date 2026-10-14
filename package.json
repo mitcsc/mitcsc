@@ -11,7 +11,8 @@
     "lint": "eslint",
     "test:voting": "node --test src/lib/voting/security.test.cjs tests/voting-keepalive.test.cjs",
     "test:voting:redis": "node --test tests/voting-redis.test.cjs",
-    "test:membership": "node --test tests/membership.test.cjs"
+    "test:membership": "node --test tests/membership.test.cjs",
+    "test:links": "node --test tests/links.test.cjs"
   },
   "dependencies": {
     "framer-motion": "^12.23.12",
