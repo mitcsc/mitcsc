@@ -4,7 +4,7 @@ import { CHECK_IN_TABS } from "@/components/dashboard/nav";
 export default function CheckInLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SubNav label="Check-in" tabs={CHECK_IN_TABS} />
+      <SubNav label="Check-In" tabs={CHECK_IN_TABS} />
       {children}
     </>
   );
