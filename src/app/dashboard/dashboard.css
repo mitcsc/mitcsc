@@ -308,7 +308,10 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-person-top { display: flex; align-items: center; gap: 12px; }
 .d-person-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .d-person-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: 16px; line-height: 1.35; }
+.d-person-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .d-person-by { flex: none; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.d-undo { padding: 4px 0; border: 0; background: none; font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.d-undo:hover:not(:disabled) { color: var(--text); }
 .d-person-note { font-size: 13px; color: var(--muted); }
 .d-person-btn { min-height: 48px; font-size: 15px; }
 

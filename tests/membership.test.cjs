@@ -61,6 +61,7 @@ function run([name, ...args]) {
     case 'HGET': return hash(args[0]).get(args[1]) ?? null;
     case 'HLEN': return hash(args[0]).size;
     case 'HGETALL': return [...hash(args[0]).entries()].flat();
+    case 'HDEL': return args.slice(1).filter((f) => hash(args[0]).delete(f)).length;
     default: throw new Error(`The fake Redis does not support ${cmd}`);
   }
 }
@@ -229,6 +230,10 @@ test('a kerb can sign up once, and check-in records the first scan', async () =>
   assert.equal(second.added, false);
   assert.equal(second.record.by, 'a@mit.edu');
   assert.equal(await store.attendanceCount('e1'), 1);
+  assert.equal(await store.undoCheckIn('e1', 'jchen'), true, 'A mistaken check-in can be taken back');
+  assert.equal(await store.undoCheckIn('e1', 'jchen'), false);
+  assert.equal(await store.attendanceCount('e1'), 0);
+  assert.equal((await store.checkIn('e1', second.record)).added, true, 'They can be checked in again after an undo');
 
   await assert.rejects(store.updateMember(YEAR, 'nobody', (m) => m), (e) => e.status === 404);
 });
