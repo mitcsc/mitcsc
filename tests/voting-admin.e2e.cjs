@@ -9,7 +9,8 @@ const baseURL = process.env.VOTING_TEST_URL || 'http://localhost:3020';
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, permissions: ['clipboard-read', 'clipboard-write'] });
+  const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   let election = null;
@@ -126,6 +127,9 @@ const baseURL = process.env.VOTING_TEST_URL || 'http://localhost:3020';
     assert.equal(creates[0].criteria[0].label, 'Reliability');
     assert.equal(await page.locator('.voting-current-name').textContent(), shuffledNames[0]);
     assert.equal(await button('Shuffle order').count(), 0, 'Shuffle is only available in setup');
+    await button('Copy link').click();
+    await button('Copied').waitFor();
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), `${new URL(baseURL).origin}/dashboard/delibs/test-delib`, 'The host copies the delib link');
     assert.equal(await page.getByRole('region', { name: 'Ballot setup' }).count(), 0);
     assert.equal(await button('End voting').isDisabled(), false, 'The host can end the delib between rounds');
     await button('View Morgan Wu').click();
@@ -174,6 +178,6 @@ const baseURL = process.env.VOTING_TEST_URL || 'http://localhost:3020';
     await page.waitForURL('**/dashboard/delibs/history/test-delib');
     assert.equal(ended, true);
     assert.deepEqual(errors, []);
-    console.log(`PASS: delib setup steps, validation, paste, drag and keyboard reorder, draft kept on Back, shuffle, start without an empty flash, phase flow, reopen, roster, mobile layout, end opens History (${actions.length} host actions mocked).`);
+    console.log(`PASS: delib setup steps, validation, paste, drag and keyboard reorder, draft kept on Back, shuffle, start without an empty flash, copy link, phase flow, reopen, roster, mobile layout, end opens History (${actions.length} host actions mocked).`);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

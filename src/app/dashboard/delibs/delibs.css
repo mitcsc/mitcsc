@@ -36,6 +36,9 @@
 
 @media (max-width: 600px) {
   .delibs-voter { padding: 28px 16px 48px; }
+  /* The live header has room for the link icon only. */
+  .voting-root .president-live-actions > .president-copy-link { width: 34px; padding: 0; }
+  .president-copy-text { display: none; }
   /* The buttons wrap below the title, so they line up with it on the left. */
   .results-heading .d-section-head > .results-actions { margin-left: 0; }
 }

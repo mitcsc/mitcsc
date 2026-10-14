@@ -94,6 +94,18 @@ test('one delib runs at a time, retries do not open a second one, and only its h
   assert.equal(all[0].host, host.email);
   await assert.rejects(delibs.electionResults(cfg.sessionId, person(1)), e => e.status === 403, 'Only the host sees results');
   assert.equal((await delibs.electionResults(cfg.sessionId, host)).ended, true);
+
+  // Only the host can delete an ended delib, and deleting removes its votes.
+  await assert.rejects(delibs.deleteElection(cfg.sessionId, person(1)), e => e.status === 403, 'Only the host can delete');
+  await delibs.deleteElection(cfg.sessionId, host);
+  assert.equal(await delibs.currentElection(), null, 'The last ended delib is cleared from the active key too');
+  assert.equal((await delibs.allElections()).some(d => d.sessionId === cfg.sessionId), false);
+  assert.equal(await redis.redisCommand('GET', redis.redisKey('delib', cfg.sessionId)), null, 'The votes are gone');
+  await assert.rejects(delibs.deleteElection(cfg.sessionId, host), e => e.status === 404);
+  await assert.rejects(delibs.electionResults(cfg.sessionId, host), e => e.status === 403);
+  const running = await open(host, {name: 'Winter delibs'});
+  await assert.rejects(delibs.deleteElection(running.sessionId, host), e => e.status === 409, 'A running delib cannot be deleted');
+  assert.equal((await service.settings()).sessionId, running.sessionId);
 });
 
 test('joining uses the Google account: the host never votes and the club account cannot join', async () => {
