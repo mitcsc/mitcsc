@@ -6,9 +6,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useState } from "react";
 import { Icon } from "@/components/membership/icons";
 
+// Check-in comes first: it is what exec open the dashboard for at events.
 const MAIN_TABS = [
-  { href: "/dashboard/membership", label: "Membership" },
-  { href: "/dashboard/events", label: "Events" },
+  { href: "/dashboard/events", label: "Event check-in" },
+  { href: "/dashboard/membership", label: "Members" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 

@@ -52,6 +52,12 @@ export function classYearOptions(year: string) {
   return [end, end + 1, end + 2, end + 3].map(String).concat("Grad student", "Other");
 }
 
+export const DEFAULT_FORM_TITLE = "Join CSC";
+
+export function formTitle(form: FormConfig) {
+  return form.title || DEFAULT_FORM_TITLE;
+}
+
 export function defaultForm(year: string): FormConfig {
   return {
     intro: `Membership for ${year}. One payment covers the whole year.`,

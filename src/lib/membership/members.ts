@@ -12,6 +12,8 @@ export interface SignupInput {
   answers: Record<string, string | string[]>;
   // Free text for "Other" on the class year and dorm dropdowns.
   other: Record<string, string>;
+  // True when the person went back from the payment screen to change their answers.
+  edit?: boolean;
 }
 
 // What the member's own browser may see about their signup.

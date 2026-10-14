@@ -42,17 +42,6 @@ export async function createSheet(name: string, folderId: string, tab: string, o
   return file.id;
 }
 
-// Adds a protected tab to an existing spreadsheet. Picks a free name when the tab exists.
-export async function addTab(spreadsheetId: string, wanted: string, ownerEmail: string) {
-  const titles = new Set((await meta(spreadsheetId)).sheets.map((s) => s.properties.title));
-  let title = wanted.slice(0, 90);
-  for (let n = 2; titles.has(title); n++) title = `${wanted.slice(0, 85)} (${n})`;
-  const reply = await batch(spreadsheetId, [{ addSheet: { properties: { title } } }]);
-  const sheetId = reply.replies[0].addSheet!.properties.sheetId;
-  await batch(spreadsheetId, setupRequests(sheetId, ownerEmail));
-  return title;
-}
-
 // Replaces everything on a tab with these rows. The dashboard's data in Redis is the source of truth.
 export async function replaceTab(spreadsheetId: string, tab: string, rows: Cell[][]) {
   await google(`${SHEETS}/${spreadsheetId}/values/${encodeURIComponent(`${a1(tab)}`)}:clear`, { method: "POST", body: {} });
@@ -61,12 +50,4 @@ export async function replaceTab(spreadsheetId: string, tab: string, rows: Cell[
     query: { valueInputOption: "RAW" },
     body: { values: rows },
   });
-}
-
-// Reads the first tab of a spreadsheet, for importing past members.
-export async function readFirstTab(spreadsheetId: string) {
-  const { sheets } = await meta(spreadsheetId);
-  const tab = sheets[0].properties.title;
-  const data = await google<{ values?: string[][] }>(`${SHEETS}/${spreadsheetId}/values/${encodeURIComponent(a1(tab))}`, { query: { valueRenderOption: "FORMATTED_VALUE" } });
-  return data.values || [];
 }

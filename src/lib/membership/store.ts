@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { MembershipError } from "./errors";
 import { keys } from "./keys";
 import { getJson, getManyJson, pipeline, redis, updateJson } from "./redis";
-import type { Attendance, EventInfo, Member, PastSheet, YearConfig } from "./types";
+import type { Attendance, EventInfo, Member, YearConfig } from "./types";
 
 // School years
 
@@ -78,60 +78,6 @@ export async function hasPaidBefore(kerb: string) {
 
 export async function pastMemberCount() {
   return (await redis<string[]>("SUNION", keys.paidEver, keys.pastImported)).length;
-}
-
-// Splits the returning-price list into people from earlier years and this year's new members,
-// who join the list when they pay but get the returning price only from next year.
-export async function returningCounts(year: string) {
-  const [all, imported] = await pipeline<[string[], string[]]>([["SUNION", keys.paidEver, keys.pastImported], ["SMEMBERS", keys.pastImported]]);
-  const everyone = new Set(all);
-  const fromSheets = new Set(imported);
-  const thisYear = (await listMembers(year)).filter((m) => m.status === "paid" && m.type === "new" && everyone.has(m.kerb) && !fromSheets.has(m.kerb)).length;
-  return { earlier: everyone.size - thisYear, thisYear };
-}
-
-// Past members from old sheets. Each sheet keeps its own kerbs, so removing one sheet
-// keeps people who are also on another sheet or who paid on this site.
-
-async function rebuildPastImported() {
-  const ids = await redis<string[]>("HKEYS", keys.pastSheets);
-  if (ids.length) await redis("SUNIONSTORE", keys.pastImported, ...ids.map(keys.pastSheet));
-  else await redis("DEL", keys.pastImported);
-}
-
-// Importing a sheet again replaces its kerbs.
-export async function savePastSheet(sheet: PastSheet, kerbs: string[]) {
-  const commands: (string | number)[][] = [["DEL", keys.pastSheet(sheet.id)]];
-  for (let i = 0; i < kerbs.length; i += 500) commands.push(["SADD", keys.pastSheet(sheet.id), ...kerbs.slice(i, i + 500)]);
-  commands.push(["HSET", keys.pastSheets, sheet.id, JSON.stringify(sheet)]);
-  await pipeline(commands);
-  await rebuildPastImported();
-}
-
-export async function removePastSheet(id: string) {
-  await pipeline([["DEL", keys.pastSheet(id)], ["HDEL", keys.pastSheets, id]]);
-  await rebuildPastImported();
-}
-
-export async function listPastSheets() {
-  await moveEarlierImports();
-  const flat = await redis<string[]>("HGETALL", keys.pastSheets);
-  const sheets: PastSheet[] = [];
-  for (let i = 1; i < flat.length; i += 2) sheets.push(JSON.parse(flat[i]) as PastSheet);
-  return sheets.sort((a, b) => b.importedAt - a.importedAt);
-}
-
-// Sheets imported before sheets were tracked put their kerbs straight into paid-ever.
-// Runs once: kerbs with no paid signup on this site move to an "Earlier imports" entry that exec can remove.
-async function moveEarlierImports() {
-  if ((await redis<string | null>("SET", keys.pastMoved, String(Date.now()), "NX")) !== "OK") return;
-  const years = await redis<string[]>("SMEMBERS", keys.years);
-  const paidHere = new Set<string>();
-  for (const year of years) for (const m of await listMembers(year)) if (m.status === "paid") paidHere.add(m.kerb);
-  const earlier = (await redis<string[]>("SMEMBERS", keys.paidEver)).filter((kerb) => !paidHere.has(kerb));
-  if (!earlier.length) return;
-  await savePastSheet({ id: "earlier", name: "Earlier imports", count: earlier.length, importedAt: 0, importedBy: null }, earlier);
-  for (let i = 0; i < earlier.length; i += 500) await redis("SREM", keys.paidEver, ...earlier.slice(i, i + 500));
 }
 
 // Events

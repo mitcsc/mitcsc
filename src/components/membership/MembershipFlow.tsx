@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { lookUpKerb, refreshStatus, reportPayment, signUp, type KerbStatus } from "@/app/join/actions";
 import WaitingPanda from "@/components/voting/WaitingPanda";
-import { CLUB_EMAIL, isKerb, money, normalizeKerb, questionOptions, venmoNote } from "@/lib/membership/config";
+import { CLUB_EMAIL, formTitle, isKerb, money, normalizeKerb, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { MemberView } from "@/lib/membership/members";
 import type { FormConfig, PaymentMethod, Question } from "@/lib/membership/types";
 import { Icon } from "./icons";
@@ -41,7 +41,16 @@ function Email() {
 
 export default function MembershipFlow({ year, member: initial, venmo, wallet }: { year: PublicYear | null; member: MemberView | null; venmo: VenmoInfo | null; wallet: WalletInfo }) {
   const [member, setMember] = useState(initial);
-  const [step, setStep] = useState<Step>(() => (!initial ? "form" : initial.status === "paid" || initial.reported ? "status" : "pay"));
+  const [step, setStep] = useState<Step>(() => firstStep(initial));
+  // "See your signup" loads this browser's signup into the open page.
+  const [loaded, setLoaded] = useState(initial?.kerb);
+  if (initial?.kerb !== loaded) {
+    setLoaded(initial?.kerb);
+    if (initial && !member) {
+      setMember(initial);
+      setStep(firstStep(initial));
+    }
+  }
 
   if (!year || (!member && !year.open)) return <Closed year={year?.year} />;
   if (!member || step === "form") {
@@ -61,6 +70,10 @@ export default function MembershipFlow({ year, member: initial, venmo, wallet }:
   return <StatusScreen year={year} member={member} wallet={wallet} onChange={setMember} onPayAgain={() => setStep("pay")} />;
 }
 
+function firstStep(member: MemberView | null): Step {
+  return !member ? "form" : member.status === "paid" || member.reported ? "status" : "pay";
+}
+
 function Closed({ year }: { year?: string }) {
   return (
     <main className="m-root mp-center">
@@ -68,10 +81,16 @@ function Closed({ year }: { year?: string }) {
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
         <h1 className="mp-title">Signups are closed</h1>
         <p className="mp-muted">{year ? `Membership signups for ${year} are closed right now.` : "Membership signups are not open yet."} Check back soon.</p>
+        {year && <CardButton />}
       </div>
-      <p className="mp-footnote">{year && <span>Already a member? <Link href="/join/card">Get your card</Link></span>}<span>Questions? <Email /></span></p>
+      <p className="mp-footnote">Questions? <Email /></p>
     </main>
   );
+}
+
+// Members open their card from an emailed link, so it works on any phone.
+function CardButton() {
+  return <Link className="m-btn is-outline is-small mp-card-button" href="/join/card"><Icon name="card" />Already a member? Get your card</Link>;
 }
 
 // The signup form
@@ -127,15 +146,15 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
     if (taken) return;
     setBusy(true);
     setError("");
-    const result = await signUp({ answers, other }).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
+    const result = await signUp({ answers, other, edit: !!member }).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
     onDone(result.value);
-    // Loads the Venmo QR code, which needs the kerb.
-    router.refresh();
+    // Loads the Venmo QR code, which needs the kerb. The URL keeps this signup on the screen after a reload.
+    router.replace("/join?view=signup", { scroll: false });
   }
 
   const discount = year.prices.new - year.prices.returning;
@@ -143,8 +162,9 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
     <main className="m-root mp-page">
       <header className="mp-hero">
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
-        <h1 className="mp-title is-large">Join CSC</h1>
+        <h1 className="mp-title is-large">{formTitle(year.form)}</h1>
         {year.form.intro && <p className="mp-muted">{year.form.intro}</p>}
+        <CardButton />
       </header>
 
       <form className="mp-form" onSubmit={submit}>
@@ -167,6 +187,9 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
                     <span className="mp-muted">Is this you? <Link href={`/join/card?kerb=${encodeURIComponent(kerb)}`}>Get your card by email</Link>. Not you? Email <Email />.</span>
                   </div>
                 )}
+                {!member && lookup?.kerb === kerb && lookup.status === "yours" && (
+                  <p className="m-hint">You already signed up on this device. <Link href="/join?view=signup">{lookup.paying ? "Continue to payment" : "View your confirmation"}</Link></p>
+                )}
                 {!taken && lookup?.kerb === kerb && lookup.status === "returning" && discount > 0 && (
                   <p className="m-hint">
                     Welcome back, and thanks for being a returning member! Since you’ve been with us before, you pay{" "}
@@ -182,7 +205,7 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
         <button type="submit" className="m-btn is-block mp-continue" disabled={busy || taken}>{busy ? "Saving…" : "Continue"}</button>
       </form>
 
-      <p className="mp-footnote"><span>Already a member? <Link href="/join/card">Get your card</Link></span><span>Questions? <Email /></span></p>
+      <p className="mp-footnote">Questions? <Email /></p>
     </main>
   );
 }

@@ -19,9 +19,12 @@ export const metadata: Metadata = {
   description: "Become a member of the MIT Chinese Students Club for the school year.",
 };
 
-export default async function JoinPage({ searchParams }: { searchParams: Promise<{ wallet?: string }> }) {
+// /join always opens on an empty form, so a phone that signed up can sign up someone else.
+// The signup this browser made shows only on /join?view=signup (where the form goes after Continue)
+// and when a Wallet button sends a problem back here.
+export default async function JoinPage({ searchParams }: { searchParams: Promise<{ wallet?: string; view?: string }> }) {
   const config = await currentYear();
-  const problem = (await searchParams).wallet;
+  const { wallet: problem, view } = await searchParams;
   const wallet: WalletInfo = {
     buttons: walletButtons((await headers()).get("user-agent")),
     problem: typeof problem === "string" && problem in WALLET_PROBLEMS ? WALLET_PROBLEMS[problem as WalletProblem] : null,
@@ -32,7 +35,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
     if (fallback) redirect(fallback);
     return <MembershipFlow year={null} member={null} venmo={null} wallet={wallet} />;
   }
-  const member = await ownMember(config);
+  const member = view === "signup" || problem ? await ownMember(config) : null;
   // A Wallet button found no signup in this browser, so offer the email link.
   if (!member && problem === "missing") redirect("/join/card");
 
