@@ -2,7 +2,7 @@ import EventDesk from "@/components/dashboard/EventDesk";
 import LiveData from "@/components/dashboard/LiveData";
 import NoYear from "@/components/dashboard/NoYear";
 import NewEventForm from "@/components/dashboard/NewEventForm";
-import { formatDay, localDate } from "@/lib/membership/config";
+import { localDate } from "@/lib/membership/config";
 import { clubFolder } from "@/lib/membership/google/drive";
 import { clubConnection } from "@/lib/membership/google/oauth";
 import { currentYear, eventOn, listEvents } from "@/lib/membership/store";
@@ -23,7 +23,7 @@ export default async function CheckInPage() {
   return (
     <>
       <LiveData renderedAt={Date.now()} />
-      <NewEventForm variant="today" today={today} todayLabel={formatDay(today)} taken={taken} clubFolder={root ? { id: root.id, path: [root.name] } : null} />
+      <NewEventForm variant="today" today={today} taken={taken} clubFolder={root ? { id: root.id, path: [root.name] } : null} />
     </>
   );
 }

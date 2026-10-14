@@ -10,8 +10,8 @@ import DrivePicker, { type DriveChoice } from "./DrivePicker";
 // The New event page, and the Check in tab on a day with no event ("today"), where it explains why it shows.
 // clubFolder is the "MIT CSC" folder, or null when the club Google account is not connected; then attendance stays on this site only.
 // taken maps each date that already has an event to that event.
-export default function NewEventForm({ today, todayLabel, taken, clubFolder, variant = "page" }: {
-  today: string; todayLabel: string; taken: Record<string, { id: string; name: string }>; clubFolder: DriveChoice | null; variant?: "page" | "today";
+export default function NewEventForm({ today, taken, clubFolder, variant = "page" }: {
+  today: string; taken: Record<string, { id: string; name: string }>; clubFolder: DriveChoice | null; variant?: "page" | "today";
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -90,7 +90,7 @@ export default function NewEventForm({ today, todayLabel, taken, clubFolder, var
           <div className="d-start-head">
             <h1 className="d-phone-title">No event today</h1>
             <p className="d-start-text">
-              You see this because nobody has made an event for today, {todayLabel}, yet. Check-ins are saved to an event, so make today’s event below. Check-in then opens right here.
+              There is no active event created yet. If there is an event today and you are checking people in, fill in the details below to create an event and start checking people in.
             </p>
           </div>
         )}
