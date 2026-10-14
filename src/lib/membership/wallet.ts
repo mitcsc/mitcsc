@@ -34,7 +34,7 @@ export function passSpec(config: YearConfig, member: Member, siteOrigin: string)
     barcodeAltText: member.kerb,
     logoText: "MIT CSC",
     organizationName: "MIT Chinese Students Club",
-    description: "MIT CSC membership",
+    description: "MIT CSC Membership Card",
     headerFields: [{ label: "MEMBER", value: shortYear(config.year) }],
     primaryFields: [{ label: "NAME", value: member.name }],
     secondaryFields: [
