@@ -10,7 +10,7 @@ import { cleanForm, text } from "@/lib/membership/form";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
 import {
-  attendanceCount, checkIn, undoCheckIn, createEvent, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
+  attendanceCount, checkIn, undoCheckIn, createEvent, eventOn, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
   removePastSheet, requireCurrentYear, savePastSheet, unmarkPaidEver, updateEvent, updateMember, updateYear,
 } from "@/lib/membership/store";
 import { syncEventLater, syncMembersLater, syncMembersNow } from "@/lib/membership/sync";
@@ -205,6 +205,9 @@ export async function createEventAction(input: { name: string; date: string; fol
     const name = text(input.name, 100);
     if (!name) throw new MembershipError("Name the event.");
     if (!ISO_DATE.test(input.date)) throw new MembershipError("Pick the event date.");
+    // Checked before the Google Sheet is made, so a refused event leaves nothing in Drive.
+    const taken = await eventOn(config.year, input.date);
+    if (taken) throw new MembershipError(`“${taken.name}” is already on ${formatDay(input.date)}. There can be only one event per day.`, 409);
     let sheetId: string | null = null;
     const sheetTab = "Attendance";
     if (input.folderId) {

@@ -301,12 +301,6 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-phone-title { font-size: 26px; font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .d-phone-submit { margin-top: 8px; }
 .d-start-text { font-size: 15px; line-height: 1.5; color: var(--muted); }
-.d-today-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
-.d-today-event { display: flex; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); text-decoration: none; }
-.m-root .d-today-event { color: var(--text); }
-.d-today-name { flex: 1; min-width: 0; font-size: 16px; overflow-wrap: anywhere; }
-.d-today-count { font-size: 13px; color: var(--muted); white-space: nowrap; }
-.d-today-event svg { color: var(--muted); }
 .d-checkin-head { display: flex; flex-direction: column; gap: 4px; }
 .d-checkin-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
 .m-root .d-checkin-meta a { color: var(--muted); }

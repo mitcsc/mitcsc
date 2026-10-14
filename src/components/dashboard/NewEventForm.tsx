@@ -8,7 +8,10 @@ import { Icon } from "@/components/membership/icons";
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
 
 // clubFolder is the "MIT CSC" folder, or null when the club Google account is not connected; then attendance stays on this site only.
-export default function NewEventForm({ today, clubFolder }: { today: string; clubFolder: DriveChoice | null }) {
+// taken maps each date that already has an event to that event.
+export default function NewEventForm({ today, taken, clubFolder }: {
+  today: string; taken: Record<string, { id: string; name: string }>; clubFolder: DriveChoice | null;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [date, setDate] = useState(today);
@@ -16,6 +19,7 @@ export default function NewEventForm({ today, clubFolder }: { today: string; clu
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const clash = taken[date];
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -41,7 +45,12 @@ export default function NewEventForm({ today, clubFolder }: { today: string; clu
         </label>
         <label className="m-field">
           <span className="m-label">Date</span>
-          <input className="m-input" type="date" value={date} required onChange={(e) => setDate(e.target.value)} />
+          <input className="m-input" type="date" value={date} required aria-invalid={!!clash || undefined} aria-describedby={clash ? "date-taken" : undefined} onChange={(e) => setDate(e.target.value)} />
+          {clash && (
+            <span id="date-taken" className="m-error" role="alert">
+              “{clash.name}” is already on this day, and each day has one event. Pick another date, or <Link href={`/dashboard/events/${clash.id}`}>open “{clash.name}”</Link>.
+            </span>
+          )}
         </label>
         {folder ? (
           <div className="m-field">
@@ -58,7 +67,7 @@ export default function NewEventForm({ today, clubFolder }: { today: string; clu
           <p className="d-field-note is-large">Attendance is saved here only. Connect the club Google account in Settings to also save it to a Google Sheet.</p>
         )}
         {error && <p className="m-error" role="alert">{error}</p>}
-        <button type="submit" className="m-btn is-block d-phone-submit" disabled={busy}>{busy ? "Creating…" : "Start check-in"}</button>
+        <button type="submit" className="m-btn is-block d-phone-submit" disabled={busy || !!clash}>{busy ? "Creating…" : "Start check-in"}</button>
       </form>
       {picking && folder && (
         <DrivePicker

@@ -136,14 +136,26 @@ async function moveEarlierImports() {
 
 // Events
 
+// Events are sorted by their date, at midnight UTC.
+function dayScore(date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
 export async function createEvent(input: Omit<EventInfo, "id" | "createdAt">) {
   const event: EventInfo = { ...input, id: randomUUID().slice(0, 8), createdAt: Date.now() };
-  const [y, m, d] = event.date.split("-").map(Number);
   await pipeline([
     ["SET", keys.event(event.id), JSON.stringify(event)],
-    ["ZADD", keys.events(event.year), Date.UTC(y, m - 1, d), event.id],
+    ["ZADD", keys.events(event.year), dayScore(event.date), event.id],
   ]);
   return event;
+}
+
+// The event on this date. The club holds at most one event per day.
+export async function eventOn(year: string, date: string) {
+  const score = dayScore(date);
+  const [id] = await redis<string[]>("ZRANGE", keys.events(year), score, score, "BYSCORE");
+  return id ? getEvent(id) : null;
 }
 
 export async function getEvent(id: string) {
