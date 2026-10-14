@@ -3,9 +3,9 @@
 import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { execAccess, requireExec } from "@/lib/membership/exec-auth";
-import { clubFolder, clubPath, createFolder, getItem, listChildren, FOLDER, SPREADSHEET } from "@/lib/membership/google/drive";
+import { clubFolder, clubPath, createFolder, getItem, listChildren, FOLDER } from "@/lib/membership/google/drive";
 import { clubEmail } from "@/lib/membership/google/oauth";
-import { addTab, createSheet } from "@/lib/membership/google/sheets";
+import { createSheet } from "@/lib/membership/google/sheets";
 import { cleanForm, text } from "@/lib/membership/form";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
@@ -197,7 +197,8 @@ export async function createSchoolYear(input: { year: string; folderId: string; 
 
 // Events
 
-export async function createEventAction(input: { name: string; date: string; folderId: string | null; sheetId: string | null }): Promise<Result<string>> {
+// Each event gets its own new sheet in the picked folder, or no sheet when Google is not connected.
+export async function createEventAction(input: { name: string; date: string; folderId: string | null }): Promise<Result<string>> {
   return attempt(async () => {
     const by = await requireExec();
     const config = await requireCurrentYear();
@@ -205,14 +206,8 @@ export async function createEventAction(input: { name: string; date: string; fol
     if (!name) throw new MembershipError("Name the event.");
     if (!ISO_DATE.test(input.date)) throw new MembershipError("Pick the event date.");
     let sheetId: string | null = null;
-    let sheetTab = "Attendance";
-    if (input.sheetId) {
-      await clubPath(input.sheetId);
-      const sheet = await getItem(input.sheetId);
-      if (sheet.mimeType !== SPREADSHEET) throw new MembershipError("Pick a Google Sheet.");
-      sheetTab = await addTab(sheet.id, name.slice(0, 90), clubEmail());
-      sheetId = sheet.id;
-    } else if (input.folderId) {
+    const sheetTab = "Attendance";
+    if (input.folderId) {
       const { id: folderId } = (await clubPath(input.folderId)).at(-1)!;
       sheetId = await createSheet(name, folderId, sheetTab, clubEmail());
     }
