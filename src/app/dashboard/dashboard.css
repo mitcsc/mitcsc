@@ -16,6 +16,8 @@
 .d-account-email { color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .d-signout { padding: 0; border: 0; background: none; font-size: 13px; color: var(--muted); }
 .d-signout:hover { color: var(--text); }
+.d-signout.is-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; }
+.d-signout.is-icon:hover { background: #ffffff12; }
 .d-banner { display: flex; align-items: center; gap: 12px; padding: 10px 28px; background: var(--yellow-bg); color: var(--yellow-text); font-size: 14px; }
 .d-banner span { flex: 1; }
 .d-banner .m-copy { color: inherit; }
@@ -329,11 +331,13 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-scan-message { font-size: 15px; color: var(--text); }
 
 @media (max-width: 720px) {
-  .d-header { padding: 10px 16px; gap: 8px 16px; }
-  .d-account-email { display: none; }
-  /* Sign out sits beside the brand, and the tabs get their own row. */
-  .d-account { order: 1; }
-  .d-main-nav { order: 2; width: 100%; }
+  /* One row: the tabs, then the sign-out icon. The tabs scroll sideways if a phone is too narrow. */
+  .d-header { flex-wrap: nowrap; gap: 8px; padding: 10px 16px; }
+  .d-brand, .d-account-email { display: none; }
+  .d-main-nav { flex: 1; min-width: 0; margin-left: -6px; overflow-x: auto; scrollbar-width: none; }
+  .d-main-nav::-webkit-scrollbar { display: none; }
+  .d-main-nav a { padding: 7px 12px; }
+  .d-account { margin-right: -8px; }
   .d-banner, .d-subnav { padding-left: 16px; padding-right: 16px; }
   .d-subnav-meta { margin-left: 0; }
   .d-aside { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--line); padding: 16px 6px; }
