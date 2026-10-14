@@ -256,7 +256,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .m-root .d-preview-head a { color: var(--muted); }
 .d-preview { position: sticky; top: 24px; max-width: 360px; margin: 0 auto; padding: 28px 22px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--bg); display: flex; flex-direction: column; gap: 12px; pointer-events: none; user-select: none; }
 .d-preview-hero { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; text-align: center; }
-.d-preview-hero img { width: 48px; height: 48px; object-fit: contain; margin-bottom: 6px; }
+.d-preview-hero > img { width: 48px; height: 48px; object-fit: contain; margin-bottom: 6px; }
 .d-preview-title { font-size: 18px; font-weight: 500; }
 .d-preview-intro { font-size: 12px; color: var(--muted); }
 .d-preview-card { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 10px; font-weight: 500; }
