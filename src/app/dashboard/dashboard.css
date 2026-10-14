@@ -344,7 +344,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 
 /* Phone-first pages: new event and check-in */
 .d-phone { flex: 1; display: flex; justify-content: center; }
-.d-phone-body { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 20px; padding: 36px 24px 44px; }
+.d-phone-body { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 20px; padding: 36px 24px 44px; }
 .d-phone-title { font-size: 26px; font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .d-phone-submit { margin-top: 8px; }
 .d-start-head { display: flex; flex-direction: column; gap: 8px; }
