@@ -136,7 +136,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
   return (
     <div className="d-body">
       <aside className="d-aside">
-        <h2 className="d-aside-title">This year</h2>
+        <h2 className="d-aside-title">{year.year}</h2>
         <div className="d-aside-switch">
           <span>Accepting signups</span>
           <Switch checked={year.signupsOpen} label="Accepting signups" disabled={busy === "open"} onChange={(value) => run("open", () => updateSettings({ signupsOpen: value }))} />
@@ -148,27 +148,44 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
           <div><dt>Closes</dt><dd>{year.closesOn ? formatDay(year.closesOn) : "Not set"}</dd></div>
         </dl>
         <div className="d-aside-line" />
-        {sheet ? (
-          <a className="d-aside-link" href={sheet.url} target="_blank" rel="noreferrer">
-            <span>Google Sheet</span>
-            <span className={`d-aside-sub${sheet.sync && !sheet.sync.ok ? " is-error" : ""}`} suppressHydrationWarning>
-              {!sheet.sync ? "Not synced yet" : sheet.sync.ok ? `Synced ${ago(sheet.sync.at)}` : `Sync failed ${ago(sheet.sync.at)}`}
+        <div className="d-aside-links">
+          {sheet ? (
+            <a className="d-aside-link" href={sheet.url} target="_blank" rel="noreferrer">
+              <Icon name="sheet" size={18} className="d-aside-icon" />
+              <span className="d-aside-text">
+                <span>Google Sheet</span>
+                <span className={`d-aside-sub${sheet.sync && !sheet.sync.ok ? " is-error" : ""}`} suppressHydrationWarning>
+                  {!sheet.sync ? "Not synced yet" : sheet.sync.ok ? `Synced ${ago(sheet.sync.at)}` : `Sync failed ${ago(sheet.sync.at)}`}
+                </span>
+              </span>
+            </a>
+          ) : (
+            <div className="d-aside-link is-static">
+              <Icon name="sheet" size={18} className="d-aside-icon" />
+              <span className="d-aside-text"><span>Google Sheet</span><span className="d-aside-sub">Not set up</span></span>
+            </div>
+          )}
+          {sheet?.sync && !sheet.sync.ok && (
+            <button type="button" className="d-aside-link is-wide" onClick={() => run("sync", syncSheetNow, "The Google Sheet is up to date.")} disabled={busy === "sync"}>
+              <Icon name="sheet" size={18} className="d-aside-icon" />
+              <span className="d-aside-text">
+                <span>{busy === "sync" ? "Syncing…" : "Sync again"}</span>
+                <span className="d-aside-sub">{sheet.sync.error}</span>
+              </span>
+            </button>
+          )}
+          <button type="button" className="d-aside-link" onClick={copyLink}>
+            <Icon name={copied ? "check" : "link"} size={18} className="d-aside-icon" />
+            <span className="d-aside-text">
+              <span>{copied ? "Copied" : "Copy signup link"}</span>
+              <span className="d-aside-sub">{signup.label}</span>
             </span>
-          </a>
-        ) : (
-          <div className="d-aside-link is-static"><span>Google Sheet</span><span className="d-aside-sub">Not set up</span></div>
-        )}
-        {sheet?.sync && !sheet.sync.ok && (
-          <button type="button" className="d-aside-link" onClick={() => run("sync", syncSheetNow, "The Google Sheet is up to date.")} disabled={busy === "sync"}>
-            <span>{busy === "sync" ? "Syncing…" : "Sync again"}</span>
-            <span className="d-aside-sub">{sheet.sync.error}</span>
           </button>
-        )}
-        <button type="button" className="d-aside-link" onClick={copyLink}>
-          <span>{copied ? "Copied" : "Copy signup link"}</span>
-          <span className="d-aside-sub">{signup.label}</span>
-        </button>
-        <button type="button" className="d-aside-link is-single" onClick={() => setShowQr(true)}>Show QR code</button>
+          <button type="button" className="d-aside-link" onClick={() => setShowQr(true)}>
+            <Icon name="qr" size={18} className="d-aside-icon" />
+            <span className="d-aside-text"><span>Show QR code</span></span>
+          </button>
+        </div>
       </aside>
 
       <main className="d-main">
@@ -180,15 +197,17 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 <Icon name="chevron" size={18} className="d-collapse-icon" />
               </button>
             </h2>
-            <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo"}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
           </div>
           <div id="pending-list" className={`d-collapsible${pendingOpen ? " is-open" : ""}${collapseMoved ? " is-animated" : ""}`} inert={!pendingOpen}>
             <div className="d-collapsible-inner">
               <p className="d-section-note" suppressHydrationWarning>
-                Check Venmo confirms a payment only when its note matches exactly, like <span className="d-code">{venmoNote(year.year, example)}</span>.
-                All other payments need manual confirmation.
-                {venmoCheckedAt && <span className="d-note-status">Venmo last checked {ago(venmoCheckedAt)}.</span>}
+                The Venmo check confirms a payment only when its note matches exactly, like <span className="d-nowrap"><span className="d-code">{venmoNote(year.year, example)}</span>.</span>
+                {" "}All other payments need manual confirmation.
               </p>
+              <div className="d-venmo-row">
+                <span suppressHydrationWarning>{venmoCheckedAt ? `Venmo last checked ${ago(venmoCheckedAt)}.` : "Venmo not checked yet."}</span>
+                <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo"}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
+              </div>
               {pending.length === 0 && <p className="d-empty-row">Nobody is waiting.</p>}
               {(showAll ? pending : pending.slice(0, PENDING_PREVIEW)).map((m) => (
                 <div className="d-pending" key={m.kerb}>
@@ -228,19 +247,22 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
             </div>
           </div>
           <div className="d-table-wrap">
-            <table className="d-table">
+            <table className="d-table d-members">
               <thead>
-                <tr><th>Name</th><th>Kerb</th><th>Year</th><th>Type</th><th>Payment</th><th>Signed up</th><th className="is-action" aria-label="Actions" /></tr>
+                <tr><th>Name</th><th className="is-wide">Kerb</th><th className="is-wide">Year</th><th className="is-wide">Type</th><th>Payment</th><th className="is-wide">Signed up</th><th className="is-action" aria-label="Actions" /></tr>
               </thead>
               <tbody>
                 {shown.map((m) => (
                   <tr key={m.kerb}>
-                    <td><button type="button" className="d-name-btn" onClick={() => setOpen(m.kerb)}>{m.name}</button></td>
-                    <td className="is-soft">{m.kerb}</td>
-                    <td className="is-soft">{m.classYear}</td>
-                    <td className="is-soft">{m.type === "returning" ? "Returning" : "New"}</td>
+                    <td>
+                      <button type="button" className="d-name-btn" onClick={() => setOpen(m.kerb)}>{m.name}</button>
+                      <span className="d-member-meta">{m.kerb}</span>
+                    </td>
+                    <td className="is-soft is-wide">{m.kerb}</td>
+                    <td className="is-soft is-wide">{m.classYear}</td>
+                    <td className="is-soft is-wide">{m.type === "returning" ? "Returning" : "New"}</td>
                     <td><StatusPill member={m} /></td>
-                    <td className="is-faint">{formatStamp(m.createdAt)}</td>
+                    <td className="is-faint is-wide">{formatStamp(m.createdAt)}</td>
                     <td className="is-action"><MoreButton name={m.name} onClick={() => setOpen(m.kerb)} /></td>
                   </tr>
                 ))}

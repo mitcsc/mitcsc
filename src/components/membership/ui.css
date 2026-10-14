@@ -76,6 +76,10 @@
   background: transparent; font-size: 16px; transition: border-color 0.15s;
 }
 .m-input.is-compact, .m-select.is-compact { min-height: 48px; padding: 0 16px; font-size: 15px; }
+/* iOS Safari draws date fields at their own size: wider than the column and shorter than other fields. */
+.m-input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; line-height: 54px; }
+.m-input.is-compact[type="date"] { line-height: 46px; }
+.m-input[type="date"]::-webkit-date-and-time-value { margin: 0; text-align: left; }
 .m-textarea { padding: 16px 18px; line-height: 1.4; resize: vertical; }
 .m-input:focus, .m-select:focus, .m-textarea:focus { outline: none; border-color: #ffffff70; }
 .m-select-wrap { position: relative; }

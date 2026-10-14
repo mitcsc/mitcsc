@@ -48,24 +48,22 @@ type PreviewScreen = "signup" | "payment";
 
 export default function FormEditor({ year, form: initial, pay }: { year: string; form: FormConfig; pay: PayPreview }) {
   const save = useSave();
-  const [form, setForm] = useState(initial);
+  const [loaded] = useState(initial);
+  const [form, setForm] = useState(loaded);
   const [benefits, setBenefits] = useState(initial.benefits.join("\n"));
   const [instagram, setInstagram] = useState(initial.instagram ? `@${initial.instagram}` : "");
   const [editing, setEditing] = useState<{ index: number | null; draft: Question } | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [screen, setScreen] = useState<PreviewScreen>("signup");
   const timer = useRef<number | undefined>(undefined);
-  const first = useRef(true);
 
+  // Saves after each change, never for the form as it loaded.
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (form === loaded) return;
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => save(() => saveForm(form)), SAVE_DELAY_MS);
     return () => window.clearTimeout(timer.current);
-  }, [form, save]);
+  }, [form, loaded, save]);
 
   const update = (patch: Partial<FormConfig>) => setForm((f) => ({ ...f, ...patch }));
   const builtins = form.questions.filter((q) => q.builtin);

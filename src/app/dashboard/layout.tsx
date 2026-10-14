@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import { MainNav, ProblemBanner, SignIn } from "@/components/dashboard/Shell";
+import { MainNav, MobileNav, ProblemBanner, SaveStatus, SaveStatusProvider, SignIn } from "@/components/dashboard/Shell";
 import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
 import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google/oauth";
 import { instrumentSans } from "@/components/membership/font";
@@ -74,20 +74,24 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
   return (
-    <div className="m-root d-shell">
-      <header className="d-header">
-        <Link className="d-brand" href="/dashboard" aria-label="Dashboard home"><Image src="/img/logo/logo-with-panda.png" alt="" width={28} height={28} priority /></Link>
-        <MainNav />
-        <span className="d-account">
-          <span className="d-account-email">{email}</span>
-          <SignOut label="Sign out" icon />
-        </span>
-      </header>
-      <ConnectionBanner />
-      <Suspense>
-        <ProblemBanner />
-      </Suspense>
-      {children}
-    </div>
+    <SaveStatusProvider>
+      <div className="m-root d-shell">
+        <header className="d-header">
+          <Link className="d-brand" href="/dashboard" aria-label="Dashboard home"><Image src="/img/logo/logo-with-panda.png" alt="" width={28} height={28} priority /></Link>
+          <MainNav />
+          <MobileNav email={email} />
+          <span className="d-header-save"><SaveStatus /></span>
+          <span className="d-account">
+            <span className="d-account-email">{email}</span>
+            <SignOut label="Sign out" icon />
+          </span>
+        </header>
+        <ConnectionBanner />
+        <Suspense>
+          <ProblemBanner />
+        </Suspense>
+        {children}
+      </div>
+    </SaveStatusProvider>
   );
 }

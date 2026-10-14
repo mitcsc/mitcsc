@@ -5,7 +5,16 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { createEventAction } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
+import { schoolYearOn } from "@/lib/membership/config";
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
+
+function FolderExample({ path }: { path: string[] }) {
+  return (
+    <span className="d-path-example">
+      {path.map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">›</span>}{s}</span>)}
+    </span>
+  );
+}
 
 // The New event page, and the Check in tab on a day with no event ("today"), where it explains why it shows.
 // clubFolder is the "MIT CSC" folder, or null when the club Google account is not connected; then attendance stays on this site only.
@@ -60,10 +69,13 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
           <span className="m-label">Save attendance in</span>
           <div className="d-location is-large">
             <span className="d-location-path">
-              {folder.path.map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}{s}</span>)}
+              {folder.path.map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">›</span>}{s}</span>)}
             </span>
             <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>Change</button>
           </div>
+          <span className="d-field-note is-large">
+            Pick this event’s own folder, like <FolderExample path={[`MIT CSC ${schoolYearOn(new Date(`${date || today}T12:00:00Z`))}`, "9/4 Midway"]} />. If it doesn’t exist yet, tap Change, then New folder.
+          </span>
           <span className="d-field-note is-large">{name.trim() ? `Creates a new Google Sheet named “${name.trim()}”.` : "Creates a new Google Sheet with the same name as the event."}</span>
         </div>
       ) : (
