@@ -2,7 +2,7 @@ import type { PaymentMethod } from "@/lib/membership/types";
 
 export const METHOD_NAMES: Record<PaymentMethod, string> = { venmo: "Venmo", zelle: "Zelle", cash: "Cash" };
 
-// "just now", "4 min ago", "3 h ago", "2 days ago".
+// "just now", "4 minutes ago", "1 hour ago", "2 days ago".
 export function ago(ms: number, now = Date.now()) {
   const minutes = Math.max(0, Math.round((now - ms) / 60_000));
   if (minutes < 1) return "just now";

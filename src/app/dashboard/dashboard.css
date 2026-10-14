@@ -94,6 +94,8 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-section-head > :last-child:not(:first-child) { margin-left: auto; }
 .d-section-head.is-table { margin-bottom: 8px; }
 .d-section-note { margin-bottom: 8px; font-size: 13px; color: #ffffff73; }
+.d-code { color: #c3c3c8; white-space: nowrap; }
+.d-note-status { display: block; margin-top: 4px; }
 .d-pending { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 1.5fr) auto; align-items: center; gap: 8px 20px; padding: 16px 0; border-bottom: 1px solid #ffffff0f; }
 .d-pending-who, .d-pending-pay { min-width: 0; display: flex; flex-direction: column; }
 .d-pending-who .d-tags { margin-top: 4px; }
