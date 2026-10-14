@@ -2,6 +2,7 @@
 import ElectionResults from "./ElectionResults";
 import type { ElectionResults as Results } from "@/lib/voting/results";
 import VotingNotice from "./VotingNotice";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTooltip } from "@/components/ui/useTooltip";
 import AdminRoom from "./AdminRoom";
@@ -12,7 +13,6 @@ import type { Candidate, Criterion, VotingState } from "@/lib/voting/types";
 type Overview = {
   me: {name: string};
   election: {sessionId: string; name: string; hostName: string; isHost: boolean} | null;
-  hosted: {sessionId: string; name: string; open: boolean; createdAt: number}[];
 };
 type Step = "session" | "criteria" | "candidates";
 
@@ -23,10 +23,10 @@ async function call<T>(path: string, data?: object): Promise<T> {
   return result;
 }
 const defaultName = () => `Delibs ${new Date().toLocaleDateString("en-CA")}`;
-const shortDate = (time: number) => new Date(time).toLocaleDateString(undefined, {month: "short", day: "numeric", year: "numeric"});
 
 // The Delibs tab. Whoever starts a delib hosts it; every other exec joins it as a voter.
 export default function DelibsRoom() {
+  const router = useRouter();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [state, setState] = useState<VotingState | null>(null);
   const [results, setResults] = useState<Results | null>(null);
@@ -53,15 +53,21 @@ export default function DelibsRoom() {
     document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", escape); };
   }, [showVoters]);
-  const refresh = useCallback(async () => {
-    try {
-      const next = await call<Overview>("delibs");
-      setState(next.election?.isHost ? await call<VotingState>("state") : null);
-      setOverview(next);
-      if (!next.election?.isHost) setShowVoters(false);
-      setError("");
-    } catch (e) { setError((e as Error).message); }
+  // Loads the open delib, and the host's view of it. Nothing is shown until both arrive.
+  const load = useCallback(async () => {
+    const next = await call<Overview>("delibs");
+    return {overview: next, state: next.election?.isHost ? await call<VotingState>("state") : null};
   }, []);
+  const apply = useCallback((next: {overview: Overview; state: VotingState | null}) => {
+    setState(next.state);
+    setOverview(next.overview);
+    if (!next.overview.election?.isHost) setShowVoters(false);
+    setError("");
+  }, []);
+  const refresh = useCallback(async () => {
+    try { apply(await load()); }
+    catch (e) { setError((e as Error).message); }
+  }, [load, apply]);
   useEffect(() => { void refresh(); }, [refresh]);
   // While no delib is open, check for one, so a delib another exec starts shows up here.
   const idle = !!overview && !overview.election && !step && !results;
@@ -85,8 +91,9 @@ export default function DelibsRoom() {
       }
       await call("delibs", {action: "create", requestId: requestId.current, ...payload});
       requestId.current = ""; requestPayload.current = "";
-      setStep(null); setDraft({candidates: [], criteria: []});
-      await refresh();
+      // Leave the form only once the new delib has loaded, so "No delib is running" never flashes.
+      const next = await load();
+      apply(next); setStep(null); setDraft({candidates: [], criteria: []});
       return true;
     } catch (e) { setError((e as Error).message); return false; }
     finally { setBusy(false); }
@@ -102,16 +109,15 @@ export default function DelibsRoom() {
     setBusy(true); setError("");
     try {
       await call("delibs", {action: "end", sessionId: election.sessionId});
-      // The host most likely wants the final results next.
-      await showResults(election.sessionId);
-      await refresh();
+      // The host most likely wants the final results next. They now live under History.
+      router.push(`/dashboard/delibs/history/${election.sessionId}`);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
 
   if (!overview) return <div className="delibs-status" role="status">{error ? <VotingNotice message={error} actionLabel="Retry" onAction={() => void refresh()}/> : "Loading…"}</div>;
 
-  if (results) return <div className="president-room"><VotingNotice message={error}/><ElectionResults results={results} busy={busy}
+  if (results) return <div className="president-room"><VotingNotice message={error}/><ElectionResults results={results} busy={busy} backLabel="Back to voting"
     onBack={() => setResults(null)}
     onEnd={overview.election?.isHost && overview.election.sessionId === results.sessionId ? () => void end() : undefined}/></div>;
 
@@ -142,7 +148,7 @@ export default function DelibsRoom() {
     <form className="d-narrow-body" onSubmit={event => { event.preventDefault(); setError(""); setStep("criteria"); }}>
       <SetupProgress step={1}/>
       <h1 className="d-narrow-title">New delib</h1>
-      <p className="d-muted">You host it and see the full results. Other execs join from this tab with their Google account.</p>
+      <p className="d-muted">You host it and see the full results. Other exec members can join from this tab with their Google account.</p>
       <div className="d-narrow-fields">
         <label className="d-field">
           <span className="m-label">Name</span>
@@ -157,20 +163,11 @@ export default function DelibsRoom() {
     </form>
   </main>;
 
-  const past = overview.hosted.filter(h => !h.open);
   return <main className="d-narrow"><div className="d-narrow-body">
     <h1 className="d-narrow-title">No delib is running</h1>
-    <p className="d-muted">Start one to rate candidates with the other execs. It shows up here for everyone, and only you see the full results.</p>
+    <p className="d-muted">Start a delib to vote on candidates. It shows up here for everyone, and only the host can see the full results. The president should be the host.</p>
     <VotingNotice message={error}/>
     <button className="m-btn is-medium delibs-start" onClick={startSetup}>Start a delib</button>
-    {past.length > 0 && <section className="delibs-past">
-      <h2 className="m-label">Your past delibs</h2>
-      <ul>{past.map(h => <li key={h.sessionId}>
-        <span className="delibs-past-name">{h.name}</span>
-        <span className="delibs-past-date">{shortDate(h.createdAt)}</span>
-        <button className="d-chip-btn" onClick={() => void showResults(h.sessionId)}>Results</button>
-      </li>)}</ul>
-    </section>}
   </div></main>;
 }
 

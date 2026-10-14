@@ -1,11 +1,11 @@
 import { exportToken } from "@/lib/voting/export-link";
 import { failure, json, person } from "@/lib/voting/http";
-import { createElection, currentElection, electionResults, endElection, hostedElections } from "@/lib/voting/redis-service";
+import { createElection, currentElection, electionResults, endElection } from "@/lib/voting/redis-service";
 import { body, requireOrigin, text, VotingError } from "@/lib/voting/security";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// The Delibs tab: the open delib, the delibs this exec hosted, and a hosted delib's full results.
+// The Delibs tab: the open delib, and a hosted delib's full results.
 export async function GET(request: Request) {
   try {
     const me = await person();
@@ -14,9 +14,9 @@ export async function GET(request: Request) {
       const sessionId = text(results, "delib", 36);
       return json({...await electionResults(sessionId, me), exportToken: exportToken(sessionId, me.email)});
     }
-    const [current, hosted] = await Promise.all([currentElection(), hostedElections(me)]);
+    const current = await currentElection();
     const election = current?.open ? {sessionId: current.sessionId, name: current.name, hostName: current.hostName, isHost: current.host === me.email} : null;
-    return json({me: {name: me.name}, election, hosted: hosted.map(h => ({sessionId: h.sessionId, name: h.name, open: h.open, createdAt: h.createdAt}))});
+    return json({me: {name: me.name}, election});
   } catch (error) { return failure(error); }
 }
 

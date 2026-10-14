@@ -88,10 +88,10 @@ test('one delib runs at a time, retries do not open a second one, and only its h
   await service.adminAction(cfg, e.admin, {action: 'setPhase', phase: 'locked'});
   await delibs.endElection(cfg.sessionId, host);
   await assert.rejects(service.settings(), e => e.status === 404, 'Nothing is open after the end');
-  const hosted = await delibs.hostedElections(host);
-  assert.equal(hosted[0].name, 'Spring delibs', 'Newest first');
-  assert.equal(hosted[0].open, false);
-  assert.equal((await delibs.hostedElections(person(1))).length, 0);
+  const all = await delibs.allElections();
+  assert.equal(all[0].name, 'Spring delibs', 'Newest first');
+  assert.equal(all[0].open, false);
+  assert.equal(all[0].host, host.email);
   await assert.rejects(delibs.electionResults(cfg.sessionId, person(1)), e => e.status === 403, 'Only the host sees results');
   assert.equal((await delibs.electionResults(cfg.sessionId, host)).ended, true);
 });

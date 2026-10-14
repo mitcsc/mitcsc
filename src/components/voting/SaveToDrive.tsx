@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Gapi = { savetodrive: { render: (container: HTMLElement, params: Record<string, string>) => void } };
 let platform: Promise<Gapi> | null = null;
@@ -24,6 +24,7 @@ function loadPlatform() {
 // Google's "Save to Drive" button. It saves the file at `src` to the signed-in Google account's My Drive.
 export default function SaveToDrive({ src, filename }: { src: string; filename: string }) {
   const container = useRef<HTMLSpanElement>(null);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
     loadPlatform().then(gapi => {
@@ -31,8 +32,10 @@ export default function SaveToDrive({ src, filename }: { src: string; filename: 
       if (cancelled || !el) return;
       el.replaceChildren();
       gapi.savetodrive.render(el, { src: new URL(src, location.href).href, filename, sitename: "MIT CSC" });
+      setReady(true);
     }).catch(() => { /* The CSV download still works. */ });
     return () => { cancelled = true; };
   }, [src, filename]);
-  return <span ref={container} className="save-to-drive"/>;
+  // Google sets its own inline styles on the element it renders into, so the pill is a wrapper around it.
+  return <span className="save-to-drive" hidden={!ready}><span ref={container}/></span>;
 }

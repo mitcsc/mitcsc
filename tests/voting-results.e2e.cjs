@@ -14,7 +14,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
   await page.route('**/api/voting/**',route=>{
     const url=route.request().url();
     if(route.request().method()==='POST'){assert.equal(route.request().postDataJSON().action,'end');ended=true;return route.fulfill({json:{ok:true}});}
-    return route.fulfill({json:url.includes('results=')?results:url.includes('/state')?{active:true,isAdmin:true,sessionId:'results-test',phase:'locked',criteria,candidates:results.candidates.map(c=>c.candidate),participants:[],voters:[],currentCandidate:results.candidates[1].candidate}:{me:{name:'Test Host'},election:ended?null:{sessionId:'results-test',name:'Spring delib',hostName:'Test Host',isHost:true},hosted:[]}});
+    return route.fulfill({json:url.includes('results=')?results:url.includes('/state')?{active:true,isAdmin:true,sessionId:'results-test',phase:'locked',criteria,candidates:results.candidates.map(c=>c.candidate),participants:[],voters:[],currentCandidate:results.candidates[1].candidate}:{me:{name:'Test Host'},election:ended?null:{sessionId:'results-test',name:'Spring delib',hostName:'Test Host',isHost:true}}});
   });
   // The dev server signs in as DASHBOARD_DEV_EMAIL.
   await page.goto(`${process.env.VOTING_TEST_URL}/api/auth/google/start?next=/dashboard/delibs`);
@@ -53,12 +53,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
   await page.screenshot({path:'/private/tmp/results-polished-mobile.png'});
   await page.setViewportSize({width:1280,height:900});
   await page.getByRole('button',{name:'End voting',exact:true}).click();
-  // Once the delib ends, the results stay open without the End voting button.
-  await page.getByRole('button',{name:'End voting',exact:true}).waitFor({state:'detached'});
+  // Ending opens the delib's results page under History.
+  await page.waitForURL('**/dashboard/delibs/history/results-test');
   assert.equal(ended,true);
-  await page.reload();
-  await page.getByRole('heading',{name:'No delib is running',exact:true}).waitFor();
   assert.deepEqual(errors,[]);
-  console.log('PASS: populated results, CSV link, final scores, candidate filtering, stable headings, 20 long criteria, and mobile containment.');
+  console.log('PASS: populated results, CSV link, end opens History, final scores, candidate filtering, stable headings, 20 long criteria, and mobile containment.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

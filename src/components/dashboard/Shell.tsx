@@ -53,8 +53,8 @@ export function MobileNav({ email }: { email: string }) {
             label above them, so the label never reads as one more page. Other sections follow
             after a divider. */}
         {menuGroups().map((group) => (
-          <div key={group.href} role="group" aria-label={group.label} className={`d-mobile-group${group.label ? "" : " is-plain"}`}>
-            {group.label && <span className="d-mobile-label" aria-hidden="true">{group.label}</span>}
+          <div key={group.href} role="group" aria-label={group.label} className="d-mobile-group">
+            <span className="d-mobile-label" aria-hidden="true">{group.label}</span>
             {group.links.map((link) => <Link key={link.href} href={link.href} className="d-mobile-link" aria-current={link.current(pathname) ? "page" : undefined}>{link.label}</Link>)}
           </div>
         ))}
@@ -71,9 +71,9 @@ export function MobileNav({ email }: { email: string }) {
 
 type MenuLink = { href: string; label: string; current: (pathname: string) => boolean };
 
-// The phone menu: one group per section with tabs, and one unlabeled group for each run of sections without tabs.
+// The phone menu: one group per section with tabs, and a "More" group for each run of sections without tabs.
 function menuGroups() {
-  const groups: { href: string; label?: string; links: MenuLink[] }[] = [];
+  const groups: { href: string; label: string; links: MenuLink[]; more?: boolean }[] = [];
   for (const section of SECTIONS) {
     if (section.tabs) {
       groups.push({ href: section.href, label: section.label, links: section.tabs.map((t) => ({ href: t.href, label: t.label, current: (p) => tabActive(p, t) })) });
@@ -81,8 +81,8 @@ function menuGroups() {
     }
     const link = { href: section.href, label: section.label, current: (p: string) => sectionActive(p, section) };
     const last = groups.at(-1);
-    if (last && !last.label) last.links.push(link);
-    else groups.push({ href: section.href, links: [link] });
+    if (last?.more) last.links.push(link);
+    else groups.push({ href: section.href, label: "More", links: [link], more: true });
   }
   return groups;
 }
