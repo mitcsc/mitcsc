@@ -1,16 +1,11 @@
 "use client";
 
-import { useEffect, useId, useRef, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Toaster, toast } from "sonner";
 
-// Sonner switches to its full-width phone layout at this width.
-const PHONE = "(max-width: 600px)";
-const watchPhone = (change: () => void) => { const query = matchMedia(PHONE); query.addEventListener("change", change); return () => query.removeEventListener("change", change); };
-
+// The ballot's submit button sits at the bottom of the page, so toasts go on top, just under the dashboard header.
 export function VotingToaster() {
-  // On phones the ballot's submit button sits at the bottom of the page, so toasts go on top.
-  const phone = useSyncExternalStore(watchPhone, () => matchMedia(PHONE).matches, () => false);
-  return <Toaster position={phone ? "top-center" : "bottom-right"} theme="dark" visibleToasts={3} offset={20} mobileOffset={16}/>;
+  return <Toaster position="top-center" theme="dark" visibleToasts={3} offset={{top: 76}} mobileOffset={{top: 72}}/>;
 }
 
 export default function VotingNotice({message, tone = "error", actionLabel, onAction, persistent = true}: {

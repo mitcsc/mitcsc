@@ -79,7 +79,7 @@ async function main() {
     assert.equal(await fieldset('Reliability').getByRole('radio', { name: 'Not enough information' }).count(), 0);
     assert.equal(await fieldset('Experience').getByRole('radio', { name: 'Not enough information' }).count(), 1);
     await page.getByRole('button', { name: 'Save ratings' }).click();
-    await waitText('Choose a numeric rating for each required criterion.');
+    await waitText('Answer each required criterion.');
     await rate('Reliability', 3);
     await fieldset('Experience').getByRole('radio', { name: 'Not enough information' }).check();
     await page.getByRole('button', { name: 'Save ratings' }).click();

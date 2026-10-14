@@ -20,9 +20,11 @@
 .voting-root.d-delibs .d-narrow-actions > .m-btn.is-outline:hover:not(:disabled) { border-color: #ffffff4d; background: transparent; }
 .voting-root.d-delibs .d-narrow-actions > .m-btn:not(.is-outline):hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 
-.delibs-voter { display: flex; flex-direction: column; align-items: center; padding: 40px 24px 56px; }
-.voting-root.d-delibs .delibs-voter > .voter-room { width: 100%; max-width: 480px; }
-.delibs-voter-head { width: 100%; max-width: 480px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 0 0 32px; font-size: 13px; color: var(--muted); }
+.delibs-voter { display: flex; flex-direction: column; align-items: center; padding: 36px 24px 16px; }
+.voting-root.d-delibs .delibs-voter > .voter-room { width: 100%; max-width: 640px; display: flex; flex-direction: column; }
+/* Waiting screens fill the voter's area, so their content sits in its middle. */
+.voting-root.d-delibs .delibs-voter > .voter-room > :is(.voter-wait, .voter-submitted, .voter-discussion) { flex: 1 0 auto; min-height: 0; }
+.delibs-voter-head { width: 100%; max-width: 640px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
 .delibs-voter-head > :first-child { font-size: 15px; font-weight: 500; color: var(--text); }
 
 /* The ballot lines up with the page edges and uses the dashboard's field borders. */
@@ -39,7 +41,7 @@
 .save-to-drive iframe { display: block; clip-path: inset(2px); }
 
 @media (max-width: 600px) {
-  .delibs-voter { padding: 28px 16px 48px; }
+  .delibs-voter { padding: 28px 16px 8px; }
   /* The live header has room for the link icon only. */
   .voting-root .president-live-actions > .president-copy-link { width: 34px; padding: 0; }
   .president-copy-text { display: none; }
@@ -58,3 +60,34 @@
 .voting-root.d-delibs .president-ballot-setup :is(.voting-criteria-actions, .voting-pane-heading) button:hover:not(:disabled) { border-color: #ffffff40; background: transparent; color: var(--text); }
 .voting-root.d-delibs .voting-admin .voting-admin-edit-row:has(.voting-candidate-platform) { grid-template-rows: 48px 72px; height: auto; min-height: 0; max-height: none; padding: 10px 0; }
 .voting-root.d-delibs .president-ballot-setup .voting-admin-editor .voting-candidate-platform textarea { height: 72px; resize: none; }
+
+/* Short answers: the answer type picker in setup, the voter's text box, and the answers in the results. */
+.voting-root.d-delibs .president-ballot-setup .voting-admin-kind { display: grid; gap: 8px; font-size: 14px; font-weight: 500; color: var(--soft); }
+.voting-root.d-delibs .president-ballot-setup .voting-admin-kind .m-select { font-weight: 400; color: var(--text); }
+.voting-root.d-delibs .president-ballot-setup .voting-admin-kind .m-select:focus-visible { outline: none; border-color: #ffffff70; }
+/* A short answer has no scale, so Required starts the row. */
+.voting-root.d-delibs .president-ballot-setup .voting-admin-scale > .voting-admin-check:first-child { margin-left: 0; }
+.voting-root .voter-notes { display: block; width: 100%; min-height: 96px; padding: 12px 16px; border: 1px solid #ffffff26; border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 15px; line-height: 1.5; resize: vertical; }
+.voting-root .voter-notes:focus-visible { outline: none; border-color: #ffffff70; }
+.voting-root .voter-criterion:disabled .voter-notes { color: #999; }
+.results-notes h3 { display: flex; gap: 8px; margin: 16px 0 4px; font-size: 14px; font-weight: 500; color: #ddd; }
+.results-notes h3 span { color: #929298; font-weight: 400; }
+.results-notes ul { margin: 0; padding: 0; list-style: none; }
+.results-notes li { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid #ffffff14; }
+.results-notes li:first-child { border-top: 0; }
+.results-section .results-notes-voter { font-size: 13px; color: #ddd; }
+.results-section .results-notes li p { color: #c3c3c8; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* The ballot's button stays in the 640px column, stuck to the bottom of the voter's scrolling area. */
+.voting-root.d-delibs .voter-room .voter-ballot { padding-bottom: 0; }
+.voting-root.d-delibs .voter-room .voter-ballot-actions { position: sticky; bottom: 0; left: auto; right: auto; transform: none; width: 100%; max-width: none; margin-top: 8px; padding: 24px 0 max(16px, env(safe-area-inset-bottom)); }
+.voting-root.d-delibs .voter-room .voter-ballot-actions > * { max-width: none !important; }
+
+/* Results tables are as tall as their rows, up to their cap. */
+.results-summary-table { height: auto; }
+/* On narrow screens the host's candidate list is as tall as its candidates, up to a third of the screen, and the round sits right below it. */
+@media (max-width: 760px) {
+  .voting-root .voting-live-page .voting-admin-controls { grid-template-rows: auto minmax(0, 1fr); }
+  .voting-root .voting-live-page .voting-admin-candidates { max-height: 33svh; }
+  .voting-root .voting-live-page .voting-round-controls { justify-content: flex-start; }
+}

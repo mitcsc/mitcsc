@@ -9,7 +9,7 @@ require.extensions['.ts'] = (module, filename) => {
   }).outputText, filename);
 };
 const { requireOrigin } = require('./security.ts');
-const { authorize, validateRatings } = require('./service.ts');
+const { authorize, validateRatings, validateSetup } = require('./service.ts');
 const { resultRows, toCsv, exportFileName } = require('./export.ts');
 const config = { sessionId: 'fall', name: 'Fall delibs', host: 'host@mit.edu', hostName: 'Host', open: true, createdAt: 0 };
 
@@ -34,6 +34,23 @@ test('ratings enforce original criterion IDs, required fields, integer scale and
   assert.doesNotThrow(() => validateRatings({ fit: 5, experience: null }, criteria));
   for (const ratings of [{ fit: 6 }, { fit: 1.5 }, { fit: null }, { fit: 1, extra: 3 }, { fit: '3' }, {}]) assert.throws(() => validateRatings(ratings, criteria));
 });
+test('short answers take text up to the limit, and a required one cannot be blank', () => {
+  const criteria = [
+    { id: 'fit', label: 'Fit', min: 1, max: 5, required: true },
+    { id: 'why', label: 'Why', kind: 'notes', required: true },
+    { id: 'extra', label: 'Anything else', kind: 'notes', required: false },
+  ];
+  assert.doesNotThrow(() => validateRatings({ fit: 3, why: 'Strong leader', extra: null }, criteria));
+  assert.doesNotThrow(() => validateRatings({ fit: 3, why: 'x'.repeat(2000) }, criteria));
+  assert.throws(() => validateRatings({ fit: 3, why: '   ' }, criteria), /Write an answer for Why/);
+  assert.throws(() => validateRatings({ fit: 3, why: null }, criteria), /Write an answer for Why/);
+  assert.throws(() => validateRatings({ fit: 3, why: 'x'.repeat(2001) }, criteria), /under 2000/);
+  assert.throws(() => validateRatings({ fit: 3, why: 'ok', extra: 4 }, criteria), /Anything else/);
+  assert.throws(() => validateRatings({ fit: 'great', why: 'ok' }, criteria), /valid rating for Fit/);
+  // A short answer needs no scale.
+  assert.doesNotThrow(() => validateSetup([], [{ id: 'why', label: 'Why', description: '', min: 1, max: 5, required: false, kind: 'notes' }]));
+  assert.throws(() => validateSetup([], [{ id: 'why', label: 'Why', description: '', min: 1, max: 5, required: false, kind: 'essay' }]));
+});
 test('the CSV has one row per vote with no gaps, and cannot run formulas', () => {
   const results = {
     sessionId: 'fall', name: 'Fall: delibs/1', ended: true, voterCount: 2,
@@ -56,6 +73,9 @@ test('the CSV has one row per vote with no gaps, and cannot run formulas', () =>
   assert.equal(csv[0], 'Candidate,Voter,Fit,"Drive, ""grit""",Fit (initial),"Drive, ""grit"" (initial)",Submitted');
   assert.ok(csv[1].startsWith(`"'=HYPERLINK(""x"")",Alex,4,2,3,,`));
   assert.ok(csv[3].startsWith("Bo,'@Lee,2,1,1,1,"));
+  const notes = resultRows({ ...results, criteria: [{ id: 'why', label: 'Why', kind: 'notes' }], candidates: [{ candidate: { name: 'Bo' }, ballots: [{ voterName: 'Lee', initial: { why: 'First' }, final: { why: '=Kind, "warm"' }, submittedAt: '2026-10-14T16:02:00.000Z' }] }] });
+  assert.deepEqual(notes[1].slice(0, 4), ['Bo', 'Lee', '=Kind, "warm"', 'First'], 'short answers appear as written');
+  assert.ok(toCsv(notes).split('\r\n')[1].startsWith(`Bo,Lee,"'=Kind, ""warm""",First,`));
   assert.equal(exportFileName('Fall: delibs/1'), 'Fall delibs1.csv');
   assert.equal(exportFileName('///'), 'Delibs.csv');
 });

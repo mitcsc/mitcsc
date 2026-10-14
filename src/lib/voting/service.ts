@@ -1,7 +1,7 @@
 import { redisEnabled } from "./redis";
 import { redisSettings, redisState, redisAdminAction, redisSubmit, redisRecoverBallot } from "./redis-service";
 import { Identity, VotingError, text } from "./security";
-import type { Candidate, Criterion, Ratings } from "./types";
+import { NOTES_MAX, type Candidate, type Criterion, type Ratings } from "./types";
 
 // One delib. `host` is the email of the exec who created it and runs it. `open` turns false when the host ends it.
 // Votes stay in Redis only. Only the host can read full results, in the dashboard.
@@ -22,6 +22,11 @@ export function validateSetup(candidates: Candidate[], criteria: Criterion[]) {
   for (const c of criteria) {
     if (!c || typeof c !== "object") throw new VotingError("Invalid criterion details.");
     text(c.id, "criterion ID", 100); text(c.label, "criterion label", 150);
+    if (c.kind !== undefined && c.kind !== "rating" && c.kind !== "notes") throw new VotingError("Invalid criterion details.");
+    if (c.kind === "notes") {
+      if (typeof c.description !== "string" || c.description.length > 1000 || typeof c.required !== "boolean") throw new VotingError("Invalid criterion details.");
+      continue;
+    }
     if (typeof c.description !== "string" || c.description.length > 1000 || !Number.isInteger(c.min) || !Number.isInteger(c.max) || c.min < -100 || c.max > 100 || c.max <= c.min || c.max - c.min > 20 || typeof c.required !== "boolean") throw new VotingError("Criteria need integer scales with 2–21 options and valid descriptions.");
   }
   if (new Set(candidates.map(c => c.id)).size !== candidates.length || new Set(criteria.map(c => c.id)).size !== criteria.length) throw new VotingError("Candidate and criterion IDs must be unique.");
@@ -32,8 +37,13 @@ export function validateRatings(value: unknown, criteria: Criterion[]): asserts 
   if (Object.keys(ratings).some(key => !criteria.some(c => c.id === key))) throw new VotingError("Ratings do not match this ballot.");
   for (const c of criteria) {
     const rating = ratings[c.id];
+    if (c.kind === "notes") {
+      if (rating !== null && rating !== undefined && (typeof rating !== "string" || rating.length > NOTES_MAX)) throw new VotingError(`Keep the answer for ${c.label} under ${NOTES_MAX} characters.`);
+      if (c.required && !(typeof rating === "string" && rating.trim())) throw new VotingError(`Write an answer for ${c.label}.`);
+      continue;
+    }
     if ((rating === null || rating === undefined) && !c.required) continue;
-    if (!Number.isInteger(rating) || rating! < c.min || rating! > c.max) throw new VotingError(`Choose a valid rating for ${c.label}.`);
+    if (typeof rating !== "number" || !Number.isInteger(rating) || rating < c.min || rating > c.max) throw new VotingError(`Choose a valid rating for ${c.label}.`);
   }
 }
 
