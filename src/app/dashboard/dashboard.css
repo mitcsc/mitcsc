@@ -82,7 +82,8 @@
 .d-facts dt { color: #ffffffb3; }
 .d-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
 .d-aside-line { height: 1px; margin: 12px 10px; background: var(--line); }
-.d-aside-link { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 10px; border: 0; border-radius: 8px; background: transparent; line-height: 1.35; text-align: left; text-decoration: none; }
+/* Full width, so links and buttons in the list highlight the same row on hover. */
+.d-aside-link { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 4px 10px; border: 0; border-radius: 8px; background: transparent; line-height: 1.35; text-align: left; text-decoration: none; }
 .d-aside-icon { flex: none; color: var(--muted); }
 .d-aside-text { display: flex; flex-direction: column; min-width: 0; }
 button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ffffff0a; }
