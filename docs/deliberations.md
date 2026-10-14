@@ -18,7 +18,8 @@ The old `/vote` and `/deliberations` links redirect to the tab.
 Only one delib can be open at a time.
 The **History** tab lists every delib for all execs.
 Only the host can open a delib's results, and only after the delib ends.
-The host can also delete a delib that has ended. Deleting removes all of its votes, and you cannot undo it.
+The host can also rename or delete a delib that has ended, from the more button on its History row.
+Deleting removes all of its votes, and you cannot undo it.
 After a delib ends, its link says that the delib has ended.
 
 Execs must sign in again after this change so that the dashboard session has their Google name.

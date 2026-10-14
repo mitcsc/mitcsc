@@ -14,7 +14,7 @@ export default async function PastDelibsPage() {
       <div className="d-section-head">
         <h1 className="d-h2">History</h1>
       </div>
-      <p className="d-section-note">Every delib shows up here. Only the host can see a delib&apos;s results, or delete it, after it ends.</p>
+      <p className="d-section-note">Every delib shows up here. After a delib ends, its host can see the results, rename it, or delete it.</p>
       <div className="d-table-wrap">
         <table className="d-table is-roomy d-events d-delib-history">
           <thead>
