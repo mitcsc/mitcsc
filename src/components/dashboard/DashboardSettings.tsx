@@ -11,13 +11,14 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
   folder: string | null;
   people: { email: string; role: "Owner" | "Editor" }[];
   accessCheckedAt: number | null;
-  club: { email: string; state: "missing" | "broken" | "connected" };
+  // "no-email": connected before card emails existed, so it can't send them yet.
+  club: { email: string; state: "missing" | "broken" | "no-email" | "connected" };
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"access" | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [search, setSearch] = useState("");
-  const connected = club.state === "connected";
+  const connected = club.state === "connected" || club.state === "no-email";
   const query = search.trim().toLowerCase();
   const shownPeople = query ? people.filter((p) => p.email.toLowerCase().includes(query)) : people;
 
@@ -36,13 +37,13 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
         note={`Everyone who can edit the “${CLUB_DRIVE_FOLDER}” folder in ${club.email}’s Google Drive can use this dashboard. Change it in Drive.`}
       >
         {people.length > 0 ? (
-          <div className="d-people">
+          <div className="d-access">
             <input
               className="d-search is-wide" type="search" aria-label="Search people with access"
               placeholder={`Search ${people.length} ${people.length === 1 ? "person" : "people"}`}
               value={search} onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="d-people-list">
+            <div className="d-access-list">
               {shownPeople.map((p) => (
                 <div key={p.email}><span>{p.email}</span><span className="d-role">{p.role}</span></div>
               ))}
@@ -69,6 +70,7 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
             {club.email}
             {club.state === "connected" && <span className="m-pill is-green">Connected</span>}
             {club.state === "broken" && <span className="m-pill is-yellow">Needs reconnecting</span>}
+            {club.state === "no-email" && <span className="m-pill is-yellow">Card emails off</span>}
             {club.state === "missing" && <span className="m-pill is-yellow">Not connected</span>}
           </span>
           <form action="/api/auth/google/connect" method="get">
