@@ -259,6 +259,7 @@ function Preview({ year, form }: { year: string; form: FormConfig }) {
         <Image src="/img/logo/logo-with-panda.png" alt="" width={48} height={48} />
         <span className="d-preview-title">{formTitle(form)}</span>
         {form.intro && <span className="d-preview-intro">{form.intro}</span>}
+        <span className="d-preview-card"><Icon name="card" size={11} />Already a member? Get your card</span>
       </div>
       {form.questions.map((q) => {
         const optional = !q.required && !q.builtin;
