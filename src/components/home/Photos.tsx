@@ -35,15 +35,27 @@ const MAX_DRIFT_PX = 30;
 
 /**
  * Candidate widths for the srcset. Each must be listed in `images.imageSizes`
- * in next.config.ts, and the quality in `images.qualities`. The largest
- * rendered photo is 256 CSS px, so 512 covers 2x screens.
+ * or `images.deviceSizes` in next.config.ts, and the quality in
+ * `images.qualities`. The files are 1280px on the long side, so 1080 is the
+ * largest useful width.
  */
-const WIDTHS = [256, 384, 512];
-const QUALITY = 60;
+const WIDTHS = [256, 384, 512, 640, 828, 1080];
+const QUALITY = 75;
 
-/** Largest rendered photo width per breakpoint. Keep in sync with `--photo-max` in globals.css. */
-const SIZES =
-  "(min-width: 1280px) 256px, (min-width: 1024px) 208px, (min-width: 768px) 192px, (min-width: 640px) 136px, 120px";
+/** Largest square photo per breakpoint, in CSS px. Keep in sync with `--photo-max` in globals.css. */
+const PHOTO_MAX: [minWidth: number, px: number][] = [[1280, 256], [1024, 208], [768, 192], [640, 136], [0, 120]];
+
+/**
+ * The square frame crops a 3:2 photo, so a landscape file must be 1.5x as
+ * wide as the frame to fill it without upscaling. Polaroids are also scaled
+ * up to MAX_SCALE.
+ */
+const COVER = 1.5 * MAX_SCALE;
+
+const SIZES = PHOTO_MAX.map(([minWidth, px]) => {
+  const width = `${Math.ceil(px * COVER)}px`;
+  return minWidth ? `(min-width: ${minWidth}px) ${width}` : width;
+}).join(", ");
 
 interface PhotoSlot {
   file: string;
