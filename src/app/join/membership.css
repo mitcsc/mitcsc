@@ -46,7 +46,7 @@
 .mp-kerb input { flex: 1; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; font-size: 16px; }
 /* The box shows focus, so the input inside must not draw its own ring. */
 .mp-kerb input:focus-visible { outline: none; }
-.mp-kerb span { color: #77777d; }
+.mp-kerb span { font-size: 16px; color: #77777d; }
 .mp-kerb-note { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .m-input.is-other { border-color: #ffffff50; }
 .mp-choices { display: flex; flex-direction: column; border-top: 1px solid var(--line); }

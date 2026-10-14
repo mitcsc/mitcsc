@@ -132,7 +132,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
     window.setTimeout(() => setCopied(false), 1500);
   }
 
-  const example = pending.find((m) => m.method === "venmo")?.kerb || "kerb";
+  const example = pending.find((m) => m.method === "venmo")?.kerb || "panda";
   return (
     <div className="d-body">
       <aside className="d-aside">

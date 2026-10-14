@@ -95,6 +95,13 @@ test('one delib runs at a time, retries do not open a second one, and only its h
   await assert.rejects(delibs.electionResults(cfg.sessionId, person(1)), e => e.status === 403, 'Only the host sees results');
   assert.equal((await delibs.electionResults(cfg.sessionId, host)).ended, true);
 
+  // Only the host can rename an ended delib.
+  await assert.rejects(delibs.renameElection(cfg.sessionId, 'Taken over', person(1)), e => e.status === 403);
+  await assert.rejects(delibs.renameElection(cfg.sessionId, '', host), /delib name/);
+  await delibs.renameElection(cfg.sessionId, 'Spring officer delibs', host);
+  assert.equal((await delibs.allElections())[0].name, 'Spring officer delibs');
+  assert.equal((await delibs.currentElection()).name, 'Spring officer delibs', 'The active key keeps the same record');
+
   // Only the host can delete an ended delib, and deleting removes its votes.
   await assert.rejects(delibs.deleteElection(cfg.sessionId, person(1)), e => e.status === 403, 'Only the host can delete');
   await delibs.deleteElection(cfg.sessionId, host);
@@ -105,6 +112,7 @@ test('one delib runs at a time, retries do not open a second one, and only its h
   await assert.rejects(delibs.electionResults(cfg.sessionId, host), e => e.status === 403);
   const running = await open(host, {name: 'Winter delibs'});
   await assert.rejects(delibs.deleteElection(running.sessionId, host), e => e.status === 409, 'A running delib cannot be deleted');
+  await assert.rejects(delibs.renameElection(running.sessionId, 'New name', host), e => e.status === 409);
   assert.equal((await service.settings()).sessionId, running.sessionId);
 });
 
