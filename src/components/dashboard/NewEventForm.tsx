@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { createEventAction } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
 
+// The New event page, and the Check in tab on a day with no event ("today"), where it explains why it shows.
 // clubFolder is the "MIT CSC" folder, or null when the club Google account is not connected; then attendance stays on this site only.
 // taken maps each date that already has an event to that event.
-export default function NewEventForm({ today, taken, clubFolder }: {
-  today: string; taken: Record<string, { id: string; name: string }>; clubFolder: DriveChoice | null;
+export default function NewEventForm({ today, todayLabel, taken, clubFolder, variant = "page" }: {
+  today: string; todayLabel: string; taken: Record<string, { id: string; name: string }>; clubFolder: DriveChoice | null; variant?: "page" | "today";
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -19,7 +20,9 @@ export default function NewEventForm({ today, taken, clubFolder }: {
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [opening, startOpening] = useTransition();
   const clash = taken[date];
+  const starting = busy || opening;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -31,43 +34,68 @@ export default function NewEventForm({ today, taken, clubFolder }: {
       setError(result.error);
       return;
     }
-    router.push(`/dashboard/events/${result.value}`);
+    // On the Check in tab, today's new event opens in place.
+    if (variant === "today" && date === today) startOpening(() => router.refresh());
+    else router.push(`/dashboard/events/${result.value}`);
+    setBusy(false);
   }
+
+  const fields = (
+    <>
+      <label className="m-field">
+        <span className="m-label">Name</span>
+        <input className="m-input" value={name} required maxLength={100} placeholder="Event name" onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label className="m-field">
+        <span className="m-label">Date</span>
+        <input className="m-input" type="date" value={date} required aria-invalid={!!clash || undefined} aria-describedby={clash ? "date-taken" : undefined} onChange={(e) => setDate(e.target.value)} />
+        {clash && (
+          <span id="date-taken" className="m-error" role="alert">
+            “{clash.name}” is already on this day, and each day has one event. Pick another date, or <Link href={`/dashboard/events/${clash.id}`}>open “{clash.name}”</Link>.
+          </span>
+        )}
+      </label>
+      {folder ? (
+        <div className="m-field">
+          <span className="m-label">Save attendance in</span>
+          <div className="d-location is-large">
+            <span className="d-location-path">
+              {folder.path.map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}{s}</span>)}
+            </span>
+            <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>Change</button>
+          </div>
+          <span className="d-field-note is-large">Creates a new sheet named “{name.trim() || "the event name"}”.</span>
+        </div>
+      ) : (
+        <p className="d-field-note is-large">Attendance is saved here only. Connect the club Google account in Settings to also save it to a Google Sheet.</p>
+      )}
+    </>
+  );
+  const button = (
+    <>
+      {error && <p className="m-error" role="alert">{error}</p>}
+      <button type="submit" className="m-btn is-block d-phone-submit" disabled={starting || !!clash}>{starting ? "Starting…" : "Start check-in"}</button>
+    </>
+  );
 
   return (
     <main className="d-phone">
       <form className="d-phone-body" onSubmit={submit}>
-        <Link className="m-back" href="/dashboard/events"><Icon name="back" />Events</Link>
-        <h1 className="d-phone-title">New event</h1>
-        <label className="m-field">
-          <span className="m-label">Name</span>
-          <input className="m-input" value={name} required maxLength={100} placeholder="Event name" onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="m-field">
-          <span className="m-label">Date</span>
-          <input className="m-input" type="date" value={date} required aria-invalid={!!clash || undefined} aria-describedby={clash ? "date-taken" : undefined} onChange={(e) => setDate(e.target.value)} />
-          {clash && (
-            <span id="date-taken" className="m-error" role="alert">
-              “{clash.name}” is already on this day, and each day has one event. Pick another date, or <Link href={`/dashboard/events/${clash.id}`}>open “{clash.name}”</Link>.
-            </span>
-          )}
-        </label>
-        {folder ? (
-          <div className="m-field">
-            <span className="m-label">Save attendance in</span>
-            <div className="d-location is-large">
-              <span className="d-location-path">
-                {folder.path.map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}{s}</span>)}
-              </span>
-              <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>Change</button>
-            </div>
-            <span className="d-field-note is-large">Creates a new sheet named “{name.trim() || "the event name"}”.</span>
-          </div>
+        {variant === "page" ? (
+          <>
+            <Link className="m-back" href="/dashboard/events"><Icon name="back" />Events</Link>
+            <h1 className="d-phone-title">New event</h1>
+          </>
         ) : (
-          <p className="d-field-note is-large">Attendance is saved here only. Connect the club Google account in Settings to also save it to a Google Sheet.</p>
+          <div className="d-start-head">
+            <h1 className="d-phone-title">No event today</h1>
+            <p className="d-start-text">
+              You see this because nobody has made an event for today, {todayLabel}, yet. Check-ins are saved to an event, so make today’s event below. Check-in then opens right here.
+            </p>
+          </div>
         )}
-        {error && <p className="m-error" role="alert">{error}</p>}
-        <button type="submit" className="m-btn is-block d-phone-submit" disabled={busy || !!clash}>{busy ? "Creating…" : "Start check-in"}</button>
+        {fields}
+        {button}
       </form>
       {picking && folder && (
         <DrivePicker
@@ -81,3 +109,4 @@ export default function NewEventForm({ today, taken, clubFolder }: {
     </main>
   );
 }
+

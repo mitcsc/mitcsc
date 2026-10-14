@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { saveForm } from "@/app/dashboard/actions";
+import { CardButtonContent } from "@/components/membership/CardButton";
 import { Icon } from "@/components/membership/icons";
 import { DEFAULT_FORM_TITLE, formTitle, money, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { FormConfig, Question, QuestionType } from "@/lib/membership/types";
@@ -259,7 +260,7 @@ function Preview({ year, form }: { year: string; form: FormConfig }) {
         <Image src="/img/logo/logo-with-panda.png" alt="" width={48} height={48} />
         <span className="d-preview-title">{formTitle(form)}</span>
         {form.intro && <span className="d-preview-intro">{form.intro}</span>}
-        <span className="d-preview-card"><Icon name="card" size={11} />Already a member? Get your card</span>
+        <span className="d-preview-card"><CardButtonContent wallets={["apple"]} height={10} /></span>
       </div>
       {form.questions.map((q) => {
         const optional = !q.required && !q.builtin;

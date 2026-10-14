@@ -2,6 +2,8 @@
 .mp-page { display: flex; flex-direction: column; gap: 32px; padding: 48px max(24px, calc((100% - 440px) / 2)) 40px; }
 .mp-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
 .mp-card-button { gap: 8px; margin-top: 12px; }
+.mp-wallet-icons { display: inline-flex; align-items: center; gap: 4px; }
+.mp-wallet-icons img { display: block; }
 .mp-center-body .mp-card-button { margin-top: 24px; }
 .mp-logo { width: 88px; height: 88px; object-fit: contain; margin-bottom: 12px; }
 .mp-title { font-size: 22px; font-weight: 500; line-height: 1.3; }
