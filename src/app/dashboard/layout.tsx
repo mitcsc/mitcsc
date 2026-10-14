@@ -40,7 +40,7 @@ function SignOut({ label, icon }: { label: string; icon?: boolean }) {
   return (
     <form action="/api/auth/signout" method="post">
       {icon
-        ? <button type="submit" className="d-signout is-icon" aria-label={label} title={label}><Icon name="signout" size={18} /></button>
+        ? <button type="submit" className="d-signout is-icon" aria-label={label} data-tip={label} data-tip-end><Icon name="signout" size={18} /></button>
         : <button type="submit" className="d-signout">{label}</button>}
     </form>
   );
