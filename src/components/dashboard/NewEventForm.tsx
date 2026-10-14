@@ -9,7 +9,8 @@ import DrivePicker, { type DriveChoice } from "./DrivePicker";
 
 type Target = { kind: "default" } | { kind: "folder"; choice: DriveChoice } | { kind: "sheet"; choice: DriveChoice };
 
-export default function NewEventForm({ today, googleReady, eventsFolder }: { today: string; googleReady: boolean; eventsFolder: DriveChoice | null }) {
+// eventsFolder is null when the club Google account is not connected; then attendance stays on this site only.
+export default function NewEventForm({ today, eventsFolder }: { today: string; eventsFolder: DriveChoice | null }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [date, setDate] = useState(today);
@@ -24,7 +25,7 @@ export default function NewEventForm({ today, googleReady, eventsFolder }: { tod
     setError("");
     const result = await createEventAction({
       name, date,
-      folderId: target.kind === "folder" ? target.choice.id : null,
+      folderId: target.kind === "folder" ? target.choice.id : target.kind === "default" ? eventsFolder?.id ?? null : null,
       sheetId: target.kind === "sheet" ? target.choice.id : null,
     }).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
     if (!result.ok) {
@@ -43,13 +44,13 @@ export default function NewEventForm({ today, googleReady, eventsFolder }: { tod
         <h1 className="d-phone-title">New event</h1>
         <label className="m-field">
           <span className="m-label">Name</span>
-          <input className="m-input" value={name} required maxLength={100} placeholder="Mooncake study break" onChange={(e) => setName(e.target.value)} />
+          <input className="m-input" value={name} required maxLength={100} placeholder="Event name" onChange={(e) => setName(e.target.value)} />
         </label>
         <label className="m-field">
           <span className="m-label">Date</span>
           <input className="m-input" type="date" value={date} required onChange={(e) => setDate(e.target.value)} />
         </label>
-        {googleReady ? (
+        {eventsFolder ? (
           <div className="m-field">
             <span className="m-label">Save attendance in</span>
             <div className="d-location is-large">
