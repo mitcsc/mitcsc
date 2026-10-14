@@ -116,15 +116,13 @@ export async function deleteLink(id: string) {
   await redis("HDEL", CLICKS_KEY, id);
 }
 
-// Moves a link one place up (-1) or down (1) in the list.
-export async function moveLink(id: string, step: -1 | 1) {
+// Puts the links in the order of ids, as dragged in the dashboard.
+// A link missing from ids, for example one added meanwhile in another tab, stays at the top.
+export async function reorderLinks(ids: string[]) {
+  if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string")) throw new MembershipError("Invalid order.");
   await changeLinks((links) => {
-    const from = links.findIndex((l) => l.id === id);
-    const to = from + step;
-    if (from < 0 || to < 0 || to >= links.length) return links;
-    const next = [...links];
-    [next[from], next[to]] = [next[to], next[from]];
-    return next;
+    const place = new Map(ids.map((id, i) => [id, i]));
+    return [...links].sort((a, b) => (place.get(a.id) ?? -1) - (place.get(b.id) ?? -1));
   });
 }
 

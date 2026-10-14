@@ -3,7 +3,7 @@
 import { revalidateTag } from "next/cache";
 import { requireExec } from "@/lib/membership/exec-auth";
 import { attempt, type Result } from "@/lib/membership/result";
-import { deleteLink, LINKS_TAG, moveLink, saveLink, type LinkInput, type ShortLink } from "@/lib/links";
+import { deleteLink, LINKS_TAG, reorderLinks, saveLink, type LinkInput, type ShortLink } from "@/lib/links";
 
 // Each change clears the cached public links, so the Links page and redirects update at once.
 
@@ -25,10 +25,10 @@ export async function deleteLinkAction(id: string): Promise<Result<null>> {
   });
 }
 
-export async function moveLinkAction(id: string, step: -1 | 1): Promise<Result<null>> {
+export async function reorderLinksAction(ids: string[]): Promise<Result<null>> {
   return attempt(async () => {
     await requireExec();
-    await moveLink(id, step === -1 ? -1 : 1);
+    await reorderLinks(ids);
     revalidateTag(LINKS_TAG);
     return null;
   });
