@@ -1,6 +1,6 @@
 import LiveData from "@/components/dashboard/LiveData";
 import PhotoLibraryView from "@/components/dashboard/PhotoLibrary";
-import { PHOTO_FOLDER_PATH, photoLibrary, refreshPhotoLibrary, shownPhotoIds } from "@/lib/home-photos";
+import { PHOTO_FOLDER_PATH, photoFailures, photoLibrary, refreshPhotoLibrary, shownPhotoIds } from "@/lib/home-photos";
 import { publicMessage } from "@/lib/membership/errors";
 import { folderUrl } from "@/lib/membership/google/drive";
 
@@ -15,7 +15,7 @@ export default async function PhotosPage() {
     problem = publicMessage(error, "Could not read the Drive folder.");
     return saved;
   });
-  const shown = await shownPhotoIds();
+  const [shown, failures] = await Promise.all([shownPhotoIds(), photoFailures(library?.photos || [])]);
   return (
     <>
       <LiveData renderedAt={Date.now()} />
@@ -23,6 +23,8 @@ export default async function PhotosPage() {
         photos={library?.photos || []}
         // Drive's thumbnail links expire, so an old saved list falls back to /api/home-photos.
         thumbnails={problem ? {} : library?.thumbnails || {}}
+        failures={Object.fromEntries(Object.entries(failures).map(([id, f]) => [id, f.message]))}
+        missing={library?.missing || []}
         shown={shown}
         folder={library?.folderId ? folderUrl(library.folderId) : null}
         folderPath={PHOTO_FOLDER_PATH}

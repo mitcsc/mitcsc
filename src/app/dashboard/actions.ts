@@ -341,7 +341,8 @@ export async function refreshExecAccess(): Promise<Result<null>> {
 export async function setHomePhotos(ids: string[], shown: boolean): Promise<Result<string[]>> {
   return attempt(async () => {
     await requireExec();
-    const known = new Set((await photoLibrary())?.photos.map((p) => p.id));
+    const library = await photoLibrary();
+    const known = new Set([...(library?.photos || []), ...(library?.missing || [])].map((p) => p.id));
     await setPhotosShown([...new Set(ids)].filter((id) => known.has(id)), !!shown);
     revalidateTag(HOME_PHOTOS_TAG);
     revalidatePath("/");

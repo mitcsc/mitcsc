@@ -24,6 +24,8 @@ export const keys = {
   homePhotos: `${PREFIX}:home-photos`,
   // Drive file ids of the photos turned on for the home page.
   homePhotosShown: `${PREFIX}:home-photos:shown`,
+  // Why a photo last failed to load from Drive, by file id. Cleared when it loads again.
+  homePhotoFailures: `${PREFIX}:home-photos:failures`,
   execAccess: `${PREFIX}:exec-access`,
   sync: (target: string) => `${PREFIX}:sync:${target}`,
   rateLimit: (scope: string, id: string) => `${PREFIX}:limit:${scope}:${id}`,
