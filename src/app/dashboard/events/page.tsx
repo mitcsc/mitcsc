@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EventActions from "@/components/dashboard/EventActions";
 import NoYear from "@/components/dashboard/NoYear";
 import { formatDay, localDate } from "@/lib/membership/config";
 import { sheetUrl } from "@/lib/membership/google/drive";
@@ -19,7 +20,7 @@ export default async function EventsPage() {
       <div className="d-table-wrap">
         <table className="d-table is-roomy">
           <thead>
-            <tr><th>Event</th><th>Date</th><th>Checked in</th><th className="is-end"><span className="d-sr">Sheet</span></th></tr>
+            <tr><th>Event</th><th>Date</th><th>Checked in</th><th className="is-end"><span className="d-sr">Actions</span></th></tr>
           </thead>
           <tbody>
             {events.map(({ event, count }) => (
@@ -32,7 +33,12 @@ export default async function EventsPage() {
                 </td>
                 <td className="is-soft">{formatDay(event.date)}</td>
                 <td className="is-soft is-number">{count}</td>
-                <td className="is-end">{event.sheetId && <a className="d-quiet-link" href={sheetUrl(event.sheetId)} target="_blank" rel="noreferrer">Open sheet</a>}</td>
+                <td className="is-end">
+                  <span className="d-row-actions">
+                    {event.sheetId && <a className="d-quiet-link" href={sheetUrl(event.sheetId)} target="_blank" rel="noreferrer">Open sheet</a>}
+                    <EventActions id={event.id} name={event.name} count={count} hasSheet={!!event.sheetId} />
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>

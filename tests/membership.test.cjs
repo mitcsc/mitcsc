@@ -230,6 +230,21 @@ test('a kerb can sign up once, and check-in records the first scan', async () =>
   await assert.rejects(store.updateMember(YEAR, 'nobody', (m) => m), (e) => e.status === 404);
 });
 
+test('Deleting an event removes it and its check-ins only', async () => {
+  const make = (name) => store.createEvent({ year: YEAR, name, date: '2026-10-13', sheetId: null, sheetTab: 'Check-ins', createdBy: 'a@mit.edu' });
+  const [keep, gone] = [await make('Keep'), await make('Gone')];
+  const record = { kerb: 'jchen', name: 'Jamie', classYear: '2029', paid: true, at: 1, by: 'a@mit.edu' };
+  await store.checkIn(keep.id, record);
+  await store.checkIn(gone.id, record);
+  db.set(`${keys.sync(`event:${gone.id}`)}:status`, '{}');
+
+  await store.deleteEvent(gone);
+  assert.equal(await store.getEvent(gone.id), null);
+  assert.equal(await store.attendanceCount(gone.id), 0);
+  assert.equal(db.has(`${keys.sync(`event:${gone.id}`)}:status`), false);
+  assert.deepEqual((await store.listEvents(YEAR)).map((e) => [e.event.name, e.count]), [['Keep', 1]]);
+});
+
 test('the Venmo check confirms each payment once and only for the right amount', async () => {
   db.set(keys.google, JSON.stringify({ email: 'club@example.invalid', refreshToken: 'r', scopes: [], connectedAt: 0, connectedBy: 'x', brokenAt: null, accessToken: 'test-access-token', accessTokenExpiresAt: Date.now() + 60_000 }));
   const config = newYearConfig(YEAR, null);

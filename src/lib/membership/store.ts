@@ -157,6 +157,15 @@ export async function updateEvent(id: string, change: (event: EventInfo) => Even
 }
 
 // Newest first, with check-in counts.
+// Deletes the event and its check-ins. Its Google Sheet stays in Drive.
+export async function deleteEvent(event: EventInfo) {
+  const sync = keys.sync(`event:${event.id}`);
+  await pipeline([
+    ["ZREM", keys.events(event.year), event.id],
+    ["DEL", keys.event(event.id), keys.attendance(event.id), sync, `${sync}:dirty`, `${sync}:status`],
+  ]);
+}
+
 export async function listEvents(year: string) {
   const ids = await redis<string[]>("ZRANGE", keys.events(year), 0, -1, "REV");
   const events = (await getManyJson<EventInfo>(ids.map(keys.event))).filter((e): e is EventInfo => !!e);
