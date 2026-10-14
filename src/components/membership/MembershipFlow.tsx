@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { lookUpKerb, refreshStatus, reportPayment, signUp, type KerbStatus } from "@/app/join/actions";
 import WaitingPanda from "@/components/voting/WaitingPanda";
-import { CLUB_EMAIL, isKerb, money, normalizeKerb, questionOptions, venmoNote } from "@/lib/membership/config";
+import { CLUB_EMAIL, formTitle, isKerb, money, normalizeKerb, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { MemberView } from "@/lib/membership/members";
 import type { FormConfig, PaymentMethod, Question } from "@/lib/membership/types";
 import { Icon } from "./icons";
@@ -143,7 +143,7 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
     <main className="m-root mp-page">
       <header className="mp-hero">
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
-        <h1 className="mp-title is-large">Join CSC</h1>
+        <h1 className="mp-title is-large">{formTitle(year.form)}</h1>
         {year.form.intro && <p className="mp-muted">{year.form.intro}</p>}
       </header>
 

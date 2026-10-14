@@ -16,7 +16,7 @@ const { sign, verify, cardToken, readCardToken } = require('../src/lib/membershi
 const { parseVenmoEmail, normalizeNote, checkVenmo } = require('../src/lib/membership/venmo.ts');
 const { readAnswers } = require('../src/lib/membership/members.ts');
 const { cleanForm } = require('../src/lib/membership/form.ts');
-const { newYearConfig, canStartNextYear } = require('../src/lib/membership/config.ts');
+const { newYearConfig, canStartNextYear, formTitle } = require('../src/lib/membership/config.ts');
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
 const { walletButtons } = require('../src/lib/membership/wallet.ts');
@@ -204,6 +204,13 @@ test('cleanForm keeps built-in questions first and validates the rest', () => {
   assert.throws(() => cleanForm({ ...current, calendarUrl: 'http://example.com' }, current), /https/);
   assert.throws(() => cleanForm({ ...current, questions: [{ id: 'x', label: 'X', type: 'dropdown', required: false, options: [] }] }, current), /option/);
   assert.throws(() => cleanForm({ ...current, questions: [{ id: 'x', label: ' ', type: 'short', required: false }] }, current), /title/);
+});
+
+test('The /join title falls back to "Join CSC" when it is empty or was never set', () => {
+  const current = newYearConfig(YEAR, null).form;
+  assert.equal(formTitle(current), 'Join CSC', 'Years made before the title was editable have no title');
+  assert.equal(formTitle(cleanForm({ ...current, title: '   ' }, current)), 'Join CSC');
+  assert.equal(formTitle(cleanForm({ ...current, title: '  Join MIT CSC ' }, current)), 'Join MIT CSC');
 });
 
 test('the next school year opens on May 1 in Boston', () => {

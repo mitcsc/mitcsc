@@ -12,6 +12,8 @@ export interface Question {
 }
 
 export interface FormConfig {
+  // The heading on /join. Empty or missing (years made before it was editable) shows DEFAULT_FORM_TITLE.
+  title?: string;
   intro: string;
   benefits: string[];
   questions: Question[];
