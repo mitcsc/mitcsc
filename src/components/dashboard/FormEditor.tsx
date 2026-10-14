@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { saveForm } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
-import { questionOptions } from "@/lib/membership/config";
+import { money, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { FormConfig, Question, QuestionType } from "@/lib/membership/types";
 import { Setting } from "./YearSettings";
 import { useSave } from "./Shell";
@@ -35,13 +35,24 @@ function Lock() {
 }
 
 // Text fields save shortly after typing stops; question changes save when you press Done.
-export default function FormEditor({ year, form: initial }: { year: string; form: FormConfig }) {
+// What the payment preview needs from the year's settings.
+export interface PayPreview {
+  price: number;
+  venmo: string;
+  zelle: boolean;
+  cash: boolean;
+}
+
+type PreviewScreen = "signup" | "payment";
+
+export default function FormEditor({ year, form: initial, pay }: { year: string; form: FormConfig; pay: PayPreview }) {
   const save = useSave();
   const [form, setForm] = useState(initial);
   const [benefits, setBenefits] = useState(initial.benefits.join("\n"));
   const [instagram, setInstagram] = useState(initial.instagram ? `@${initial.instagram}` : "");
   const [editing, setEditing] = useState<{ index: number | null; draft: Question } | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
+  const [screen, setScreen] = useState<PreviewScreen>("signup");
   const timer = useRef<number | undefined>(undefined);
   const first = useRef(true);
 
@@ -88,12 +99,19 @@ export default function FormEditor({ year, form: initial }: { year: string; form
         <Setting title="Top of the page" note="The first thing people see.">
           <label className="d-field">
             <span className="m-label">Intro</span>
-            <textarea className="m-textarea is-compact" rows={2} value={form.intro} maxLength={500} onChange={(e) => update({ intro: e.target.value })} />
+            <textarea
+              className="m-textarea is-compact" rows={2} value={form.intro} maxLength={500}
+              onFocus={() => setScreen("signup")} onChange={(e) => update({ intro: e.target.value })}
+            />
           </label>
+        </Setting>
+
+        <Setting title="Payment page" note="Shown above the payment options, after someone signs up.">
           <label className="d-field">
             <span className="m-label">Benefits <span className="m-label-note">One per line</span></span>
             <textarea
               className="m-textarea is-compact" rows={7} value={benefits}
+              onFocus={() => setScreen("payment")}
               onChange={(e) => { setBenefits(e.target.value); update({ benefits: e.target.value.split("\n").map((b) => b.trim()).filter(Boolean) }); }}
             />
           </label>
@@ -165,10 +183,16 @@ export default function FormEditor({ year, form: initial }: { year: string; form
 
       <aside className="d-preview-pane">
         <div className="d-preview-head">
-          <span>Preview</span>
+          <div role="radiogroup" aria-label="Preview" className="m-segments d-preview-switch">
+            {(["signup", "payment"] as const).map((s) => (
+              <button key={s} type="button" role="radio" aria-checked={s === screen} onClick={() => setScreen(s)}>
+                {s === "signup" ? "Signup" : "Payment"}
+              </button>
+            ))}
+          </div>
           <a href="/join" target="_blank" rel="noreferrer">Open page</a>
         </div>
-        <Preview year={year} form={form} />
+        {screen === "signup" ? <Preview year={year} form={form} /> : <PaymentPreview year={year} benefits={form.benefits} pay={pay} />}
       </aside>
     </div>
   );
@@ -228,9 +252,6 @@ function Preview({ year, form }: { year: string; form: FormConfig }) {
         <Image src="/img/logo/logo-with-panda.png" alt="" width={48} height={48} />
         <span className="d-preview-title">Join CSC</span>
         {form.intro && <span className="d-preview-intro">{form.intro}</span>}
-        {form.benefits.length > 0 && (
-          <div className="d-preview-benefits">{form.benefits.map((b, i) => <span key={i}>{b}</span>)}</div>
-        )}
       </div>
       {form.questions.map((q) => {
         const optional = !q.required && !q.builtin;
@@ -250,6 +271,33 @@ function Preview({ year, form }: { year: string; form: FormConfig }) {
         );
       })}
       <div className="d-preview-button">Continue</div>
+    </div>
+  );
+}
+
+// A small, non-interactive copy of the payment screen, as a new member sees it.
+function PaymentPreview({ year, benefits, pay }: { year: string; benefits: string[]; pay: PayPreview }) {
+  const methods = ["Venmo", ...(pay.zelle ? ["Zelle"] : []), ...(pay.cash ? ["Cash"] : [])];
+  return (
+    <div className="d-preview" aria-hidden="true">
+      <div className="d-preview-pay-head">
+        <span className="d-preview-pay-title">Pay {money(pay.price)}</span>
+        <span className="d-preview-intro">Tim Beaver</span>
+      </div>
+      {benefits.length > 0 && (
+        <div className="d-preview-field">
+          <span className="d-preview-label">Your membership includes</span>
+          <div className="d-preview-strip">{benefits.map((b, i) => <span key={i}><Icon name="check" size={9} strokeWidth={2.6} />{b}</span>)}</div>
+        </div>
+      )}
+      {methods.length > 1 && <div className="d-preview-segments">{methods.map((m, i) => <span key={m} className={i === 0 ? "is-on" : undefined}>{m}</span>)}</div>}
+      <div className="d-preview-rows">
+        <div><span>To</span><span>@{pay.venmo}</span></div>
+        <div><span>Amount</span><span>${pay.price.toFixed(2)}</span></div>
+        <div><span>Note</span><span>{venmoNote(year, "tbeaver")}</span></div>
+      </div>
+      <div className="d-preview-button">Open Venmo</div>
+      <div className="d-preview-button is-outline">I&apos;ve paid</div>
     </div>
   );
 }
