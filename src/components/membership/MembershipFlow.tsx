@@ -188,7 +188,7 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
                   </div>
                 )}
                 {!member && lookup?.kerb === kerb && lookup.status === "yours" && (
-                  <p className="m-hint">You already signed up on this device. <Link href="/join?view=signup">See your signup</Link></p>
+                  <p className="m-hint">You already signed up on this device. <Link href="/join?view=signup">{lookup.paying ? "Continue to payment" : "View your confirmation"}</Link></p>
                 )}
                 {!taken && lookup?.kerb === kerb && lookup.status === "returning" && discount > 0 && (
                   <p className="m-hint">

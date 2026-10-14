@@ -12,8 +12,8 @@ import type { Member, PaymentMethod } from "@/lib/membership/types";
 import { checkVenmo } from "@/lib/membership/venmo";
 import { walletEnabled } from "@/lib/membership/wallet";
 
-// "yours": this browser already signed up this kerb.
-export type KerbStatus = { kerb: string; status: "invalid" | "taken" | "yours" | "new" | "returning"; price: number };
+// "yours": this browser already signed up this kerb. "paying": that signup still waits on the payment screen.
+export type KerbStatus = { kerb: string; status: "invalid" | "taken" | "yours" | "new" | "returning"; price: number; paying?: boolean };
 
 // Called as the person types their kerb, to show the price or the "already signed up" note.
 export async function lookUpKerb(raw: string): Promise<Result<KerbStatus>> {
@@ -23,7 +23,7 @@ export async function lookUpKerb(raw: string): Promise<Result<KerbStatus>> {
     const kerb = normalizeKerb(raw);
     if (!isKerb(kerb)) return { kerb, status: "invalid", price: config.prices.new };
     const own = await ownMember(config);
-    if (own?.kerb === kerb) return { kerb, status: "yours", price: own.price };
+    if (own?.kerb === kerb) return { kerb, status: "yours", price: own.price, paying: own.status === "unpaid" && own.reportedAt === null };
     if (await getMember(config.year, kerb)) return { kerb, status: "taken", price: 0 };
     const { type, price } = await priceFor(config, kerb);
     return { kerb, status: type, price };
