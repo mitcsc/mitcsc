@@ -1,5 +1,5 @@
 import Link from "next/link";
-import DeleteEventButton from "@/components/dashboard/DeleteEventButton";
+import EventActions from "@/components/dashboard/EventActions";
 import NoYear from "@/components/dashboard/NoYear";
 import { formatDay, localDate } from "@/lib/membership/config";
 import { sheetUrl } from "@/lib/membership/google/drive";
@@ -36,7 +36,7 @@ export default async function EventsPage() {
                 <td className="is-end">
                   <span className="d-row-actions">
                     {event.sheetId && <a className="d-quiet-link" href={sheetUrl(event.sheetId)} target="_blank" rel="noreferrer">Open sheet</a>}
-                    <DeleteEventButton id={event.id} name={event.name} count={count} hasSheet={!!event.sheetId} />
+                    <EventActions id={event.id} name={event.name} count={count} hasSheet={!!event.sheetId} />
                   </span>
                 </td>
               </tr>
