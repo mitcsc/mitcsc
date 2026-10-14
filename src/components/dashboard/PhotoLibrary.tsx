@@ -112,7 +112,8 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
         {folder && <a className="d-chip-btn" href={folder} target="_blank" rel="noreferrer">Open folder in Drive</a>}
       </div>
       <p className="d-section-note">
-        Photos come from the <PathText path={["MIT CSC", ...folderPath]} /> folder in Drive. Turn on the ones you want on the home page. Each visit shows a random set of them.
+        Photos are from the <PathText path={["MIT CSC", ...folderPath]} /> folder in Drive. To add more, just upload photos to the folder.
+        Photos will only show if you mark them as active (a random set is selected every time you visit the home page).
       </p>
       {problem && <p className="m-error" role="alert">{problem}</p>}
       {photos.length > 0 && onCount === 0 && <p className="d-photos-hint">No photos are currently active, so the home page is showing fallback photos.</p>}
