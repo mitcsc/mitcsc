@@ -146,7 +146,7 @@ export default function Scanner({ eventId, eventName, onClose, onResult, admit, 
             <div className="d-scan-who">
               {result.kind === "unpaid" ? <span className="m-pill is-yellow is-big">Not paid</span> : <CheckedInPill at={result.record.at} big />}
               <span className="d-scan-name">{result.person.name}</span>
-              <span className="d-tags"><span className="m-tag">{result.person.kerb}</span><span className="m-tag">{result.person.classYear}</span></span>
+              <span className="d-tags"><span className="m-tag">{result.person.kerb}</span>{result.person.classYear && <span className="m-tag">{result.person.classYear}</span>}</span>
             </div>
           )}
           {result.kind === "checked-in" && <p className="d-scan-note">{result.count === 1 ? "1 person is here now." : `${result.count} people are here now.`}</p>}

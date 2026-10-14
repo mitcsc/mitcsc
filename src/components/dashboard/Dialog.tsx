@@ -16,8 +16,10 @@ export default function Dialog({ title, onClose, children, wide = false }: {
   const closing = useRef(false);
   const [leaving, setLeaving] = useState(false);
   // No close() on cleanup: it fires the close event, and unmounting ends the modal anyway.
+  // showModal() focuses the first control, so a field marked data-autofocus takes focus after it.
   useEffect(() => {
     if (ref.current && !ref.current.open) ref.current.showModal();
+    ref.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
   }, []);
 
   function close(then: () => void = onClose) {

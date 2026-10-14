@@ -13,12 +13,13 @@ import { cleanForm, text } from "@/lib/membership/form";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
 import {
-  attendanceCount, checkIn, undoCheckIn, createEvent, eventsOn, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
+  attendanceCount, checkIn, claimMember, undoCheckIn, createEvent, eventsOn, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
   requireCurrentYear, unmarkPaidEver, updateEvent, updateMember, updateYear,
 } from "@/lib/membership/store";
 import { syncEventLater, syncMembersLater, syncMembersNow } from "@/lib/membership/sync";
 import type { Attendance, FormConfig, Member, PaymentMethod, YearConfig } from "@/lib/membership/types";
 import { checkInState, clashes, clashNote, CLOCK_TIME, type EventHours } from "@/lib/membership/event-times";
+import { priceFor } from "@/lib/membership/members";
 import { checkVenmo } from "@/lib/membership/venmo";
 import { revokePass } from "@/lib/membership/wallet";
 
@@ -89,6 +90,57 @@ export async function confirmPayment(kerb: string, method: PaymentMethod): Promi
   return attempt(async () => {
     const by = await requireExec();
     return setPaid(await requireCurrentYear(), kerb, method, by);
+  });
+}
+
+// What the Add member dialog shows as an exec types a kerb.
+export type NewMemberKerb = { status: "invalid" | "taken" | "new" | "returning"; price: number };
+
+export async function lookUpNewMember(raw: string): Promise<Result<NewMemberKerb>> {
+  return attempt(async () => {
+    await requireExec();
+    const config = await requireCurrentYear();
+    const kerb = normalizeKerb(raw);
+    if (!isKerb(kerb)) return { status: "invalid", price: 0 };
+    if (await getMember(config.year, kerb)) return { status: "taken", price: 0 };
+    const { type, price } = await priceFor(config, kerb);
+    return { status: type, price };
+  });
+}
+
+export interface NewMember {
+  kerb: string;
+  name: string;
+  classYear: string;
+  dorm: string;
+  // How they already paid, or null when they still owe.
+  paidVia: PaymentMethod | null;
+}
+
+// An exec adds someone by hand, for example a member who paid before the site took signups.
+// It works while signups are closed. Someone who still owes pays at an event.
+export async function addMember(input: NewMember): Promise<Result<Member>> {
+  return attempt(async () => {
+    const by = await requireExec();
+    const config = await requireCurrentYear();
+    const kerb = normalizeKerb(String(input.kerb ?? ""));
+    if (!isKerb(kerb)) throw new MembershipError("Enter their kerb, the part of their MIT email before @mit.edu.");
+    const line = (value: unknown, max: number) => (typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "");
+    const name = line(input.name, 100);
+    if (!name) throw new MembershipError("Enter their full name.");
+    const paidVia = input.paidVia === null ? null : input.paidVia;
+    if (paidVia !== null && !METHODS.includes(paidVia)) throw new MembershipError("Pick how they paid.");
+    const { type, price } = await priceFor(config, kerb);
+    const now = Date.now();
+    const member: Member = {
+      year: config.year, kerb, name, classYear: line(input.classYear, 60), dorm: line(input.dorm, 60), answers: {}, type, price,
+      method: paidVia ?? "cash", status: paidVia ? "paid" : "unpaid", reportedAt: null,
+      paidAt: paidVia ? now : null, paidVia, confirmedBy: paidVia ? by : null, venmoMessageId: null, wallet: null, createdAt: now,
+    };
+    if (!(await claimMember(member))) throw new MembershipError(`${kerb} is already signed up for ${config.year}.`, 409);
+    if (paidVia) await markPaidEver([kerb]);
+    syncMembersLater(config.year);
+    return member;
   });
 }
 
