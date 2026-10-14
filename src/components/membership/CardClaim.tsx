@@ -56,7 +56,7 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
             <h1 className="mp-title">Add to your digital wallet</h1>
             {deadLink
               ? <p className="m-error" role="alert">This link was already used or has expired. Get a new one below.</p>
-              : <p className="mp-muted">We’ll email a link to the email you used when you became a member. It opens your card for Apple Wallet or Google Wallet.</p>}
+              : <p className="mp-muted">You’ll receive a link in your email to add the pass to your digital wallet.</p>}
             <form className="mp-form mp-card-form" onSubmit={send}>
               <div className="m-field">
                 <label htmlFor="card-kerb" className="m-label">Kerberos</label>
