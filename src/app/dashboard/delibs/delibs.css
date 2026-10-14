@@ -5,6 +5,10 @@
 .delibs-status { padding: 48px 24px; color: var(--muted); text-align: center; }
 .voting-root.d-delibs .delibs-start { align-self: flex-start; margin-top: 20px; }
 
+/* Every History row is as tall as one with the host's buttons:
+   the 36px button, the cell padding, and half of the collapsed 1px border. */
+.d-delib-history tbody td { height: calc(36px + 28px + 0.5px); }
+
 /* Setup follows the dashboard's other forms: a centered column with the actions at the bottom right. */
 .voting-root.d-delibs .d-narrow-body .president-setup-progress { margin: 0 0 20px; }
 .voting-root.d-delibs .voting-admin.president-ballot-setup { max-width: none; height: auto; margin: 0; padding: 0; border: 0; background: transparent; }
