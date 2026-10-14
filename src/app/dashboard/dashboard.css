@@ -124,16 +124,13 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-icon-btn:hover { border-color: #ffffff40; color: var(--text); }
 .d-icon-btn.is-on { display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 0 12px 0 10px; border-radius: 999px; border-color: transparent; background: #ffffff1a; color: var(--text); font-size: 13px; }
 .d-menu-wrap { position: relative; flex: none; }
-/* Hover hints. data-tip holds the text; data-tip-end aligns it to the right edge for controls near the edge of the page. */
-[data-tip] { position: relative; }
-@media (hover: hover) {
-  [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 50%; z-index: 40; padding: 5px 9px; border: 1px solid var(--line-strong); border-radius: 8px; background: #232325; box-shadow: 0 4px 16px #0008; color: var(--text); font-size: 12px; font-weight: 400; line-height: 1.3; letter-spacing: 0; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, -2px); transition: opacity 120ms ease, transform 120ms ease; }
-  [data-tip]:is(:hover, :focus-visible)::after { opacity: 1; transform: translate(-50%, 0); transition-delay: 350ms; }
-  [data-tip][data-tip-end]::after { left: auto; right: 0; transform: translateY(-2px); }
-  [data-tip][data-tip-end]:is(:hover, :focus-visible)::after { transform: none; }
-  /* No hint over an open menu. */
-  [data-tip][aria-expanded="true"]::after { display: none; }
-}
+/* Tooltips (useTooltip.tsx), for data-tip="..." and useTooltip. They are fixed to the window, so no container clips them. */
+.csc-tooltip { position: fixed; z-index: 1000; box-sizing: border-box; width: max-content; max-width: min(240px, calc(100vw - 24px)); padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 7px; background: #242426; color: #e4e4e7; font-family: var(--font-instrument-sans), Arial, sans-serif; font-size: 12px; line-height: 1.4; pointer-events: none; box-shadow: 0 4px 16px #0004; animation: csc-tooltip-in 120ms ease-out both; }
+@keyframes csc-tooltip-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+@media(prefers-reduced-motion:reduce) { .csc-tooltip { animation: none; } }
+.csc-tooltip-arrow { position: absolute; width: 6px; height: 6px; background: #242426; transform: translateX(-50%) rotate(45deg); }
+.csc-tooltip[data-side="bottom"] .csc-tooltip-arrow { top: -4px; border-top: 1px solid #ffffff20; border-left: 1px solid #ffffff20; }
+.csc-tooltip[data-side="top"] .csc-tooltip-arrow { bottom: -4px; border-bottom: 1px solid #ffffff20; border-right: 1px solid #ffffff20; }
 .d-menu-backdrop { position: fixed; inset: 0; z-index: 30; }
 .d-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 31; min-width: 180px; padding: 6px; border: 1px solid var(--line-strong); border-radius: 12px; background: #1c1c1e; box-shadow: 0 8px 32px #0009; display: flex; flex-direction: column; animation: d-fade-in 120ms ease-out; }
 .d-menu-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--text); font-size: 14px; text-align: left; }
@@ -170,6 +167,8 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-slug-copy:hover { background: #ffffff14; color: var(--text); }
 .d-link-status { display: inline-flex; align-items: center; gap: 8px; }
 .d-table .d-drag-cell { width: 1%; padding-right: 4px; }
+/* The table scrolls sideways on small screens, which would clip a handle that reaches past the row. */
+.d-table .d-drag-handle { margin-left: 0; }
 .d-links tr.is-dragging td:first-child { border-radius: 10px 0 0 10px; }
 .d-links tr.is-dragging td:last-child { border-radius: 0 10px 10px 0; }
 /* A text field with a fixed prefix, like "csc.mit.edu/". */
@@ -549,7 +548,6 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-drag-handle.is-locked { color: #ffffff1f; cursor: default; }
 .is-sorting { user-select: none; -webkit-user-select: none; }
 .is-sorting, .is-sorting .d-drag-handle { cursor: grabbing; }
-.is-sorting [data-tip]::after { display: none; }
 [data-reorder] { transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1); }
 [data-reorder].is-dragging, [data-reorder][data-lifted] { position: relative; z-index: 2; }
 [data-reorder].is-dragging { transition: none; }

@@ -8,6 +8,7 @@ import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
 import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google/oauth";
 import { instrumentSans } from "@/components/membership/font";
 import { Icon } from "@/components/membership/icons";
+import { HoverTips } from "@/components/ui/useTooltip";
 import "@/components/membership/ui.css";
 import "./dashboard.css";
 
@@ -40,7 +41,7 @@ function SignOut({ label, icon }: { label: string; icon?: boolean }) {
   return (
     <form action="/api/auth/signout" method="post">
       {icon
-        ? <button type="submit" className="d-signout is-icon" aria-label={label} data-tip={label} data-tip-end><Icon name="signout" size={18} /></button>
+        ? <button type="submit" className="d-signout is-icon" aria-label={label} data-tip={label}><Icon name="signout" size={18} /></button>
         : <button type="submit" className="d-signout">{label}</button>}
     </form>
   );
@@ -93,6 +94,7 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
           <ProblemBanner />
         </Suspense>
         {children}
+        <HoverTips />
       </div>
     </SaveStatusProvider>
   );

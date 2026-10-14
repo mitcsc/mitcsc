@@ -203,7 +203,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
             </h2>
             <div className="d-venmo-check">
               <span suppressHydrationWarning>{venmoCheckedAt ? `Checked ${ago(venmoCheckedAt)}` : "Not checked yet"}</span>
-              <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo" || pending.length === 0} data-tip={pending.length === 0 ? "Nobody is waiting for confirmation" : undefined} data-tip-end>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
+              <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo" || pending.length === 0} data-tip={pending.length === 0 ? "Nobody is waiting for confirmation" : undefined}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
             </div>
           </div>
           <div id="pending-list" className={`d-collapsible${pendingOpen ? " is-open" : ""}${collapseMoved ? " is-animated" : ""}`} inert={!pendingOpen}>
@@ -247,7 +247,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 value={filter} onChange={setFilter}
                 options={[["all", "All", members.length], ["paid", "Paid", paid.length], ["pending", "Pending", pending.length]]}
               />
-              <button type="button" className="d-icon-btn" aria-label="Add member" data-tip="Add member" data-tip-end onClick={() => setAdding(true)}><Icon name="plus" size={16} /></button>
+              <button type="button" className="d-icon-btn" aria-label="Add member" data-tip="Add member" onClick={() => setAdding(true)}><Icon name="plus" size={16} /></button>
             </div>
           </div>
           <div className="d-table-wrap">

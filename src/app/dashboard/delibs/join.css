@@ -218,12 +218,6 @@
 
 .voting-root .voting-admin .voting-roster-actions .voting-roster-visibility { display: inline-flex; align-items: center; justify-content: center; width: 28px; padding: 0; flex: none; }
 .voting-root .voting-admin .voting-roster-visibility[aria-pressed="true"] { background: #ffffff0a; border-color: #ffffff40; color: #fff; }
-.csc-tooltip { position: fixed; z-index: 1000; box-sizing: border-box; width: max-content; max-width: min(240px, calc(100vw - 24px)); padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 7px; background: #242426; color: #e4e4e7; font-family: var(--font-instrument-sans), Arial, sans-serif; font-size: 12px; line-height: 1.4; pointer-events: none; box-shadow: 0 4px 16px #0004; animation: csc-tooltip-in 120ms ease-out both; }
-@keyframes csc-tooltip-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
-@media(prefers-reduced-motion:reduce) { .csc-tooltip { animation: none; } }
-.csc-tooltip-arrow { position: absolute; width: 6px; height: 6px; background: #242426; transform: translateX(-50%) rotate(45deg); }
-.csc-tooltip[data-side="bottom"] .csc-tooltip-arrow { top: -4px; border-top: 1px solid #ffffff20; border-left: 1px solid #ffffff20; }
-.csc-tooltip[data-side="top"] .csc-tooltip-arrow { bottom: -4px; border-bottom: 1px solid #ffffff20; border-right: 1px solid #ffffff20; }
 .voting-notice { display: flex; align-items: flex-start; gap: 10px; box-sizing: border-box; width: var(--width, 356px); max-width: calc(100vw - 32px); padding: 12px 14px; border: 1px solid #ffffff24; border-radius: 10px; background: #19191b; color: #dedee2; box-shadow: 0 6px 24px #0005; font-family: var(--font-instrument-sans), Arial, sans-serif; font-size: 13px; line-height: 1.5; }
 .voting-notice > div { flex: 1; min-width: 0; }
 .voting-notice p { margin: 0; overflow-wrap: anywhere; }

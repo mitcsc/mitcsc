@@ -48,7 +48,7 @@ export default function LinksView({ links, clicks, origin, today }: { links: Sho
     <main className="d-page">
       <div className="d-section-head">
         <h1 className="d-h2">Links <span className="d-count">{links.length}</span></h1>
-        <button type="button" className="d-icon-btn" aria-label="Add link" data-tip="Add link" data-tip-end onClick={() => setEditing("new")}><Icon name="plus" size={16} /></button>
+        <button type="button" className="d-icon-btn" aria-label="Add link" data-tip="Add link" onClick={() => setEditing("new")}><Icon name="plus" size={16} /></button>
       </div>
       <p className="d-section-note">{host}/<em className="d-link-em">name</em> sends people to any page. Links you show also list on {host}/links, in this order.</p>
       <div className="d-table-wrap">
