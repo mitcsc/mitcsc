@@ -33,8 +33,13 @@ interface VenmoInfo {
 type Step = "form" | "pay" | "status";
 
 const METHOD_NAMES: Record<PaymentMethod, string> = { venmo: "Venmo", zelle: "Zelle", cash: "cash" };
-const POLL_MS = 8000;
-const POLL_TIMES = 15;
+// After "I've paid" with Venmo, wait 1, 2, and 4 seconds between checks, then 5 seconds until the first
+// minute ends, then 10 seconds for one more minute.
+const POLL_DELAYS_MS: number[] = [];
+for (let total = 0; total < 120_000; total += POLL_DELAYS_MS.at(-1)!) {
+  POLL_DELAYS_MS.push(total < 60_000 ? Math.min(1000 * 2 ** POLL_DELAYS_MS.length, 5000) : 10_000);
+}
+const POLL_TIMES = POLL_DELAYS_MS.length;
 
 function Email() {
   return <a href={`mailto:${CLUB_EMAIL}`}>{CLUB_EMAIL}</a>;
@@ -401,8 +406,8 @@ function PayScreen({ year, member, venmo, onBack, onReported }: {
               {error && <p className="m-error" role="alert">{error}</p>}
               {method === "venmo" && (
                 <>
-                  <a className="m-btn is-block mp-open-venmo" href={venmo?.url || `https://venmo.com/${encodeURIComponent(year.venmo)}`}>Open Venmo</a>
-                  <button type="button" className="m-btn is-outline is-block mp-paid-venmo" onClick={report} disabled={busy}>{busy ? "Checking…" : "I've paid"}</button>
+                  <a className="m-btn is-light is-block mp-open-venmo" href={venmo?.url || `https://venmo.com/${encodeURIComponent(year.venmo)}`}>Open Venmo</a>
+                  <button type="button" className="m-btn is-block" onClick={report} disabled={busy}>{busy ? "Checking…" : "I've paid"}</button>
                 </>
               )}
               {method === "zelle" && <button type="button" className="m-btn is-block" onClick={report} disabled={busy}>{busy ? "Saving…" : "I've paid"}</button>}
@@ -444,7 +449,7 @@ function StatusScreen({ year, member, wallet, onChange, onPayAgain }: {
         if (result?.ok) onChange(result.value);
         setPolls((n) => (result?.ok ? n + 1 : POLL_TIMES));
       });
-    }, POLL_MS);
+    }, POLL_DELAYS_MS[polls]);
     return () => window.clearTimeout(timer);
   }, [watching, polls, onChange]);
 

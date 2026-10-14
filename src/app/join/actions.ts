@@ -75,7 +75,7 @@ async function venmoCheckFor(member: Member) {
   const config = await currentYear();
   if (!config) return member;
   try {
-    await checkVenmo(config, { minGapSeconds: 15 });
+    await checkVenmo(config, { minGapSeconds: 1 });
   } catch (error) {
     // A Gmail problem must not block the member. Exec confirm by hand.
     publicMessage(error);
