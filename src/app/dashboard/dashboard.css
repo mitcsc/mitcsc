@@ -368,6 +368,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-scan { position: fixed; inset: 0; z-index: 50; min-height: 0; display: flex; flex-direction: column; }
 .d-scan-view { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; background: #1a1a1c; overflow: hidden; }
 .d-scan-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.d-scan-video.is-mirrored { transform: scaleX(-1); }
 .d-scan-top { position: relative; display: flex; align-items: center; gap: 12px; padding: 20px 24px; background: linear-gradient(#000000a0, transparent); }
 .d-scan-top .m-back { color: #ffffffd0; }
 .d-scan-event { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #ffffffd0; }

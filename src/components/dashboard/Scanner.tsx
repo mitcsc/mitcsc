@@ -51,6 +51,7 @@ export default function Scanner({ eventId, eventName, onClose, onResult, admit, 
   const [result, setResult] = useState<CheckInResult | null>(null);
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mirrored, setMirrored] = useState(false);
 
   // The camera loop lives across renders, so it reads the latest callback from a ref.
   const report = useRef(onResult);
@@ -73,6 +74,9 @@ export default function Scanner({ eventId, eventName, onClose, onResult, admit, 
         return;
       }
       if (stopped || !video.current) return stream.getTracks().forEach((t) => t.stop());
+      // Show a camera that faces the person like a mirror, as other video apps do. Phones' back cameras
+      // report "environment"; laptop cameras report "user" or nothing. The reader still sees the real frame.
+      setMirrored(stream.getVideoTracks()[0]?.getSettings().facingMode !== "environment");
       video.current.srcObject = stream;
       await video.current.play().catch(() => undefined);
       const read = await makeReader();
@@ -124,7 +128,7 @@ export default function Scanner({ eventId, eventName, onClose, onResult, admit, 
   return (
     <div className="m-root d-scan" role="dialog" aria-modal="true" aria-label="Scan membership cards">
       <div className="d-scan-view">
-        <video ref={video} className="d-scan-video" playsInline muted />
+        <video ref={video} className={`d-scan-video${mirrored ? " is-mirrored" : ""}`} playsInline muted />
         <div className="d-scan-top">
           <button type="button" className="m-back is-light" onClick={onClose}><Icon name="back" />Check-in</button>
           <span className="d-scan-event">{eventName}</span>
