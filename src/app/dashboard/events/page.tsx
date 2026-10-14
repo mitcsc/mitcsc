@@ -18,9 +18,9 @@ export default async function EventsPage() {
       </div>
       <p className="d-section-note">Each event saves its attendance to its own Google Sheet. Open an event on your phone to scan cards.</p>
       <div className="d-table-wrap">
-        <table className="d-table is-roomy">
+        <table className="d-table is-roomy d-events">
           <thead>
-            <tr><th>Event</th><th>Date</th><th>Checked in</th><th className="is-end"><span className="d-sr">Actions</span></th></tr>
+            <tr><th>Event</th><th className="is-wide">Date</th><th className="is-wide">Checked in</th><th className="is-end"><span className="d-sr">Actions</span></th></tr>
           </thead>
           <tbody>
             {events.map(({ event, count }) => (
@@ -30,9 +30,10 @@ export default async function EventsPage() {
                     {event.name}
                     {event.date === today && <span className="m-tag">Today</span>}
                   </Link>
+                  <span className="d-event-meta">{formatDay(event.date)} · {count} checked in</span>
                 </td>
-                <td className="is-soft">{formatDay(event.date)}</td>
-                <td className="is-soft is-number">{count}</td>
+                <td className="is-soft is-wide">{formatDay(event.date)}</td>
+                <td className="is-soft is-number is-wide">{count}</td>
                 <td className="is-action">
                   <EventActions id={event.id} name={event.name} count={count} sheet={event.sheetId ? sheetUrl(event.sheetId) : null} today={event.date === today} />
                 </td>
