@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { checkInPerson, type CheckInResult, type Person } from "@/app/dashboard/actions";
+import { checkInPerson, undoCheckInPerson, type CheckInResult, type Person } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
 import { money } from "@/lib/membership/config";
 import type { Attendance } from "@/lib/membership/types";
-import { CheckedInPill, oweNote, type Admit } from "./checkin-parts";
+import { CheckedInPill, oweNote, type Admit, type Undo } from "./checkin-parts";
 import { shortEmail } from "./format";
 import { useLiveData } from "./LiveData";
 import Scanner from "./Scanner";
@@ -59,6 +59,19 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
     return result.value;
   };
 
+  const undo: Undo = async (kerb) => {
+    setBusy(kerb);
+    setError("");
+    const result = await undoCheckInPerson(event.id, kerb).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
+    setBusy(null);
+    if (!result.ok) {
+      setError(result.error);
+      return false;
+    }
+    setRecords((list) => list.filter((r) => r.kerb !== kerb));
+    return true;
+  };
+
   const recent = [...records].sort((a, b) => b.at - a.at);
   return (
     <main className="d-phone">
@@ -78,24 +91,24 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
 
         <div className="d-people">
           {query.trim() ? (
-            matches.length ? matches.map((p) => <PersonRow key={p.kerb} person={p} record={byKerb.get(p.kerb) || null} busy={busy === p.kerb} admit={admit} />)
+            matches.length ? matches.map((p) => <PersonRow key={p.kerb} person={p} record={byKerb.get(p.kerb) || null} busy={busy === p.kerb} admit={admit} undo={undo} />)
               : <p className="d-empty-row">Nobody signed up matches “{query.trim()}”. New members can sign up at csc.mit.edu/join.</p>
           ) : recent.length ? (
             recent.map((r) => {
               const p = people.find((x) => x.kerb === r.kerb) || { kerb: r.kerb, name: r.name, classYear: r.classYear, price: 0, method: "cash" as const, paid: r.paid, reportedAt: null };
-              return <PersonRow key={r.kerb} person={p} record={r} busy={false} admit={admit} />;
+              return <PersonRow key={r.kerb} person={p} record={r} busy={busy === r.kerb} admit={admit} undo={undo} />;
             })
           ) : (
             <p className="d-empty-row">Nobody is checked in yet. Scan a card or search for a name.</p>
           )}
         </div>
       </div>
-      {scanning && <Scanner eventId={event.id} eventName={event.name} onClose={() => setScanning(false)} onResult={apply} admit={admit} />}
+      {scanning && <Scanner eventId={event.id} eventName={event.name} onClose={() => setScanning(false)} onResult={apply} admit={admit} undo={undo} />}
     </main>
   );
 }
 
-function PersonRow({ person: p, record, busy, admit }: { person: Person; record: Attendance | null; busy: boolean; admit: Admit }) {
+function PersonRow({ person: p, record, busy, admit, undo }: { person: Person; record: Attendance | null; busy: boolean; admit: Admit; undo: Undo }) {
   const unpaid = !record && !p.paid;
   const status = record
     ? <CheckedInPill at={record.at} />
@@ -107,7 +120,12 @@ function PersonRow({ person: p, record, busy, admit }: { person: Person; record:
           <span className="d-person-name">{p.name}</span>
           <span className="d-tags">{status}<span className="m-tag">{p.kerb}</span><span className="m-tag">{p.classYear}</span></span>
         </div>
-        {record && <span className="d-person-by">by {shortEmail(record.by)}</span>}
+        {record && (
+          <span className="d-person-side">
+            <span className="d-person-by">by {shortEmail(record.by)}</span>
+            <button type="button" className="d-undo" disabled={busy} onClick={() => undo(p.kerb)}>{busy ? "Undoing…" : "Undo"}</button>
+          </span>
+        )}
         {!record && p.paid && <button type="button" className="m-btn is-light is-medium" disabled={busy} onClick={() => admit(p.kerb, "check-in")}>{busy ? "Checking in…" : "Check in"}</button>}
       </div>
       {unpaid && (

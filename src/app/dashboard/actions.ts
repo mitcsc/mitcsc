@@ -10,7 +10,7 @@ import { cleanForm, text } from "@/lib/membership/form";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
 import {
-  attendanceCount, checkIn, createEvent, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
+  attendanceCount, checkIn, undoCheckIn, createEvent, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
   removePastSheet, requireCurrentYear, savePastSheet, unmarkPaidEver, updateEvent, updateMember, updateYear,
 } from "@/lib/membership/store";
 import { syncEventLater, syncMembersLater, syncMembersNow } from "@/lib/membership/sync";
@@ -279,6 +279,16 @@ export async function checkInPerson(eventId: string, kerb: string, mode: "check-
     const clean = normalizeKerb(kerb);
     if (!isKerb(clean)) throw new MembershipError("That is not a kerb.");
     return admit(eventId, clean, mode, by);
+  });
+}
+
+// Takes a person off the event's attendance, for a check-in made by mistake.
+export async function undoCheckInPerson(eventId: string, kerb: string): Promise<Result<{ count: number }>> {
+  return attempt(async () => {
+    await requireExec();
+    if (!(await getEvent(eventId))) throw new MembershipError("This event does not exist.", 404);
+    if (await undoCheckIn(eventId, normalizeKerb(kerb))) syncEventLater(eventId);
+    return { count: await attendanceCount(eventId) };
   });
 }
 

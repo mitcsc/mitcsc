@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { scanCard, type CheckInResult } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
 import { money } from "@/lib/membership/config";
-import { CheckedInPill, oweNote, type Admit } from "./checkin-parts";
+import { CheckedInPill, oweNote, type Admit, type Undo } from "./checkin-parts";
 import { shortEmail } from "./format";
 
 // The browser's built-in QR reader where it exists (Chrome on Android, Safari 17+ on some devices).
@@ -43,8 +43,8 @@ async function makeReader(): Promise<Reader> {
 
 const SCAN_GAP_MS = 180;
 
-export default function Scanner({ eventId, eventName, onClose, onResult, admit }: {
-  eventId: string; eventName: string; onClose: () => void; onResult: (result: CheckInResult) => void; admit: Admit;
+export default function Scanner({ eventId, eventName, onClose, onResult, admit, undo }: {
+  eventId: string; eventName: string; onClose: () => void; onResult: (result: CheckInResult) => void; admit: Admit; undo: Undo;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const paused = useRef(false);
@@ -113,6 +113,14 @@ export default function Scanner({ eventId, eventName, onClose, onResult, admit }
     if (value) show(value);
   }
 
+  async function takeBack() {
+    if (result?.kind !== "checked-in") return;
+    setBusy(true);
+    const done = await undo(result.person.kerb);
+    setBusy(false);
+    if (done) setResult({ kind: "unknown", message: `Took back ${result.person.name}’s check-in.` });
+  }
+
   return (
     <div className="m-root d-scan" role="dialog" aria-modal="true" aria-label="Scan membership cards">
       <div className="d-scan-view">
@@ -148,6 +156,7 @@ export default function Scanner({ eventId, eventName, onClose, onResult, admit }
             </>
           )}
           {result.kind !== "unpaid" && <button type="button" className="m-btn is-block" onClick={next}>Scan next</button>}
+          {result.kind === "checked-in" && <button type="button" className="d-text-btn is-center" disabled={busy} onClick={takeBack}>{busy ? "Undoing…" : "Undo check-in"}</button>}
         </div>
       )}
     </div>
