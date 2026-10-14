@@ -174,8 +174,8 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-crumbs button:hover { color: var(--text); }
 .d-crumbs button[aria-current="page"] { color: var(--text); }
 .d-crumb-sep { margin: 0 4px; color: #ffffff59; }
-.d-path-example { color: #c3c3c8; }
-.d-path-example > span { white-space: nowrap; }
+.d-path-text { color: #c3c3c8; }
+.d-path-text > span { white-space: nowrap; }
 .d-drive-list { max-height: min(360px, 50svh); overflow-y: auto; border-top: 1px solid var(--line); }
 .d-drive-list li { border-bottom: 1px solid var(--line); }
 .d-drive-list button { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 4px; border: 0; background: none; text-align: left; color: var(--text); }
@@ -377,7 +377,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 /* Phone menu. Hidden on wider screens. */
 .d-header { position: relative; z-index: 30; }
 .d-mobile-nav, .d-header-save { display: none; }
-.d-mobile-nav { flex: 1; min-width: 0; }
+.d-mobile-nav { flex: 0 1 auto; min-width: 0; }
 .d-mobile-nav-btn { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 40px; padding: 0 12px; border: 0; border-radius: 999px; background: #ffffff12; font-size: 15px; font-weight: 500; }
 .d-mobile-nav-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .d-mobile-nav-sub { font-weight: 400; color: var(--muted); }
@@ -404,7 +404,8 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
   .d-brand img { width: 26px; height: 26px; }
   .d-main-nav, .d-account, .d-subnav { display: none; }
   .d-mobile-nav { display: flex; }
-  .d-header-save { display: inline-flex; }
+  /* The save status and the menu sit at the right edge. */
+  .d-header-save { display: inline-flex; margin-left: auto; }
   .d-banner { padding-left: 16px; padding-right: 16px; }
   /* Stats as a 2 x 2 grid, and the sheet, link, and QR code as one row of icons. */
   .d-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 10px; }

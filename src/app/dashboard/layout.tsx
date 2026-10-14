@@ -79,8 +79,8 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
         <header className="d-header">
           <Link className="d-brand" href="/dashboard" aria-label="Dashboard home"><Image src="/img/logo/logo-with-panda.png" alt="" width={28} height={28} priority /></Link>
           <MainNav />
-          <MobileNav email={email} />
           <span className="d-header-save"><SaveStatus /></span>
+          <MobileNav email={email} />
           <span className="d-account">
             <span className="d-account-email">{email}</span>
             <SignOut label="Sign out" icon />
