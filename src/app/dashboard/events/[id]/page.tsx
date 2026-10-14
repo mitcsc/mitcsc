@@ -17,6 +17,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       event={{ id: event.id, name: event.name, date: formatDay(event.date), sheet: event.sheetId ? sheetUrl(event.sheetId) : null }}
       records={records}
       people={people}
+      renderedAt={Date.now()}
     />
   );
 }

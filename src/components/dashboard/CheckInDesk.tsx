@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { checkInPerson, type CheckInResult, type Person } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
@@ -9,17 +8,18 @@ import { money } from "@/lib/membership/config";
 import type { Attendance } from "@/lib/membership/types";
 import { CheckedInPill, oweNote, type Admit } from "./checkin-parts";
 import { shortEmail } from "./format";
+import { useLiveData } from "./LiveData";
 import Scanner from "./Scanner";
 
 const REFRESH_MS = 15_000;
 const MAX_RESULTS = 25;
 
-export default function CheckInDesk({ event, records: initialRecords, people: initialPeople }: {
+export default function CheckInDesk({ event, records: initialRecords, people: initialPeople, renderedAt }: {
   event: { id: string; name: string; date: string; sheet: string | null };
   records: Attendance[];
   people: Person[];
+  renderedAt: number;
 }) {
-  const router = useRouter();
   const [records, setRecords] = useState(initialRecords);
   const [people, setPeople] = useState(initialPeople);
   const [query, setQuery] = useState("");
@@ -30,10 +30,7 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
   // Other exec check people in at the same time, so reload every few seconds.
   useEffect(() => setRecords(initialRecords), [initialRecords]);
   useEffect(() => setPeople(initialPeople), [initialPeople]);
-  useEffect(() => {
-    const timer = window.setInterval(() => { if (document.visibilityState === "visible") router.refresh(); }, REFRESH_MS);
-    return () => window.clearInterval(timer);
-  }, [router]);
+  useLiveData(renderedAt, REFRESH_MS);
 
   const byKerb = useMemo(() => new Map(records.map((r) => [r.kerb, r])), [records]);
   const matches = useMemo(() => {
