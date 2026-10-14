@@ -80,6 +80,8 @@ export default function VoterRoom({ onEnded }: { onEnded: () => void }) {
   const presenceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastPresence = useRef(0);
   const lastHidden = useRef<boolean | null>(null);
+  // The delib this voter last saw. Sending it lets the server read the delib in one Redis command.
+  const sessionId = useRef("");
   const refresh = useCallback(async (): Promise<void> => {
     if (inFlight.current) {
       pendingPresenceRefresh.current = true;
@@ -90,7 +92,10 @@ export default function VoterRoom({ onEnded }: { onEnded: () => void }) {
       const hidden = document.hidden || !document.hasFocus();
       const elapsed = Date.now() - lastPresence.current;
       const heartbeat = elapsed >= 20000 || (lastHidden.current !== hidden && elapsed >= 1000);
-      const next = await api<VotingState>(heartbeat ? `state?presence=${hidden ? "hidden" : "visible"}` : "state");
+      const query = new URLSearchParams(sessionId.current ? {session: sessionId.current} : {});
+      if (heartbeat) query.set("presence", hidden ? "hidden" : "visible");
+      const next = await api<VotingState>(`state?${query}`);
+      sessionId.current = next.sessionId;
       if (heartbeat) { lastPresence.current=Date.now(); lastHidden.current=hidden; }
       pollFailures.current = 0; pollAfter.current = 0; joinRequired.current = false;
       if (!next.active) {

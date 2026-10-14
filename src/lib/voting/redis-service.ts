@@ -38,6 +38,17 @@ export function identityFor(config: Settings, person: Person): Identity {
   return {id: memberId(config.sessionId, person.email), name: person.name, role: person.email === config.host ? "admin" : "voter", sessionId: config.sessionId};
 }
 
+// What a poll needs, in one Redis command: the `extra` keys, the open delib, and the public view of
+// `sessionHint`, the delib the client last saw. The view is null when the hint is not the open delib.
+export async function redisPoll(extra: string[], sessionHint: string | null) {
+  const hint = sessionHint && /^[a-f0-9-]{36}$/i.test(sessionHint) ? sessionHint : null;
+  const values = await redisCommand<(string | null)[]>("MGET", ...extra, activeElectionKey(), ...(hint ? [`${keyFor({sessionId: hint})}:view`] : []));
+  const active = values[extra.length];
+  const config = active ? JSON.parse(active) as Settings : null;
+  const view = config && hint === config.sessionId && values[extra.length + 1] ? JSON.parse(values[extra.length + 1]!) as Election : null;
+  return {extra: values.slice(0, extra.length), config, view};
+}
+
 export async function redisSettings(): Promise<Settings> {
   const config = await currentElection();
   if (!config?.open) throw new VotingError("No delib is open.", 404);
@@ -96,8 +107,9 @@ export async function redisJoin(config: Settings, person: Person, clubEmail: str
     return identity;
   });
 }
-export async function redisVoters(config: Settings) {
-  return (await readView(config)).members.filter(m => m.role === "voter").map(m => ({id: m.id, name: m.name}));
+// `view` is the delib's public view when the caller already read it.
+export async function redisVoters(config: Settings, view?: Election | null) {
+  return (view || await readView(config)).members.filter(m => m.role === "voter").map(m => ({id: m.id, name: m.name}));
 }
 function present(config: Settings, identity: Identity, doc: Election): VotingState {
   const m = member(doc, identity);
@@ -115,7 +127,7 @@ function present(config: Settings, identity: Identity, doc: Election): VotingSta
     ...(admin ? {voters: doc.members.filter(v => v.role === "voter").map(v => ({id: v.id, name: v.name, removed: !!v.removed, banned: !!v.banned, eligible: !v.pending && (!round || !!(round.roster || doc.roster)?.includes(v.id))})), candidates: doc.candidates, participants: participants(round), candidateStates: doc.candidates.map(c => ({candidateId: c.id, phase: c.id === doc.current ? doc.phase : c.completed ? "locked" : "waiting", ballotVersion: doc.rounds[c.id]?.version || "", submittedCount: counted(doc.rounds[c.id]), participants: participants(doc.rounds[c.id])}))} : {})};
 }
 // Polling reads the small public projection, never the private ballots.
-export async function redisState(config: Settings, identity: Identity) { return present(config, identity, await readView(config)); }
+export async function redisState(config: Settings, identity: Identity, view?: Election | null) { return present(config, identity, view || await readView(config)); }
 
 export async function redisSubmit(config: Settings, identity: Identity, input: Record<string, unknown>, initial: boolean) {
   const at = new Date().toISOString();
