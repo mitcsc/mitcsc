@@ -33,8 +33,10 @@ interface VenmoInfo {
 type Step = "form" | "pay" | "status";
 
 const METHOD_NAMES: Record<PaymentMethod, string> = { venmo: "Venmo", zelle: "Zelle", cash: "cash" };
-const POLL_MS = 8000;
-const POLL_TIMES = 15;
+// After "I've paid" with Venmo: every 5 seconds for the first minute, then every 10 seconds for one more minute.
+const FAST_POLLS = 12;
+const POLL_TIMES = FAST_POLLS + 6;
+const pollDelay = (polls: number) => (polls < FAST_POLLS ? 5000 : 10000);
 
 function Email() {
   return <a href={`mailto:${CLUB_EMAIL}`}>{CLUB_EMAIL}</a>;
@@ -401,8 +403,8 @@ function PayScreen({ year, member, venmo, onBack, onReported }: {
               {error && <p className="m-error" role="alert">{error}</p>}
               {method === "venmo" && (
                 <>
-                  <a className="m-btn is-block mp-open-venmo" href={venmo?.url || `https://venmo.com/${encodeURIComponent(year.venmo)}`}>Open Venmo</a>
-                  <button type="button" className="m-btn is-outline is-block mp-paid-venmo" onClick={report} disabled={busy}>{busy ? "Checking…" : "I've paid"}</button>
+                  <a className="m-btn is-light is-block mp-open-venmo" href={venmo?.url || `https://venmo.com/${encodeURIComponent(year.venmo)}`}>Open Venmo</a>
+                  <button type="button" className="m-btn is-block" onClick={report} disabled={busy}>{busy ? "Checking…" : "I've paid"}</button>
                 </>
               )}
               {method === "zelle" && <button type="button" className="m-btn is-block" onClick={report} disabled={busy}>{busy ? "Saving…" : "I've paid"}</button>}
@@ -444,7 +446,7 @@ function StatusScreen({ year, member, wallet, onChange, onPayAgain }: {
         if (result?.ok) onChange(result.value);
         setPolls((n) => (result?.ok ? n + 1 : POLL_TIMES));
       });
-    }, POLL_MS);
+    }, pollDelay(polls));
     return () => window.clearTimeout(timer);
   }, [watching, polls, onChange]);
 
