@@ -74,7 +74,7 @@ export default function NewYearForm({ year, previous, prices, pastMembers }: {
             </label>
           </div>
           <p className="d-field-note is-large">
-            {pastMembers > 0 ? `${pastMembers} past members get the returning price. ` : "Nobody gets the returning price yet. Import past members in Settings. "}
+            {pastMembers > 0 ? `${pastMembers} past members get the returning price. ` : "Nobody gets the returning price yet. Import past members in Membership settings. "}
             {previous ? "Payment details and signup questions carry over. You can change them later in Settings." : "You can set payment details and questions after this."}
           </p>
           {error && <p className="m-error" role="alert">{error}</p>}

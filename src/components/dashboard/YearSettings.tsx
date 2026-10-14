@@ -25,7 +25,7 @@ export function Setting({ title, note, children, center = false }: { title: stri
 
 // Every field saves on its own: switches and checkboxes right away, text when the field loses focus.
 export default function YearSettings({ config, nextYear, connected, past }: {
-  config: YearConfig; nextYear: string | null; connected: boolean; past: { count: number; sheets: PastSheet[] };
+  config: YearConfig; nextYear: string | null; connected: boolean; past: Past;
 }) {
   const router = useRouter();
   const save = useSave();
@@ -127,7 +127,9 @@ export function MoneyInput({ value, onChange, onBlur, label }: { value: string; 
 
 
 // Old membership sheets whose kerbs get the returning price. Payments on this site count on their own.
-function PastMembers({ past, connected }: { past: { count: number; sheets: PastSheet[] }; connected: boolean }) {
+type Past = { earlier: number; thisYear: number; sheets: PastSheet[] };
+
+function PastMembers({ past, connected }: { past: Past; connected: boolean }) {
   const router = useRouter();
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -156,7 +158,10 @@ function PastMembers({ past, connected }: { past: { count: number; sheets: PastS
 
   return (
     <Setting title="Past members" note="People who paid in an earlier year get the returning price. Payments on this site count by themselves, so only years before it need a sheet.">
-      <p className="d-field-note is-large">{past.count === 1 ? "1 person gets" : `${past.count} people get`} the returning price.</p>
+      <p className="d-field-note is-large">
+        {past.earlier === 1 ? "1 person from an earlier year gets" : `${past.earlier} people from earlier years get`} the returning price.
+        {past.thisYear > 0 && ` This year’s ${past.thisYear === 1 ? "new paid member gets" : `${past.thisYear} new paid members get`} it starting next year.`}
+      </p>
       {past.sheets.length > 0 && (
         <ul className="d-sheet-list">
           {past.sheets.map((sheet) => (
