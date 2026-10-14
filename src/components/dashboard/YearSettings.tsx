@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { importFormSignups, updateSettings, type SettingsPatch } from "@/app/dashboard/actions";
-import { CLUB_DRIVE_FOLDER } from "@/lib/membership/config";
-import type { YearConfig } from "@/lib/membership/types";
+import { importFormSignups, importPastMembers, removePastMembers, updateSettings, type SettingsPatch } from "@/app/dashboard/actions";
+import { CLUB_DRIVE_FOLDER, formatStamp } from "@/lib/membership/config";
+import type { PastSheet, YearConfig } from "@/lib/membership/types";
 import DrivePicker from "./DrivePicker";
+import { shortEmail } from "./format";
 import { Switch } from "./MembersView";
 import { useSave } from "./Shell";
 
@@ -23,7 +24,9 @@ export function Setting({ title, note, children, center = false }: { title: stri
 }
 
 // Every field saves on its own: switches and checkboxes right away, text when the field loses focus.
-export default function YearSettings({ config, nextYear, connected }: { config: YearConfig; nextYear: string | null; connected: boolean }) {
+export default function YearSettings({ config, nextYear, connected, past }: {
+  config: YearConfig; nextYear: string | null; connected: boolean; past: { count: number; sheets: PastSheet[] };
+}) {
   const router = useRouter();
   const save = useSave();
   const [values, setValues] = useState({
@@ -84,6 +87,8 @@ export default function YearSettings({ config, nextYear, connected }: { config: 
         </div>
         <p className="d-field-note is-large">Returning means the person paid in any past year.</p>
       </Setting>
+
+      <PastMembers past={past} connected={connected} />
 
       <Setting title="Payment" note="Venmo is checked automatically. Zelle and cash are marked by hand.">
         <div className="d-field-row">
@@ -165,6 +170,73 @@ function FormImport({ year, connected }: { year: string; connected: boolean }) {
       {message && <p className={message.error ? "m-error" : "d-success"} role="status">{message.text}</p>}
       {picking && (
         <DrivePicker title="Pick the Google Form’s response sheet" pick="sheet" onClose={() => setPicking(false)} onPick={(choice) => importSheet(choice.id, choice.path.at(-1) || "the sheet")} />
+      )}
+    </Setting>
+  );
+}
+
+// Old membership sheets whose kerbs get the returning price. Payments on this site count on their own.
+function PastMembers({ past, connected }: { past: { count: number; sheets: PastSheet[] }; connected: boolean }) {
+  const router = useRouter();
+  const [picking, setPicking] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+
+  async function importSheet(sheetId: string, name: string) {
+    setPicking(false);
+    setBusy("import");
+    setMessage(null);
+    const result = await importPastMembers(sheetId).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
+    setBusy(null);
+    setMessage(result.ok ? { text: `Read ${result.value.found} kerbs from “${name}”.`, error: false } : { text: result.error, error: true });
+    router.refresh();
+  }
+
+  async function remove(sheet: PastSheet) {
+    const people = sheet.count === 1 ? "1 person" : `${sheet.count} people`;
+    if (!window.confirm(`Remove “${sheet.name}”? Its ${people} lose the returning price, unless they’re on another sheet or paid on this site.`)) return;
+    setBusy(sheet.id);
+    setMessage(null);
+    const result = await removePastMembers(sheet.id).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
+    setBusy(null);
+    if (!result.ok) setMessage({ text: result.error, error: true });
+    router.refresh();
+  }
+
+  return (
+    <Setting title="Past members" note="People who paid in an earlier year get the returning price. Payments on this site count by themselves, so only years before it need a sheet.">
+      <p className="d-field-note is-large">{past.count === 1 ? "1 person gets" : `${past.count} people get`} the returning price.</p>
+      {past.sheets.length > 0 && (
+        <ul className="d-sheet-list">
+          {past.sheets.map((sheet) => (
+            <li key={sheet.id}>
+              <span className="d-sheet-main">
+                {sheet.id === "earlier"
+                  ? <span className="d-sheet-name">{sheet.name}</span>
+                  : <a className="d-sheet-name" href={`https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheet.id)}/edit`} target="_blank" rel="noreferrer">{sheet.name}</a>}
+                <span className="d-sheet-meta">
+                  {sheet.count === 1 ? "1 kerb" : `${sheet.count} kerbs`}
+                  {" · "}
+                  {sheet.importedAt ? `Imported ${formatStamp(sheet.importedAt)}${sheet.importedBy ? ` by ${shortEmail(sheet.importedBy)}` : ""}` : "Imported before sheets were listed"}
+                </span>
+              </span>
+              <button type="button" className="d-text-btn" onClick={() => remove(sheet)} disabled={busy !== null}>
+                {busy === sheet.id ? "Removing…" : "Remove"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="d-inline-actions">
+        <button type="button" className="d-chip-btn" onClick={() => setPicking(true)} disabled={!connected || busy !== null}>
+          {busy === "import" ? "Reading the sheet…" : "Import an old sheet"}
+        </button>
+        {!connected && <span className="d-field-note">Connect the club Google account first.</span>}
+      </div>
+      <p className="d-field-note">Reads the Kerberos or email column on the sheet’s first tab. Importing a sheet again updates it. The sheet must be in the “{CLUB_DRIVE_FOLDER}” folder.</p>
+      {message && <p className={message.error ? "m-error" : "d-success"} role="status">{message.text}</p>}
+      {picking && (
+        <DrivePicker title="Pick an old membership sheet" pick="sheet" onClose={() => setPicking(false)} onPick={(choice) => importSheet(choice.id, choice.path.at(-1) || "the sheet")} />
       )}
     </Setting>
   );

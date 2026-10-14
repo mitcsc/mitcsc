@@ -52,6 +52,11 @@ function run([name, ...args]) {
     case 'SREM': return args.slice(1).filter((v) => set(args[0]).delete(v)).length;
     case 'SISMEMBER': return set(args[0]).has(args[1]) ? 1 : 0;
     case 'SCARD': return set(args[0]).size;
+    case 'SMEMBERS': return [...set(args[0])];
+    case 'SUNION': return [...new Set(args.flatMap((k) => [...set(k)]))];
+    case 'SUNIONSTORE': { const all = new Set(args.slice(1).flatMap((k) => [...set(k)])); db.set(args[0], all); return all.size; }
+    case 'HKEYS': return [...hash(args[0]).keys()];
+    case 'HDEL': return args.slice(1).filter((f) => hash(args[0]).delete(f)).length;
     case 'ZADD': hash(args[0]).set(args[2], Number(args[1])); return 1;
     case 'ZREM': return hash(args[0]).delete(args[1]) ? 1 : 0;
     case 'ZRANGE': return [...hash(args[0]).entries()].sort((a, b) => b[1] - a[1]).map(([member]) => member);
@@ -267,4 +272,39 @@ test('A card link from the email works once', async () => {
   assert.equal(await redeemCardLink(id), null, 'A used link must not work again');
   assert.equal(await redeemCardLink('short'), null);
   assert.equal(await redeemCardLink(`${'B'.repeat(31)}*`), null);
+});
+
+test('Removing a past sheet keeps people on another sheet or who paid here', async () => {
+  const sheet = (id, count) => ({ id, name: id, count, importedAt: 1, importedBy: 'exec@mit.edu' });
+  db.set(keys.pastMoved, '1');
+  await store.markPaidEver(['paidhere']);
+  await store.savePastSheet(sheet('s2020', 3), ['alice', 'bob', 'paidhere']);
+  await store.savePastSheet(sheet('s2021', 2), ['bob', 'carol']);
+  for (const kerb of ['alice', 'bob', 'carol', 'paidhere']) assert.equal(await store.hasPaidBefore(kerb), true, kerb);
+  assert.equal(await store.pastMemberCount(), 4);
+
+  await store.removePastSheet('s2020');
+  assert.equal(await store.hasPaidBefore('alice'), false, 'Only on the removed sheet');
+  assert.equal(await store.hasPaidBefore('bob'), true, 'Also on another sheet');
+  assert.equal(await store.hasPaidBefore('paidhere'), true, 'Paid on this site');
+  assert.deepEqual((await store.listPastSheets()).map((s) => s.id), ['s2021']);
+
+  await store.savePastSheet(sheet('s2021', 1), ['dave']);
+  assert.equal(await store.hasPaidBefore('carol'), false, 'Importing a sheet again replaces its kerbs');
+  assert.equal(await store.hasPaidBefore('dave'), true);
+});
+
+test('Untracked earlier imports move to their own removable entry once', async () => {
+  await store.createYear(newYearConfig(YEAR, null));
+  await store.claimMember(member('jchen', { status: 'paid' }));
+  await store.markPaidEver(['jchen', 'oldone', 'oldtwo']);
+  const [earlier] = await store.listPastSheets();
+  assert.equal(earlier.id, 'earlier');
+  assert.equal(earlier.count, 2);
+  assert.equal(await store.hasPaidBefore('oldone'), true);
+  await store.removePastSheet('earlier');
+  assert.equal(await store.hasPaidBefore('oldone'), false);
+  assert.equal(await store.hasPaidBefore('jchen'), true, 'A paid signup on this site stays');
+  await store.markPaidEver(['newer']);
+  assert.deepEqual(await store.listPastSheets(), [], 'The move runs only once');
 });
