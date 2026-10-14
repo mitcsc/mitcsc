@@ -10,11 +10,12 @@ export interface DriveChoice {
   path: string[];
 }
 
-// Browses the club account's Drive. Picks a folder, or a spreadsheet when `pick` is "sheet".
+// Browses the club's "MIT CSC" Drive folder and nothing above it. Picks a folder, or a spreadsheet when `pick` is "sheet".
+// An empty folder id means the club folder itself.
 export default function DrivePicker({ title, start, pick, onPick, onClose }: {
-  title: string; start: string; pick: "folder" | "sheet"; onPick: (choice: DriveChoice) => void; onClose: () => void;
+  title: string; start?: string; pick: "folder" | "sheet"; onPick: (choice: DriveChoice) => void; onClose: () => void;
 }) {
-  const [folder, setFolder] = useState(start || "root");
+  const [folder, setFolder] = useState(start || "");
   const [listing, setListing] = useState<DriveListing | null>(null);
   const [error, setError] = useState("");
   const [naming, setNaming] = useState<string | null>(null);
@@ -48,17 +49,9 @@ export default function DrivePicker({ title, start, pick, onPick, onClose }: {
       {(close) => (
         <>
           <nav className="d-crumbs" aria-label="Folder">
-            {!path.length ? (
-              <span className="d-crumb-roots">
-                <button type="button" onClick={() => setFolder("root")} aria-current={folder !== "shared" ? "page" : undefined}>My Drive</button>
-                <button type="button" onClick={() => setFolder("shared")} aria-current={folder === "shared" ? "page" : undefined}>Shared with me</button>
-              </span>
-            ) : (
-              <button type="button" onClick={() => setFolder("root")}>My Drive</button>
-            )}
             {path.map((p, i) => (
               <span key={p.id}>
-                <span className="d-crumb-sep" aria-hidden="true">/</span>
+                {i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}
                 <button type="button" onClick={() => setFolder(p.id)} aria-current={i === path.length - 1 ? "page" : undefined}>{p.name}</button>
               </span>
             ))}
@@ -91,11 +84,11 @@ export default function DrivePicker({ title, start, pick, onPick, onClose }: {
             </form>
           )}
           <div className="d-dialog-foot">
-            {naming === null && folder !== "shared" && <button type="button" className="d-chip-btn" onClick={() => setNaming("")}>New folder</button>}
+            {naming === null && listing && <button type="button" className="d-chip-btn" onClick={() => setNaming("")}>New folder</button>}
             <span className="d-spacer" />
             <button type="button" className="m-btn is-outline is-medium" onClick={() => close()}>Cancel</button>
             {pick === "folder" && (
-              <button type="button" className="m-btn is-medium" disabled={!listing || folder === "shared"} onClick={() => close(() => onPick({ id: folder, path: path.map((p) => p.name) }))}>Save here</button>
+              <button type="button" className="m-btn is-medium" disabled={!listing} onClick={() => close(() => onPick({ id: path.at(-1)!.id, path: path.map((p) => p.name) }))}>Save here</button>
             )}
           </div>
         </>

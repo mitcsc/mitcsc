@@ -1,11 +1,11 @@
 import { cookies } from "next/headers";
 import { MembershipError } from "./errors";
-import { folderEditors } from "./google/drive";
+import { CLUB_DRIVE_FOLDER } from "./config";
+import { findFolder, folderEditors } from "./google/drive";
 import { clubConnection, clubEmail } from "./google/oauth";
 import { keys } from "./keys";
 import { getJson, redis } from "./redis";
 import { sign, verify } from "./signing";
-import { currentYear } from "./store";
 
 export const SESSION_COOKIE = "csc_dashboard";
 const SESSION_MS = 12 * 3600_000;
@@ -30,16 +30,17 @@ export function devEmail() {
   return process.env.NODE_ENV === "development" ? process.env.DASHBOARD_DEV_EMAIL?.toLowerCase() || null : null;
 }
 
-// Everyone who can edit the folder with this year's membership sheet, cached for a few minutes.
+// Everyone who can edit the club's "MIT CSC" Drive folder, cached for a few minutes.
 export async function execAccess(fresh = false): Promise<ExecAccess> {
   if (!fresh) {
     const cached = await getJson<ExecAccess>(keys.execAccess);
     if (cached && Date.now() - cached.checkedAt < ACCESS_CACHE_SECONDS * 1000) return cached;
   }
-  const config = await currentYear();
   const connection = await clubConnection();
-  if (!config?.folderId || !connection || connection.brokenAt) return { folderId: config?.folderId || null, people: [], checkedAt: Date.now() };
-  const access: ExecAccess = { folderId: config.folderId, people: await folderEditors(config.folderId), checkedAt: Date.now() };
+  if (!connection || connection.brokenAt) return { folderId: null, people: [], checkedAt: Date.now() };
+  const folderId = (await findFolder(CLUB_DRIVE_FOLDER))?.id || null;
+  if (!folderId) return { folderId: null, people: [], checkedAt: Date.now() };
+  const access: ExecAccess = { folderId, people: await folderEditors(folderId), checkedAt: Date.now() };
   await redis("SET", keys.execAccess, JSON.stringify(access));
   return access;
 }

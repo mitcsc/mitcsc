@@ -1,4 +1,7 @@
+import { CLUB_DRIVE_FOLDER } from "../config";
+import { MembershipError } from "../errors";
 import { DRIVE, google } from "./api";
+import { clubEmail } from "./oauth";
 
 export const FOLDER = "application/vnd.google-apps.folder";
 export const SPREADSHEET = "application/vnd.google-apps.spreadsheet";
@@ -37,31 +40,34 @@ export async function findFolder(name: string, parentId = "root") {
   return match || null;
 }
 
-// Folders and spreadsheets other people shared with the club account.
-export async function listShared(includeSheets: boolean) {
-  const types = includeSheets ? `(mimeType = '${FOLDER}' or mimeType = '${SPREADSHEET}')` : `mimeType = '${FOLDER}'`;
-  return listAll(`sharedWithMe and ${types} and trashed = false`);
-}
-
 export async function getItem(id: string) {
   return google<DriveItem & { parents?: string[] }>(`${DRIVE}/files/${encodeURIComponent(id)}`, {
     query: { fields: "id,name,mimeType,parents", supportsAllDrives: true },
   });
 }
 
-// Names from My Drive down to the item, for example ["MIT CSC", "MIT CSC 2026-2027"].
-export async function itemPath(id: string) {
-  const names: { id: string; name: string }[] = [];
+// The "MIT CSC" folder in the club account's My Drive. The dashboard only reads and writes inside it,
+// and its editors are the exec who can use the dashboard.
+export async function clubFolder() {
+  const folder = await findFolder(CLUB_DRIVE_FOLDER);
+  if (!folder) throw new MembershipError(`Make a folder named “${CLUB_DRIVE_FOLDER}” in ${clubEmail()}’s Google Drive first.`, 409);
+  return folder;
+}
+
+// Folders from the club folder down to the item, for example ["MIT CSC", "MIT CSC 2026-2027"].
+// Throws for anything outside the club folder.
+export async function clubPath(id: string, root?: DriveItem) {
+  const top = root || await clubFolder();
+  const path: { id: string; name: string }[] = [];
   let current: string | undefined = id;
-  while (current && names.length < 8) {
-    // A folder shared with the club account can have a parent it cannot see.
+  while (current && path.length < 12) {
+    if (current === top.id) return [{ id: top.id, name: top.name }, ...path];
     const item: (DriveItem & { parents?: string[] }) | null = await getItem(current).catch(() => null);
-    if (!item) break;
-    if (!item.parents?.length) break; // My Drive itself
-    names.unshift({ id: item.id, name: item.name });
+    if (!item?.parents?.length) break;
+    path.unshift({ id: item.id, name: item.name });
     current = item.parents[0];
   }
-  return names;
+  throw new MembershipError(`Pick something inside the “${CLUB_DRIVE_FOLDER}” folder.`, 403);
 }
 
 export async function createFolder(name: string, parentId: string) {
