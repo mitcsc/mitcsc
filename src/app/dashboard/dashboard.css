@@ -397,13 +397,14 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-mobile-backdrop { position: absolute; top: 100%; left: 0; right: 0; height: 100dvh; background: #0009; }
 .d-mobile-menu { position: absolute; top: 100%; left: 0; right: 0; display: flex; flex-direction: column; max-height: calc(100dvh - 80px); overflow-y: auto; padding: 8px 16px 12px; border-bottom: 1px solid var(--line-strong); background: var(--raised); opacity: 0; transform: translateY(-8px); pointer-events: none; transition: opacity 180ms var(--ease), transform 240ms var(--ease); }
 .d-mobile-menu.is-open { opacity: 1; transform: none; pointer-events: auto; }
-.d-mobile-group { display: flex; flex-direction: column; padding: 2px 0; }
+.d-mobile-group { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
+.d-mobile-group.is-plain { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--line); }
+.d-mobile-group:first-child.is-plain { margin-top: 0; padding-top: 6px; border-top: 0; }
+/* A section name above its pages: small and dim, so it reads as a label, not a link. */
+.d-mobile-label { padding: 8px 12px 4px; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
 .d-mobile-menu a { display: flex; align-items: center; padding: 0 12px; border-radius: 10px; text-decoration: none; }
-/* Sections are large and bright. Their other tabs are smaller, dimmer, and indented along a guide line. */
-.m-root .d-mobile-menu a.d-mobile-top { min-height: 48px; font-size: 17px; font-weight: 500; color: var(--text); }
-.d-mobile-subs { display: flex; flex-direction: column; gap: 2px; margin: 0 0 8px 22px; padding-left: 8px; border-left: 1px solid var(--line-strong); }
-.m-root .d-mobile-menu a.d-mobile-sub { min-height: 40px; font-size: 15px; color: var(--muted); }
-.m-root .d-mobile-menu a[aria-current="page"] { background: #ffffff12; color: var(--text); }
+.m-root .d-mobile-menu a.d-mobile-link { min-height: 44px; font-size: 16px; font-weight: 500; color: var(--text); }
+.m-root .d-mobile-menu a[aria-current="page"] { background: #ffffff12; }
 .d-mobile-account { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; padding: 12px 12px 0; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
 .d-mobile-account > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .d-mobile-signout { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent; font-size: 13px; color: var(--text); }
