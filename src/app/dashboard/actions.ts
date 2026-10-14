@@ -1,6 +1,6 @@
 "use server";
 
-import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb, TIME_ZONE } from "@/lib/membership/config";
+import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { execAccess, requireExec } from "@/lib/membership/exec-auth";
 import { clubFolder, clubPath, createFolder, getItem, listChildren, FOLDER, SPREADSHEET } from "@/lib/membership/google/drive";
@@ -10,7 +10,7 @@ import { cleanForm, text } from "@/lib/membership/form";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
 import {
-  attendanceCount, checkIn, claimMember, createEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, hasPaidBefore, markPaidEver,
+  attendanceCount, checkIn, createEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
   removePastSheet, requireCurrentYear, savePastSheet, unmarkPaidEver, updateEvent, updateMember, updateYear,
 } from "@/lib/membership/store";
 import { syncEventLater, syncMembersLater, syncMembersNow } from "@/lib/membership/sync";
@@ -335,90 +335,5 @@ export async function removePastMembers(sheetId: string): Promise<Result<null>> 
     await requireExec();
     await removePastSheet(String(sheetId));
     return null;
-  });
-}
-
-// Google Form timestamps look like "10/1/2026 14:03:22", in Boston time.
-function formTime(value: string) {
-  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})$/.exec(value.trim());
-  if (!match) return null;
-  const [, month, day, year, hour, minute, second] = match.map(Number);
-  const guess = Date.UTC(year, month - 1, day, hour, minute, second);
-  const offset = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, timeZoneName: "longOffset" })
-    .formatToParts(guess).find((p) => p.type === "timeZoneName")!.value;
-  const [, sign, hours, minutes] = /GMT([+-])(\d{2}):(\d{2})/.exec(offset) || [, "+", "00", "00"];
-  return guess - (sign === "-" ? -1 : 1) * (Number(hours) * 60 + Number(minutes)) * 60_000;
-}
-
-export interface FormImport {
-  added: number;
-  existing: number;
-  // Sheet row numbers whose kerb could not be read.
-  unreadable: number[];
-}
-
-// This year's members who signed up and paid on the old Google Form. They come in as paid,
-// so they can get their Wallet card. Kerbs that already signed up here are left alone.
-export async function importFormSignups(sheetId: string): Promise<Result<FormImport>> {
-  return attempt(async () => {
-    await requireExec();
-    const config = await requireCurrentYear();
-    await clubPath(sheetId);
-    const rows = await readFirstTab(sheetId);
-    const header = (rows[0] || []).map((h) => String(h).toLowerCase());
-    const column = (...tests: RegExp[]) => {
-      for (const test of tests) {
-        const index = header.findIndex((h) => test.test(h));
-        if (index >= 0) return index;
-      }
-      return -1;
-    };
-    const kerbColumn = column(/kerb/, /e-?mail/);
-    const nameColumn = column(/name/);
-    if (kerbColumn < 0 || nameColumn < 0) throw new MembershipError("The first tab needs a name column and a Kerberos or email column.");
-    const classColumn = column(/what year|class/);
-    const dormColumn = column(/live|dorm/);
-    const paidColumn = column(/venmo|zelle|cash|paid/);
-    const notesColumn = column(/question|suggestion|comment/);
-    const timeColumn = column(/timestamp/);
-    const notesQuestion = config.form.questions.find((q) => !q.builtin && q.type === "long");
-    const cell = (row: string[], index: number) => (index < 0 ? "" : String(row[index] ?? "").replace(/\s+/g, " ").trim());
-
-    // A later row for the same kerb replaces an earlier one, since people fix mistakes by submitting again.
-    const found = new Map<string, Member>();
-    const unreadable: number[] = [];
-    rows.slice(1).forEach((row, i) => {
-      const raw = cell(row, kerbColumn).toLowerCase().replace(/\s/g, "");
-      const name = cell(row, nameColumn).slice(0, 100);
-      if (!raw && !name) return;
-      const kerb = normalizeKerb(raw);
-      if ((raw.includes("@") && !raw.endsWith("@mit.edu")) || !isKerb(kerb) || !name) {
-        unreadable.push(i + 2);
-        return;
-      }
-      const paid = cell(row, paidColumn).toLowerCase();
-      const method: PaymentMethod = paid.includes("zelle") ? "zelle" : paid.includes("cash") ? "cash" : "venmo";
-      const at = formTime(cell(row, timeColumn)) ?? Date.now();
-      const notes = cell(row, notesColumn).slice(0, 2000);
-      found.set(kerb, {
-        year: config.year, kerb, name, classYear: cell(row, classColumn).slice(0, 60), dorm: cell(row, dormColumn).slice(0, 60),
-        answers: notes && notesQuestion ? { [notesQuestion.id]: notes } : {},
-        type: "new", price: config.prices.new, method, status: "paid",
-        reportedAt: at, paidAt: at, paidVia: method, confirmedBy: "Google Form import", venmoMessageId: null, wallet: null, createdAt: at,
-      });
-    });
-    if (!found.size) throw new MembershipError(unreadable.length ? "None of the kerbs on the first tab could be read." : "The first tab has no signups.");
-
-    const added: string[] = [];
-    const members = [...found.values()];
-    for (let i = 0; i < members.length; i += 20) {
-      await Promise.all(members.slice(i, i + 20).map(async (member) => {
-        const type = (await hasPaidBefore(member.kerb)) ? ("returning" as const) : ("new" as const);
-        if (await claimMember({ ...member, type })) added.push(member.kerb);
-      }));
-    }
-    await markPaidEver(added);
-    if (added.length) syncMembersLater(config.year);
-    return { added: added.length, existing: members.length - added.length, unreadable };
   });
 }
