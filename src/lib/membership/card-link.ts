@@ -26,7 +26,7 @@ export async function emailCardLink(member: Member) {
   if (!canSendEmail(await clubConnection())) throw new MembershipError("Card emails are off right now. Email mitcsc@mit.edu and exec will send your card.", 503);
   const id = randomBytes(24).toString("base64url");
   await redis("SET", keys.cardLink(id), `${member.year}:${member.kerb}`, "EX", LINK_MINUTES * 60);
-  const url = `${await origin()}/join/card?link=${id}`;
+  const url = `${await origin()}/join/pass?link=${id}`;
   const first = member.name.split(" ")[0] || member.kerb;
   await sendEmail({
     to: `${member.kerb}@mit.edu`,

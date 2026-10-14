@@ -183,7 +183,7 @@ function SignupForm({ year, member, cards, onDone }: {
                 {taken && (
                   <div id="kerb-note" role="alert" className="mp-kerb-note">
                     <span className="mp-bad">{kerb} is already signed up for {year.year}.</span>
-                    <span className="mp-muted">Is this you? <Link href={`/join/card?kerb=${encodeURIComponent(kerb)}`}>Get your card by email</Link>. Not you? Email <Email />.</span>
+                    <span className="mp-muted">Is this you? <Link href={`/join/pass?kerb=${encodeURIComponent(kerb)}`}>Get your card by email</Link>. Not you? Email <Email />.</span>
                   </div>
                 )}
                 {!member && lookup?.kerb === kerb && lookup.status === "yours" && (

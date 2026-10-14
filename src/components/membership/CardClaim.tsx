@@ -13,7 +13,7 @@ function Email() {
   return <a href={`mailto:${CLUB_EMAIL}`}>{CLUB_EMAIL}</a>;
 }
 
-// /join/card: members get a one-time link at kerb@mit.edu, and the link opens their card in that browser.
+// /join/pass: members get a one-time link at kerb@mit.edu, and the link opens their card in that browser.
 export default function CardClaim({ year, link, deadLink, buttons, kerb: initialKerb }: {
   year: string | null; link: string | null; deadLink: boolean; buttons: ("apple" | "google")[]; kerb: string;
 }) {
@@ -39,8 +39,8 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
         {showLink ? (
           <>
-            <h1 className="mp-title">Your membership card</h1>
-            <p className="mp-muted">Add your {year ? `${year} ` : ""}MIT CSC card to your phone.</p>
+            <h1 className="mp-title">Add to your digital wallet</h1>
+            <p className="mp-muted">Your {year ? `${year} ` : ""}MIT CSC membership card is ready. Tap below to add it.</p>
             <div className="mp-card-action">
               <WalletButtons wallet={{ buttons, problem: null }} link={link} />
             </div>
@@ -53,7 +53,7 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
           </div>
         ) : (
           <>
-            <h1 className="mp-title">Get your membership card</h1>
+            <h1 className="mp-title">Add to your digital wallet</h1>
             {deadLink
               ? <p className="m-error" role="alert">This link was already used or has expired. Get a new one below.</p>
               : <p className="mp-muted">We’ll email a link to the email you used when you became a member. It opens your card for Apple Wallet or Google Wallet.</p>}

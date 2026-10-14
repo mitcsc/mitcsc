@@ -31,6 +31,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/deliberations/:path*", destination: "/vote/:path*", permanent: true },
+      // The card page moved; card emails sent before the move still work (the query string carries over).
+      { source: "/join/card", destination: "/join/pass", permanent: true },
       {
         source: "/link",
         destination: "/links",

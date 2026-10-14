@@ -34,7 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ plat
       }
     }
     if (!config || !member) {
-      return link ? NextResponse.redirect(new URL("/join/card?link=used", request.url), 303) : back(request, "missing");
+      return link ? NextResponse.redirect(new URL("/join/pass?link=used", request.url), 303) : back(request, "missing");
     }
     const pass = await memberPass(config, member, new URL(request.url).origin);
     if (platform === "google") return NextResponse.redirect(pass.google, 303);
