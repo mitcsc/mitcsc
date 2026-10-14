@@ -2,22 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { importPastMembers, refreshExecAccess } from "@/app/dashboard/actions";
+import { refreshExecAccess } from "@/app/dashboard/actions";
 import { CLUB_DRIVE_FOLDER } from "@/lib/membership/config";
-import DrivePicker from "./DrivePicker";
 import { ago } from "./format";
 import { Setting } from "./YearSettings";
 
-export function DashboardSettings({ folder, people, accessCheckedAt, club, pastMembers }: {
+export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
   folder: string | null;
   people: { email: string; role: "Owner" | "Editor" }[];
   accessCheckedAt: number | null;
   club: { email: string; state: "missing" | "broken" | "connected" };
-  pastMembers: number;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<"access" | "import" | null>(null);
-  const [picking, setPicking] = useState(false);
+  const [busy, setBusy] = useState<"access" | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [search, setSearch] = useState("");
   const connected = club.state === "connected";
@@ -29,18 +26,6 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club, pastM
     const result = await refreshExecAccess().catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
     setBusy(null);
     setMessage(result.ok ? null : { text: result.error, error: true });
-    router.refresh();
-  }
-
-  async function importSheet(sheetId: string, name: string) {
-    setPicking(false);
-    setBusy("import");
-    setMessage(null);
-    const result = await importPastMembers(sheetId).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
-    setBusy(null);
-    setMessage(result.ok
-      ? { text: `Read ${result.value.found} kerbs from “${name}”. They get the returning price.`, error: false }
-      : { text: result.error, error: true });
     router.refresh();
   }
 
@@ -75,9 +60,10 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club, pastM
             </button>
           )}
         </div>
+        {message && <p className={message.error ? "m-error" : "d-success"} role="status">{message.text}</p>}
       </Setting>
 
-      <Setting title="Club Google account" note="Writes the Google Sheets and reads Venmo emails." center>
+      <Setting title="Club Google account" note="Writes the Google Sheets, reads Venmo emails, and sends card emails." center>
         <div className="d-account-row">
           <span className="d-account-name">
             {club.email}
@@ -92,22 +78,6 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club, pastM
         </div>
         {!connected && <p className="d-field-note is-large">Sign in as {club.email} on the Google screen and allow every permission.</p>}
       </Setting>
-
-      <Setting title="Past members" note="People who paid in an earlier year get the returning price.">
-        <p className="d-field-note is-large">{pastMembers === 1 ? "1 person is" : `${pastMembers} people are`} on the list. Every confirmed payment adds the member automatically.</p>
-        <div className="d-inline-actions">
-          <button type="button" className="d-chip-btn" onClick={() => setPicking(true)} disabled={!connected || busy === "import"}>
-            {busy === "import" ? "Reading the sheet…" : "Import from an old sheet"}
-          </button>
-          {!connected && <span className="d-field-note">Connect the club Google account first.</span>}
-        </div>
-        <p className="d-field-note">Reads the Kerberos or email column on the sheet’s first tab. The sheet must be in the “{CLUB_DRIVE_FOLDER}” folder.</p>
-        {message && <p className={message.error ? "m-error" : "d-success"} role="status">{message.text}</p>}
-      </Setting>
-
-      {picking && (
-        <DrivePicker title="Pick an old membership sheet" pick="sheet" onClose={() => setPicking(false)} onPick={(choice) => importSheet(choice.id, choice.path.at(-1) || "the sheet")} />
-      )}
     </main>
   );
 }
