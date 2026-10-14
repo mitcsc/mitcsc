@@ -1,5 +1,6 @@
 import type { Person } from "@/app/dashboard/actions";
 import { formatDay } from "@/lib/membership/config";
+import { formatHours } from "@/lib/membership/event-times";
 import { sheetUrl } from "@/lib/membership/google/drive";
 import { listAttendance, listMembers } from "@/lib/membership/store";
 import type { EventInfo } from "@/lib/membership/types";
@@ -13,7 +14,10 @@ export default async function EventDesk({ event, back }: { event: EventInfo; bac
   }));
   return (
     <CheckInDesk
-      event={{ id: event.id, name: event.name, date: formatDay(event.date), sheet: event.sheetId ? sheetUrl(event.sheetId) : null }}
+      event={{
+        id: event.id, name: event.name, when: [formatDay(event.date), formatHours(event)].filter(Boolean).join(", "), sheet: event.sheetId ? sheetUrl(event.sheetId) : null,
+        hours: { date: event.date, starts: event.starts ?? null, ends: event.ends ?? null, checkIn: event.checkIn ?? null },
+      }}
       records={records}
       people={people}
       renderedAt={Date.now()}

@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { checkInPerson, undoCheckInPerson, type CheckInResult, type Person } from "@/app/dashboard/actions";
+import { checkInPerson, setEventCheckIn, undoCheckInPerson, type CheckInResult, type Person } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
 import { money } from "@/lib/membership/config";
+import { checkInState, formatCountdown, opensAt, startsSoon, type EventHours } from "@/lib/membership/event-times";
 import type { Attendance } from "@/lib/membership/types";
 import { CheckedInPill, oweNote, type Admit, type Undo } from "./checkin-parts";
 import { shortEmail } from "./format";
@@ -16,18 +18,30 @@ const MAX_RESULTS = 25;
 
 // back is null on the Check in tab, where the sub-tabs already lead elsewhere.
 export default function CheckInDesk({ event, records: initialRecords, people: initialPeople, renderedAt, back }: {
-  event: { id: string; name: string; date: string; sheet: string | null };
+  event: { id: string; name: string; when: string; sheet: string | null; hours: EventHours };
   records: Attendance[];
   people: Person[];
   renderedAt: number;
   back: { href: string; label: string } | null;
 }) {
+  const router = useRouter();
   const [records, setRecords] = useState(initialRecords);
   const [people, setPeople] = useState(initialPeople);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  // Check-in opens and closes on its own, so the state follows the clock. It starts from the server's time to match its render.
+  // It ticks every second for the countdown to opening.
+  const [now, setNow] = useState(renderedAt);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const state = checkInState(event.hours, new Date(now));
+  // Within a day of opening, a countdown replaces the opening time, which the line above already shows.
+  const note = !state.open && !event.hours.checkIn && startsSoon(event.hours, now) ? `Opens in ${formatCountdown(opensAt(event.hours) - now)}` : state.note;
 
   // Other exec check people in at the same time, so reload every few seconds.
   useEffect(() => setRecords(initialRecords), [initialRecords]);
@@ -74,6 +88,15 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
     return true;
   };
 
+  async function toggle() {
+    setToggling(true);
+    setError("");
+    const result = await setEventCheckIn(event.id, !state.open).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
+    if (!result.ok) setError(result.error);
+    else router.refresh();
+    setToggling(false);
+  }
+
   const recent = [...records].sort((a, b) => b.at - a.at);
   return (
     <main className="d-phone">
@@ -82,17 +105,28 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
         <div className="d-checkin-head">
           <h1 className="d-phone-title">{event.name}</h1>
           <span className="d-checkin-meta">
-            <span>{event.date}</span>
+            <span>{event.when}</span>
             <span>{records.length} checked in</span>
             {event.sheet && <a href={event.sheet} target="_blank" rel="noreferrer">Open sheet</a>}
           </span>
         </div>
-        <button type="button" className="m-btn is-block" onClick={() => setScanning(true)}><Icon name="scan" size={18} />Scan card</button>
-        <input className="m-input d-checkin-search" type="search" aria-label="Search name or kerb" placeholder="Search name or kerb" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} />
+        <div className={`d-checkin-state${state.open ? " is-open" : ""}`}>
+          <span className="d-checkin-state-text">
+            <span className="d-checkin-state-title">{state.open ? "Check-in is open" : "Check-in is closed"}</span>
+            <span className="d-checkin-state-note" suppressHydrationWarning>{note}</span>
+          </span>
+          <button type="button" className="d-chip-btn" disabled={toggling} onClick={() => void toggle()}>{state.toggle}</button>
+        </div>
+        {state.open && (
+          <>
+            <button type="button" className="m-btn is-block" onClick={() => setScanning(true)}><Icon name="scan" size={18} />Scan card</button>
+            <input className="m-input d-checkin-search" type="search" aria-label="Search name or kerb" placeholder="Search name or kerb" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} />
+          </>
+        )}
         {error && <p className="m-error" role="alert">{error}</p>}
 
         <div className="d-people">
-          {query.trim() ? (
+          {state.open && query.trim() ? (
             matches.length ? matches.map((p) => <PersonRow key={p.kerb} person={p} record={byKerb.get(p.kerb) || null} busy={busy === p.kerb} admit={admit} undo={undo} />)
               : <p className="d-empty-row">Nobody signed up matches “{query.trim()}”. New members can sign up at csc.mit.edu/join.</p>
           ) : recent.length ? (
@@ -101,11 +135,11 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
               return <PersonRow key={r.kerb} person={p} record={r} busy={busy === r.kerb} admit={admit} undo={undo} />;
             })
           ) : (
-            <p className="d-empty-row">Nobody is checked in yet. Scan a card or search for a name.</p>
+            <p className="d-empty-row">Nobody is checked in yet.{state.open && " Scan a card or search for a name."}</p>
           )}
         </div>
       </div>
-      {scanning && <Scanner eventId={event.id} eventName={event.name} onClose={() => setScanning(false)} onResult={apply} admit={admit} undo={undo} />}
+      {scanning && state.open && <Scanner eventId={event.id} eventName={event.name} onClose={() => setScanning(false)} onResult={apply} admit={admit} undo={undo} />}
     </main>
   );
 }

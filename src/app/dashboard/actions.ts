@@ -13,11 +13,12 @@ import { cleanForm, text } from "@/lib/membership/form";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
 import {
-  attendanceCount, checkIn, undoCheckIn, createEvent, eventOn, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
+  attendanceCount, checkIn, undoCheckIn, createEvent, eventsOn, deleteEvent, getAttendance, createYear, currentYear, deleteMember, getEvent, getMember, getYear, markPaidEver,
   requireCurrentYear, unmarkPaidEver, updateEvent, updateMember, updateYear,
 } from "@/lib/membership/store";
 import { syncEventLater, syncMembersLater, syncMembersNow } from "@/lib/membership/sync";
 import type { Attendance, FormConfig, Member, PaymentMethod, YearConfig } from "@/lib/membership/types";
+import { checkInState, clashes, clashNote, CLOCK_TIME, type EventHours } from "@/lib/membership/event-times";
 import { checkVenmo } from "@/lib/membership/venmo";
 import { revokePass } from "@/lib/membership/wallet";
 
@@ -200,42 +201,75 @@ export async function createSchoolYear(input: { year: string; folderId: string; 
 
 // Events
 
+// Check-in hours from a form: both times or neither, with the end after the start.
+function eventHours(starts: unknown, ends: unknown) {
+  const [from, to] = [starts, ends].map((t) => (typeof t === "string" ? t.trim() : ""));
+  if (!from && !to) return { starts: null, ends: null };
+  if (!CLOCK_TIME.test(from) || !CLOCK_TIME.test(to)) throw new MembershipError("Give both a start and an end time, or neither.");
+  if (to <= from) throw new MembershipError("The end time must be after the start time.");
+  return { starts: from, ends: to };
+}
+
+// Events on the same day cannot overlap.
+async function refuseClash(year: string, hours: EventHours, exceptId?: string) {
+  const clash = (await eventsOn(year, hours.date)).find((e) => e.id !== exceptId && clashes(e, hours));
+  if (clash) throw new MembershipError(clashNote(clash), 409);
+}
+
 // Each event gets its own new sheet in the picked folder, or no sheet when Google is not connected.
-export async function createEventAction(input: { name: string; date: string; folderId: string | null }): Promise<Result<string>> {
+export async function createEventAction(input: { name: string; date: string; starts: string; ends: string; folderId: string | null }): Promise<Result<string>> {
   return attempt(async () => {
     const by = await requireExec();
     const config = await requireCurrentYear();
     const name = text(input.name, 100);
     if (!name) throw new MembershipError("Name the event.");
     if (!ISO_DATE.test(input.date)) throw new MembershipError("Pick the event date.");
+    const hours = eventHours(input.starts, input.ends);
     // Checked before the Google Sheet is made, so a refused event leaves nothing in Drive.
-    const taken = await eventOn(config.year, input.date);
-    if (taken) throw new MembershipError(`“${taken.name}” is already on ${formatDay(input.date)}. There can be only one event per day.`, 409);
+    await refuseClash(config.year, { date: input.date, ...hours });
     let sheetId: string | null = null;
     const sheetTab = "Attendance";
     if (input.folderId) {
       const { id: folderId } = (await clubPath(input.folderId)).at(-1)!;
       sheetId = await createSheet(name, folderId, sheetTab, clubEmail());
     }
-    const event = await createEvent({ year: config.year, name, date: input.date, sheetId, sheetTab, createdBy: by });
+    const event = await createEvent({ year: config.year, name, date: input.date, ...hours, checkIn: null, sheetId, sheetTab, createdBy: by });
     syncEventLater(event.id);
     return event.id;
   });
 }
 
-export async function renameEvent(id: string, name: string): Promise<Result<null>> {
+// Saves an event's name and hours. New hours replace an exec's earlier close or reopen.
+export async function saveEvent(id: string, input: { name: string; starts: string; ends: string }): Promise<Result<null>> {
   return attempt(async () => {
     await requireExec();
-    const clean = text(name, 100);
+    const clean = text(input.name, 100);
     if (!clean) throw new MembershipError("Name the event.");
-    const event = await updateEvent(id, (e) => ({ ...e, name: clean }));
+    const hours = eventHours(input.starts, input.ends);
+    const current = await getEvent(String(id));
+    if (!current) throw new MembershipError("This event does not exist.", 404);
+    await refuseClash(current.year, { date: current.date, ...hours }, current.id);
+    const moved = (current.starts || null) !== hours.starts || (current.ends || null) !== hours.ends;
+    const event = await updateEvent(id, (e) => ({ ...e, name: clean, ...hours, checkIn: moved ? null : e.checkIn }));
     // The sheet keeps the event's name. A sheet someone already removed from Drive needs nothing.
-    if (event.sheetId) {
+    if (event.sheetId && clean !== current.name) {
       await renameFile(event.sheetId, clean).catch((error) => {
         if (error instanceof GoogleApiError && error.googleStatus === 404) return;
         throw new MembershipError("The event has the new name, but its Google Sheet does not. Check the club Google account in Settings, then save the name again.", 502);
       });
     }
+    return null;
+  });
+}
+
+// Closes or reopens check-in by hand. A choice that matches the hours is dropped, so the hours apply again.
+export async function setEventCheckIn(id: string, open: boolean): Promise<Result<null>> {
+  return attempt(async () => {
+    await requireExec();
+    await updateEvent(String(id), (e) => {
+      const scheduled = checkInState({ ...e, checkIn: null }, new Date()).open;
+      return { ...e, checkIn: open === scheduled ? null : open ? "open" : "closed" };
+    });
     return null;
   });
 }
@@ -280,6 +314,7 @@ function person(m: Member): Person {
 async function admit(eventId: string, kerb: string, mode: "check-in" | "confirm" | "anyway", by: string): Promise<CheckInResult> {
   const event = await getEvent(eventId);
   if (!event) throw new MembershipError("This event does not exist.", 404);
+  if (!checkInState(event, new Date()).open) throw new MembershipError(`Check-in for “${event.name}” is closed. Reopen it to check people in.`, 409);
   const config = await getYear(event.year);
   let member = await getMember(event.year, kerb);
   if (!config || !member) return { kind: "unknown", message: `${kerb} is not signed up for ${event.year}.` };
