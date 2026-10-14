@@ -146,6 +146,16 @@ export default function PhotoPile({ className, children }: { className: string; 
     }
     fitAll();
     const resize = new ResizeObserver(fitAll);
+
+    // A photo that fails to load, for example one just deleted from Drive, leaves the pile instead of showing a broken image.
+    // Its cell stays, so the other photos do not move.
+    function hideBroken(img: HTMLImageElement) {
+      const polaroid = img.closest<HTMLElement>(".hero-polaroid");
+      if (polaroid) polaroid.style.visibility = "hidden";
+    }
+    for (const img of root.querySelectorAll("img")) if (img.complete && !img.naturalWidth) hideBroken(img);
+    const onError = (event: Event) => { if (event.target instanceof HTMLImageElement) hideBroken(event.target); };
+    root.addEventListener("error", onError, true);
     resize.observe(root);
 
     let drag: {
@@ -213,6 +223,7 @@ export default function PhotoPile({ className, children }: { className: string; 
     root.addEventListener("touchmove", onTouchMove, { passive: false });
     return () => {
       resize.disconnect();
+      root.removeEventListener("error", onError, true);
       glides.forEach((_, polaroid) => stopGlide(polaroid));
       root.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointermove", onMove);

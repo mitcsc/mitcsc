@@ -12,6 +12,8 @@ export const HOME_PHOTOS_TAG = "home-photos";
 export interface PhotoLibrary {
   folderId: string | null;
   photos: HomePhoto[];
+  // Photos that are on but are no longer in the folder, for example deleted in Drive. The home page skips them.
+  missing?: HomePhoto[];
   // Signed links to Drive's resized copies, by photo id, for the dashboard. They expire after a few hours.
   thumbnails?: Record<string, string>;
   checkedAt: number;
@@ -27,13 +29,26 @@ async function findPhotoFolder() {
   return folder;
 }
 
+// Drive names a copied file "Copy of IMG_5946.jpeg". Show just the original file name.
+export function photoName(fileName: string) {
+  return fileName.replace(/^(copy of\s+)+/i, "").trim() || fileName;
+}
+
 // Lists the Drive folder again and saves the list.
 export async function refreshPhotoLibrary(): Promise<PhotoLibrary> {
-  const folder = await findPhotoFolder();
+  const [folder, previous, shown] = await Promise.all([findPhotoFolder(), photoLibrary(), shownPhotoIds()]);
   const files = folder ? await listImages(folder.id) : [];
+  const photos = files.map((f) => ({ id: f.id, name: photoName(f.name), version: f.version, createdAt: Date.parse(f.createdTime) }));
+  const present = new Set(photos.map((p) => p.id));
+  const on = new Set(shown);
+  const missing = new Map<string, HomePhoto>();
+  for (const photo of [...(previous?.missing || []), ...(previous?.photos || [])]) {
+    if (on.has(photo.id) && !present.has(photo.id)) missing.set(photo.id, photo);
+  }
   const library: PhotoLibrary = {
     folderId: folder?.id || null,
-    photos: files.map((f) => ({ id: f.id, name: f.name, version: f.version, createdAt: Date.parse(f.createdTime) })),
+    photos,
+    missing: [...missing.values()],
     thumbnails: Object.fromEntries(files.filter((f) => f.thumbnailLink).map((f) => [f.id, f.thumbnailLink!])),
     checkedAt: Date.now(),
   };
@@ -53,6 +68,33 @@ export async function shownPhotoIds() {
 
 export async function isPhotoShown(id: string) {
   return (await redis<number>("SISMEMBER", keys.homePhotosShown, id)) === 1;
+}
+
+export interface PhotoFailure {
+  // The file version that failed. A new version gets a fresh try.
+  version: string;
+  message: string;
+  at: number;
+}
+
+export async function recordPhotoFailure(id: string, failure: PhotoFailure) {
+  await redis("HSET", keys.homePhotoFailures, id, JSON.stringify(failure));
+}
+
+export async function clearPhotoFailure(id: string) {
+  await redis("HDEL", keys.homePhotoFailures, id);
+}
+
+// Failures of the current version of each photo in the library, by id.
+export async function photoFailures(photos: HomePhoto[]) {
+  const flat = await redis<string[]>("HGETALL", keys.homePhotoFailures);
+  const versions = new Map(photos.map((p) => [p.id, p.version]));
+  const failures: Record<string, PhotoFailure> = {};
+  for (let i = 0; i < flat.length; i += 2) {
+    const failure = JSON.parse(flat[i + 1]) as PhotoFailure;
+    if (versions.get(flat[i]) === failure.version) failures[flat[i]] = failure;
+  }
+  return failures;
 }
 
 export async function setPhotosShown(ids: string[], shown: boolean) {
