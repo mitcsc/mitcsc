@@ -130,7 +130,7 @@ export default function Scanner({ eventId, eventName, onClose, onResult, admit, 
       <div className="d-scan-view">
         <video ref={video} className={`d-scan-video${mirrored ? " is-mirrored" : ""}`} playsInline muted />
         <div className="d-scan-top">
-          <button type="button" className="m-back is-light" onClick={onClose}><Icon name="back" />Check-in</button>
+          <button type="button" className="m-back is-light" onClick={onClose}><Icon name="back" />Check-In</button>
           <span className="d-scan-event">{eventName}</span>
         </div>
         <div className="d-scan-center">
