@@ -3,7 +3,7 @@
 import { useCallback, useState, type MouseEvent } from "react";
 import { setHomePhotos } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
-import { photoUrl, type HomePhoto } from "@/lib/home-photo-urls";
+import { photoUrl, sizedThumbnail, type HomePhoto } from "@/lib/home-photo-urls";
 import { Switch, Toast } from "./MembersView";
 
 type Filter = "all" | "on" | "off";
@@ -11,8 +11,11 @@ type Filter = "all" | "on" | "off";
 // The home page shows up to 16 photos at once, on tall tablets.
 const FULL_HERO = 16;
 
-export default function PhotoLibraryView({ photos, shown: initialShown, folder, folderPath, problem }: {
+const THUMB_WIDTHS = [256, 384, 512];
+
+export default function PhotoLibraryView({ photos, thumbnails, shown: initialShown, folder, folderPath, problem }: {
   photos: HomePhoto[];
+  thumbnails: Record<string, string>;
   shown: string[];
   folder: string | null;
   folderPath: string[];
@@ -119,15 +122,18 @@ export default function PhotoLibraryView({ photos, shown: initialShown, folder, 
             {visible.map((photo) => {
               const on = shown.has(photo.id);
               const isSelected = selected.has(photo.id);
+              // Straight from Google when a fresh link is at hand, which spares a server request per photo.
+              const link = thumbnails[photo.id];
+              const src = (width: number) => (link ? sizedThumbnail(link, width) : photoUrl(photo, width));
               return (
                 <li key={photo.id} className={`d-photo${isSelected ? " is-selected" : ""}${on ? "" : " is-off"}`}>
                   <button type="button" className="d-photo-pick" aria-pressed={isSelected} aria-label={`Select ${photo.name}`} onClick={(e) => pick(e, photo.id)}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- already resized by /api/home-photos */}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- already resized by Google */}
                     <img
-                      src={photoUrl(photo, 384)}
-                      srcSet={[256, 384, 512].map((w) => `${photoUrl(photo, w)} ${w}w`).join(", ")}
+                      src={src(384)}
+                      srcSet={THUMB_WIDTHS.map((w) => `${src(w)} ${w}w`).join(", ")}
                       sizes="(max-width: 640px) 50vw, 240px"
-                      alt="" loading="lazy" decoding="async"
+                      alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
                     />
                     <span className="d-photo-check" aria-hidden><Icon name="check" size={14} strokeWidth={2.6} /></span>
                   </button>

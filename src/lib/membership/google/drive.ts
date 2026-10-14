@@ -1,6 +1,7 @@
 import { CLUB_DRIVE_FOLDER } from "../config";
 import { MembershipError } from "../errors";
-import { DRIVE, google, googleBytes } from "./api";
+import { sizedThumbnail } from "../../home-photo-urls";
+import { DRIVE, google, googleBytes, GoogleApiError } from "./api";
 import { clubEmail } from "./oauth";
 
 export const FOLDER = "application/vnd.google-apps.folder";
@@ -77,6 +78,8 @@ export interface DriveImage {
   // Changes whenever the file changes, so it can key cached copies.
   version: string;
   createdTime: string;
+  // A signed link to Google's resized copy. It expires after a few hours.
+  thumbnailLink?: string;
 }
 
 // Image files directly inside a folder, newest first.
@@ -87,7 +90,7 @@ export async function listImages(folderId: string) {
     const page = await google<{ files: DriveImage[]; nextPageToken?: string }>(`${DRIVE}/files`, {
       query: {
         q: `${quote(folderId)} in parents and mimeType contains 'image/' and trashed = false`, orderBy: "createdTime desc", pageSize: 1000, pageToken,
-        fields: "nextPageToken,files(id,name,mimeType,version,createdTime)", supportsAllDrives: true, includeItemsFromAllDrives: true,
+        fields: "nextPageToken,files(id,name,mimeType,version,createdTime,thumbnailLink)", supportsAllDrives: true, includeItemsFromAllDrives: true,
       },
     });
     images.push(...page.files);
@@ -96,8 +99,16 @@ export async function listImages(folderId: string) {
   return images;
 }
 
-export async function downloadFile(id: string) {
-  return googleBytes(`${DRIVE}/files/${encodeURIComponent(id)}`, { alt: "media", supportsAllDrives: true });
+// Google's resized WebP copy of an image, `width` px wide. Google reads HEIC and applies the photo's rotation,
+// so the download is a small fraction of a phone original (about 200 KB instead of 6 MB at 1080 px).
+export async function imageThumbnail(id: string, width: number) {
+  const { thumbnailLink } = await google<{ thumbnailLink?: string }>(`${DRIVE}/files/${encodeURIComponent(id)}`, {
+    query: { fields: "thumbnailLink", supportsAllDrives: true },
+  });
+  if (!thumbnailLink) throw new GoogleApiError(404, "Drive has no preview of that file yet.");
+  const image = await googleBytes(sizedThumbnail(thumbnailLink, width), { auth: false });
+  if (!image.type.startsWith("image/")) throw new GoogleApiError(502, "Drive did not return an image.");
+  return image;
 }
 
 export async function createFolder(name: string, parentId: string) {
