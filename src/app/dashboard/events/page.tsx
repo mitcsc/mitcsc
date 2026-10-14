@@ -33,11 +33,8 @@ export default async function EventsPage() {
                 </td>
                 <td className="is-soft">{formatDay(event.date)}</td>
                 <td className="is-soft is-number">{count}</td>
-                <td className="is-end">
-                  <span className="d-row-actions">
-                    {event.sheetId && <a className="d-quiet-link" href={sheetUrl(event.sheetId)} target="_blank" rel="noreferrer">Open sheet</a>}
-                    <EventActions id={event.id} name={event.name} count={count} hasSheet={!!event.sheetId} />
-                  </span>
+                <td className="is-action">
+                  <EventActions id={event.id} name={event.name} count={count} sheet={event.sheetId ? sheetUrl(event.sheetId) : null} today={event.date === today} />
                 </td>
               </tr>
             ))}
