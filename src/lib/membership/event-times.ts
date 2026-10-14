@@ -1,6 +1,6 @@
 import { formatDay, localDate, TIME_ZONE } from "./config";
 
-// An event's check-in hours. Times are "HH:MM" on the event's date, in the club's time zone.
+// An event's hours, which open and close check-in. Times are "HH:MM" on the event's date, in the club's time zone.
 // An event without times takes the whole day, and its check-in stays open from then on. checkIn is an exec's choice, and it wins over the times.
 export interface EventHours {
   date: string;

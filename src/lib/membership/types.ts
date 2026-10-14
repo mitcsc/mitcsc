@@ -67,7 +67,7 @@ export interface EventInfo {
   year: string;
   name: string;
   date: string; // "2026-10-13"
-  // Check-in hours, "HH:MM" in the club's time zone. Events from before hours existed have none.
+  // Event hours, "HH:MM" in the club's time zone. Events from before hours existed have none.
   starts?: string | null;
   ends?: string | null;
   // An exec closed or reopened check-in by hand. It wins over the hours until the hours change.

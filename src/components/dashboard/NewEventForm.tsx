@@ -10,18 +10,18 @@ import { checkInState, clashes, clashNote, formatCountdown, type TakenEvent } fr
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
 import PathText from "./PathText";
 
-// Start and end times for check-in. Shared with the Events dialog.
+// The event's start and end times, which open and close check-in. Shared with the Events dialog.
 export function EventHoursFields({ starts, ends, onStarts, onEnds, invalid = false, compact = false }: {
   starts: string; ends: string; onStarts: (v: string) => void; onEnds: (v: string) => void; invalid?: boolean; compact?: boolean;
 }) {
   const input = `m-input${compact ? " is-compact" : ""}`;
   return (
     <div className="m-field">
-      <span className="m-label">Check-in hours<span className="m-label-note">Optional</span></span>
+      <span className="m-label">Event hours<span className="m-label-note">Optional</span></span>
       <div className="d-hours">
-        <input className={input} type="time" aria-label="Check-in opens" value={starts} aria-invalid={invalid || undefined} onChange={(e) => onStarts(e.target.value)} />
+        <input className={input} type="time" aria-label="Event starts" value={starts} aria-invalid={invalid || undefined} onChange={(e) => onStarts(e.target.value)} />
         <span aria-hidden="true">to</span>
-        <input className={input} type="time" aria-label="Check-in closes" value={ends} aria-invalid={invalid || undefined} onChange={(e) => onEnds(e.target.value)} />
+        <input className={input} type="time" aria-label="Event ends" value={ends} aria-invalid={invalid || undefined} onChange={(e) => onEnds(e.target.value)} />
       </div>
       <span className="d-field-note">Check-in opens and closes on its own at these times. Without them, it opens on the event’s day and stays open until someone closes it.</span>
     </div>
