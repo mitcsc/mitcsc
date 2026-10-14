@@ -11,13 +11,14 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
   folder: string | null;
   people: { email: string; role: "Owner" | "Editor" }[];
   accessCheckedAt: number | null;
-  club: { email: string; state: "missing" | "broken" | "connected" };
+  // "no-email": connected before card emails existed, so it can't send them yet.
+  club: { email: string; state: "missing" | "broken" | "no-email" | "connected" };
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"access" | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [search, setSearch] = useState("");
-  const connected = club.state === "connected";
+  const connected = club.state === "connected" || club.state === "no-email";
   const query = search.trim().toLowerCase();
   const shownPeople = query ? people.filter((p) => p.email.toLowerCase().includes(query)) : people;
 
@@ -69,6 +70,7 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
             {club.email}
             {club.state === "connected" && <span className="m-pill is-green">Connected</span>}
             {club.state === "broken" && <span className="m-pill is-yellow">Needs reconnecting</span>}
+            {club.state === "no-email" && <span className="m-pill is-yellow">Card emails off</span>}
             {club.state === "missing" && <span className="m-pill is-yellow">Not connected</span>}
           </span>
           <form action="/api/auth/google/connect" method="get">
