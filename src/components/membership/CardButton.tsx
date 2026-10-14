@@ -25,5 +25,5 @@ export function CardButtonContent({ wallets, height = 14 }: { wallets: Wallet[];
 
 // Members open their card from an emailed link, so it works on any phone.
 export default function CardButton({ wallets }: { wallets: Wallet[] }) {
-  return <Link className="m-btn is-outline is-small mp-card-button" href="/join/card"><CardButtonContent wallets={wallets} /></Link>;
+  return <Link className="m-btn is-outline is-small mp-card-button" href="/join/pass"><CardButtonContent wallets={wallets} /></Link>;
 }

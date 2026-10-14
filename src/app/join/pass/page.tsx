@@ -11,8 +11,8 @@ import "../membership.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Get your CSC card",
-  description: "Get your MIT CSC membership card for Apple Wallet or Google Wallet.",
+  title: "Add to your digital wallet",
+  description: "Add your MIT CSC membership card to Apple Wallet or Google Wallet.",
 };
 
 export default async function CardPage({ searchParams }: { searchParams: Promise<{ link?: string; kerb?: string }> }) {

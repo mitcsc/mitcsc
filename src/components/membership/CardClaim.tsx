@@ -13,7 +13,7 @@ function Email() {
   return <a href={`mailto:${CLUB_EMAIL}`}>{CLUB_EMAIL}</a>;
 }
 
-// /join/card: members get a one-time link at kerb@mit.edu, and the link opens their card in that browser.
+// /join/pass: members get a one-time link at kerb@mit.edu, and the link opens their card in that browser.
 export default function CardClaim({ year, link, deadLink, buttons, kerb: initialKerb }: {
   year: string | null; link: string | null; deadLink: boolean; buttons: ("apple" | "google")[]; kerb: string;
 }) {
@@ -39,8 +39,8 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
         {showLink ? (
           <>
-            <h1 className="mp-title">Your membership card</h1>
-            <p className="mp-muted">Add your {year ? `${year} ` : ""}MIT CSC card to your phone.</p>
+            <h1 className="mp-title">Add to your digital wallet</h1>
+            <p className="mp-muted">Your {year ? `${year} ` : ""}MIT CSC membership card is ready. Tap below to add it.</p>
             <div className="mp-card-action">
               <WalletButtons wallet={{ buttons, problem: null }} link={link} />
             </div>
@@ -53,10 +53,10 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
           </div>
         ) : (
           <>
-            <h1 className="mp-title">Get your membership card</h1>
+            <h1 className="mp-title">Add to your digital wallet</h1>
             {deadLink
               ? <p className="m-error" role="alert">This link was already used or has expired. Get a new one below.</p>
-              : <p className="mp-muted">We’ll email a link to the email you used when you became a member. It opens your card for Apple Wallet or Google Wallet.</p>}
+              : <p className="mp-muted">You’ll receive a link in your email to add the pass to your digital wallet.</p>}
             <form className="mp-form mp-card-form" onSubmit={send}>
               <div className="m-field">
                 <label htmlFor="card-kerb" className="m-label">Kerberos</label>
@@ -69,12 +69,15 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
                 </div>
               </div>
               {error && <p id="card-error" className="m-error" role="alert">{error}</p>}
-              <button type="submit" className="m-btn is-block" disabled={busy}>{busy ? "Sending…" : "Email my card link"}</button>
+              <div className="mp-card-buttons">
+                <button type="submit" className="m-btn is-block" disabled={busy}>{busy ? "Sending…" : "Email my card link"}</button>
+                <Link href="/join" className="m-btn is-outline is-block">Not a member yet? Sign up</Link>
+              </div>
             </form>
           </>
         )}
       </div>
-      <p className="mp-footnote">{!showLink && !sentTo && <span>Not a member yet? <Link href="/join">Join CSC</Link></span>}<span>Questions? <Email /></span></p>
+      <p className="mp-footnote"><span>Questions? <Email /></span></p>
     </main>
   );
 }

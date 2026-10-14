@@ -37,7 +37,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
   }
   const member = view === "signup" || problem ? await ownMember(config) : null;
   // A Wallet button found no signup in this browser, so offer the email link.
-  if (!member && problem === "missing") redirect("/join/card");
+  if (!member && problem === "missing") redirect("/join/pass");
 
   const year: PublicYear = {
     year: config.year,
