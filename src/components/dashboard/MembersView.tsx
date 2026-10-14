@@ -199,7 +199,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
             </h2>
             <div className="d-venmo-check">
               <span suppressHydrationWarning>{venmoCheckedAt ? `Checked ${ago(venmoCheckedAt)}` : "Not checked yet"}</span>
-              <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo"}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
+              <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo" || pending.length === 0} title={pending.length === 0 ? "Nobody is waiting for confirmation" : undefined}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
             </div>
           </div>
           <div id="pending-list" className={`d-collapsible${pendingOpen ? " is-open" : ""}${collapseMoved ? " is-animated" : ""}`} inert={!pendingOpen}>
