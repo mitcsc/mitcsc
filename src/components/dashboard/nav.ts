@@ -36,6 +36,7 @@ export const SECTIONS: NavSection[] = [
   { href: "/dashboard/check-in", label: "Check-In", also: "/dashboard/events", tabs: CHECK_IN_TABS },
   { href: "/dashboard/membership", label: "Membership", tabs: MEMBERSHIP_TABS },
   { href: "/dashboard/delibs", label: "Delibs", tabs: DELIB_TABS },
+  { href: "/dashboard/links", label: "Links" },
   { href: "/dashboard/photos", label: "Photos" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
