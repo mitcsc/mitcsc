@@ -49,21 +49,15 @@ export function MobileNav({ email }: { email: string }) {
       </button>
       {open && <div className="d-mobile-backdrop" onClick={() => setOpen(false)} />}
       <nav id="d-mobile-menu" aria-label="Dashboard" className={`d-mobile-menu${open ? " is-open" : ""}`} inert={!open}>
-        {/* Each section links to its first tab. Its other tabs sit indented below it. */}
-        {SECTIONS.map((s) => {
-          const [first, ...rest] = s.tabs || [];
-          const current = first ? tabActive(pathname, first) : sectionActive(pathname, s);
-          return (
-            <div key={s.href} className="d-mobile-group">
-              <Link href={s.href} className="d-mobile-top" aria-current={current ? "page" : undefined}>{s.label}</Link>
-              {rest.length > 0 && (
-                <div className="d-mobile-subs">
-                  {rest.map((t) => <Link key={t.href} href={t.href} className="d-mobile-sub" aria-current={tabActive(pathname, t) ? "page" : undefined}>{t.label}</Link>)}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {/* Every page is a link of the same size. A section with tabs shows its name as a small
+            label above them, so the label never reads as one more page. Other sections follow
+            after a divider. */}
+        {menuGroups().map((group) => (
+          <div key={group.href} role="group" aria-label={group.label} className={`d-mobile-group${group.label ? "" : " is-plain"}`}>
+            {group.label && <span className="d-mobile-label" aria-hidden="true">{group.label}</span>}
+            {group.links.map((link) => <Link key={link.href} href={link.href} className="d-mobile-link" aria-current={link.current(pathname) ? "page" : undefined}>{link.label}</Link>)}
+          </div>
+        ))}
         <div className="d-mobile-account">
           <span>{email}</span>
           <form action="/api/auth/signout" method="post">
@@ -73,6 +67,24 @@ export function MobileNav({ email }: { email: string }) {
       </nav>
     </div>
   );
+}
+
+type MenuLink = { href: string; label: string; current: (pathname: string) => boolean };
+
+// The phone menu: one group per section with tabs, and one unlabeled group for each run of sections without tabs.
+function menuGroups() {
+  const groups: { href: string; label?: string; links: MenuLink[] }[] = [];
+  for (const section of SECTIONS) {
+    if (section.tabs) {
+      groups.push({ href: section.href, label: section.label, links: section.tabs.map((t) => ({ href: t.href, label: t.label, current: (p) => tabActive(p, t) })) });
+      continue;
+    }
+    const link = { href: section.href, label: section.label, current: (p: string) => sectionActive(p, section) };
+    const last = groups.at(-1);
+    if (last && !last.label) last.links.push(link);
+    else groups.push({ href: section.href, links: [link] });
+  }
+  return groups;
 }
 
 // The autosave status, for the header on phones. Desktop shows it in the sub-tab row.
