@@ -3,7 +3,8 @@
 import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { execAccess, requireExec } from "@/lib/membership/exec-auth";
-import { clubFolder, clubPath, createFolder, getItem, listChildren, FOLDER } from "@/lib/membership/google/drive";
+import { GoogleApiError } from "@/lib/membership/google/api";
+import { clubFolder, clubPath, createFolder, getItem, listChildren, renameFile, trashFile, FOLDER } from "@/lib/membership/google/drive";
 import { clubEmail } from "@/lib/membership/google/oauth";
 import { createSheet } from "@/lib/membership/google/sheets";
 import { cleanForm, text } from "@/lib/membership/form";
@@ -225,7 +226,14 @@ export async function renameEvent(id: string, name: string): Promise<Result<null
     await requireExec();
     const clean = text(name, 100);
     if (!clean) throw new MembershipError("Name the event.");
-    await updateEvent(id, (e) => ({ ...e, name: clean }));
+    const event = await updateEvent(id, (e) => ({ ...e, name: clean }));
+    // The sheet keeps the event's name. A sheet someone already removed from Drive needs nothing.
+    if (event.sheetId) {
+      await renameFile(event.sheetId, clean).catch((error) => {
+        if (error instanceof GoogleApiError && error.googleStatus === 404) return;
+        throw new MembershipError("The event has the new name, but its Google Sheet does not. Check the club Google account in Settings, then save the name again.", 502);
+      });
+    }
     return null;
   });
 }
@@ -234,7 +242,15 @@ export async function deleteEventAction(id: string): Promise<Result<null>> {
   return attempt(async () => {
     await requireExec();
     const event = await getEvent(String(id));
-    if (event) await deleteEvent(event);
+    if (!event) return null;
+    // The sheet goes first, so a Google problem leaves the event in place to try again.
+    if (event.sheetId) {
+      await trashFile(event.sheetId).catch((error) => {
+        if (error instanceof GoogleApiError && error.googleStatus === 404) return;
+        throw new MembershipError("Could not move the event’s Google Sheet to the trash, so nothing was deleted. Check the club Google account in Settings, then try again.", 502);
+      });
+    }
+    await deleteEvent(event);
     return null;
   });
 }

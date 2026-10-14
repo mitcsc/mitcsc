@@ -86,6 +86,15 @@ export async function createSpreadsheetFile(name: string, parentId: string) {
   });
 }
 
+export async function renameFile(id: string, name: string) {
+  await google(`${DRIVE}/files/${encodeURIComponent(id)}`, { method: "PATCH", query: { fields: "id", supportsAllDrives: true }, body: { name } });
+}
+
+// Drive keeps trashed files for 30 days, so a deleted event's sheet can still be restored from the trash.
+export async function trashFile(id: string) {
+  await google(`${DRIVE}/files/${encodeURIComponent(id)}`, { method: "PATCH", query: { fields: "id", supportsAllDrives: true }, body: { trashed: true } });
+}
+
 interface Permission {
   emailAddress?: string;
   role: string;

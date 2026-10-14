@@ -20,6 +20,7 @@ const { newYearConfig, canStartNextYear, formTitle } = require('../src/lib/membe
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
 const { walletButtons } = require('../src/lib/membership/wallet.ts');
+const { renameFile, trashFile } = require('../src/lib/membership/google/drive.ts');
 const { redeemCardLink } = require('../src/lib/membership/card-link.ts');
 
 const YEAR = '2026-2027';
@@ -66,8 +67,9 @@ function run([name, ...args]) {
   }
 }
 
-// Gmail messages by id, served to the Venmo check.
+// Gmail messages by id, served to the Venmo check, and the Drive changes the dashboard asked for.
 const gmail = new Map();
+const driveChanges = [];
 global.fetch = async (url, options = {}) => {
   const target = new URL(String(url));
   if (target.hostname === 'redis.test.invalid') {
@@ -80,6 +82,11 @@ global.fetch = async (url, options = {}) => {
     const id = target.pathname.split('/messages/')[1];
     if (!id) return Response.json({ messages: [...gmail.keys()].map((messageId) => ({ id: messageId })) });
     return Response.json(gmail.get(id));
+  }
+  if (target.hostname === 'www.googleapis.com' && target.pathname.startsWith('/drive/v3/files/')) {
+    assert.equal(options.headers.Authorization, 'Bearer test-access-token');
+    driveChanges.push({ method: options.method, id: target.pathname.split('/files/')[1], body: JSON.parse(options.body) });
+    return Response.json({ id: 'x' });
   }
   throw new Error(`Unexpected request to ${target.hostname}`);
 };
@@ -308,3 +315,13 @@ test('Kerbs imported from old sheets and payments on this site both get the retu
   assert.equal(await store.pastMemberCount(), 3);
 });
 
+test('Renaming or deleting an event renames its Google Sheet or moves it to the Drive trash', async () => {
+  db.set(keys.google, JSON.stringify({ email: 'club@example.invalid', refreshToken: 'r', scopes: [], connectedAt: 0, connectedBy: 'x', brokenAt: null, accessToken: 'test-access-token', accessTokenExpiresAt: Date.now() + 60_000 }));
+  driveChanges.length = 0;
+  await renameFile('sheet1', 'Mooncake night');
+  await trashFile('sheet1');
+  assert.deepEqual(driveChanges, [
+    { method: 'PATCH', id: 'sheet1', body: { name: 'Mooncake night' } },
+    { method: 'PATCH', id: 'sheet1', body: { trashed: true } },
+  ], 'The sheet is trashed, never deleted for good');
+});

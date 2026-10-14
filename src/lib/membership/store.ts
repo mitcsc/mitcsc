@@ -115,7 +115,7 @@ export async function updateEvent(id: string, change: (event: EventInfo) => Even
 }
 
 // Newest first, with check-in counts.
-// Deletes the event and its check-ins. Its Google Sheet stays in Drive.
+// Deletes the event and its check-ins. The caller handles its Google Sheet.
 export async function deleteEvent(event: EventInfo) {
   const sync = keys.sync(`event:${event.id}`);
   await pipeline([

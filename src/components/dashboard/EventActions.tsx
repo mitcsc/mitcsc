@@ -44,7 +44,7 @@ function EventDialog({ id, name, count, sheet, onClose }: { id: string; name: st
 
   async function remove(close: () => void) {
     const people = count === 1 ? "1 check-in" : `${count} check-ins`;
-    if (!window.confirm(`Delete “${name}” and its ${people}?${sheet ? " The Google Sheet stays in Drive." : ""}`)) return;
+    if (!window.confirm(`Delete “${name}” and its ${people}?${sheet ? " Its Google Sheet moves to the Drive trash, where you can restore it for 30 days." : ""}`)) return;
     setBusy(true);
     setError("");
     const result = await deleteEventAction(id).catch(() => FAILED);
