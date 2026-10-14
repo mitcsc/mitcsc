@@ -161,7 +161,7 @@ function SignupForm({ year, member, cards, onDone }: {
     <main className="m-root mp-page">
       <header className="mp-hero">
         <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
-        <h1 className="mp-title is-large">{formTitle(year.form)}</h1>
+        <h1 className="mp-title is-large">{formTitle(year.form, year.year)}</h1>
         {year.form.intro && <p className="mp-muted">{year.form.intro}</p>}
         {cards && <CardButton wallets={cards} />}
       </header>

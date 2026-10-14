@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { saveForm } from "@/app/dashboard/actions";
 import { CardButtonContent } from "@/components/membership/CardButton";
 import { Icon } from "@/components/membership/icons";
-import { DEFAULT_FORM_TITLE, formTitle, money, questionOptions, venmoNote } from "@/lib/membership/config";
+import { defaultFormTitle, formTitle, money, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { FormConfig, Question, QuestionType } from "@/lib/membership/types";
 import { Setting } from "./YearSettings";
 import { useSave } from "./Shell";
@@ -101,7 +101,7 @@ export default function FormEditor({ year, form: initial, pay }: { year: string;
           <label className="d-field">
             <span className="m-label">Title</span>
             <input
-              className="m-input is-compact" value={form.title || ""} maxLength={60} placeholder={DEFAULT_FORM_TITLE}
+              className="m-input is-compact" value={form.title || ""} maxLength={60} placeholder={defaultFormTitle(year)}
               onFocus={() => setScreen("signup")} onChange={(e) => update({ title: e.target.value })}
             />
           </label>
@@ -258,7 +258,7 @@ function Preview({ year, form }: { year: string; form: FormConfig }) {
     <div className="d-preview" aria-hidden="true">
       <div className="d-preview-hero">
         <Image src="/img/logo/logo-with-panda.png" alt="" width={48} height={48} />
-        <span className="d-preview-title">{formTitle(form)}</span>
+        <span className="d-preview-title">{formTitle(form, year)}</span>
         {form.intro && <span className="d-preview-intro">{form.intro}</span>}
         <span className="d-preview-card"><CardButtonContent wallets={["apple"]} height={10} /></span>
       </div>
