@@ -36,13 +36,13 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
         note={`Everyone who can edit the “${CLUB_DRIVE_FOLDER}” folder in ${club.email}’s Google Drive can use this dashboard. Change it in Drive.`}
       >
         {people.length > 0 ? (
-          <div className="d-people">
+          <div className="d-access">
             <input
               className="d-search is-wide" type="search" aria-label="Search people with access"
               placeholder={`Search ${people.length} ${people.length === 1 ? "person" : "people"}`}
               value={search} onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="d-people-list">
+            <div className="d-access-list">
               {shownPeople.map((p) => (
                 <div key={p.email}><span>{p.email}</span><span className="d-role">{p.role}</span></div>
               ))}
