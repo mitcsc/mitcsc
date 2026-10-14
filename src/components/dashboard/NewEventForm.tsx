@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { createEventAction } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
 import { schoolYearOn } from "@/lib/membership/config";
-import { checkInState, clashes, clashNote, formatCountdown, type TakenEvent } from "@/lib/membership/event-times";
+import { checkInState, clashes, clashNote, type TakenEvent } from "@/lib/membership/event-times";
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
 import PathText from "./PathText";
 
@@ -28,37 +28,11 @@ export function EventHoursFields({ starts, ends, onStarts, onEnds, invalid = fal
   );
 }
 
-export type UpcomingEvent = { id: string; name: string; when: string; opensAt: number };
-
-// Events whose check-in opens within a day, each with a countdown and a way in, so nobody creates one of them again.
-// At zero the page reloads, and the Check in tab shows the event instead of this form.
-function Upcoming({ events, renderedAt }: { events: UpcomingEvent[]; renderedAt: number }) {
-  const router = useRouter();
-  const [now, setNow] = useState(renderedAt);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const started = events.some((e) => e.opensAt <= now);
-  useEffect(() => {
-    if (started) router.refresh();
-  }, [started, router]);
-
-  return events.map((e) => (
-    <div key={e.id} className="d-upcoming">
-      <span className="m-pill is-yellow d-upcoming-timer" suppressHydrationWarning>Opens in {formatCountdown(e.opensAt - now)}</span>
-      <span className="d-upcoming-name">{e.name}</span>
-      <span className="d-upcoming-when">{e.when}</span>
-      <Link className="m-btn is-block d-upcoming-open" href={`/dashboard/events/${e.id}`}>Go to event</Link>
-    </div>
-  ));
-}
-
 // The New event page, and the Check in tab on a day with no event ("today"), where it explains why it shows.
 // clubFolder is the "MIT CSC" folder, or null when the club Google account is not connected; then attendance stays on this site only.
-// taken lists every event, so the form can warn about hours that overlap one. upcoming lists events that start within a day ("today" only).
-export default function NewEventForm({ today, taken, clubFolder, variant = "page", upcoming = [], renderedAt = 0 }: {
-  today: string; taken: TakenEvent[]; clubFolder: DriveChoice | null; variant?: "page" | "today"; upcoming?: UpcomingEvent[]; renderedAt?: number;
+// taken lists every event, so the form can warn about hours that overlap one.
+export default function NewEventForm({ today, taken, clubFolder, variant = "page" }: {
+  today: string; taken: TakenEvent[]; clubFolder: DriveChoice | null; variant?: "page" | "today";
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -70,8 +44,6 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [opening, startOpening] = useTransition();
-  // With an event about to start, the form stays folded away until someone asks for a different event.
-  const [creating, setCreating] = useState(upcoming.length === 0);
   // Half-entered hours are not checked yet. Saving asks for both.
   const clash = !starts === !ends ? taken.find((t) => clashes(t, { date, starts, ends })) : undefined;
   // An event whose hours have not started yet is only created now; its check-in opens on its own later.
@@ -147,24 +119,14 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
           </>
         ) : (
           <div className="d-start-head">
-            <h1 className="d-phone-title">{upcoming.length > 0 ? `${upcoming.length > 1 ? "Events start" : "An event starts"} soon` : "No event today"}</h1>
+            <h1 className="d-phone-title">No event today</h1>
             <p className="d-start-text">
-              {upcoming.length > 0
-                ? "It is already set up, and its check-in opens on its own. Use it instead of creating a new event."
-                : "There is no active event created yet. If there is an event today and you are checking people in, fill in the details below to create an event and start checking people in."}
+              There is no active event created yet. If there is an event today and you are checking people in, fill in the details below to create an event and start checking people in.
             </p>
           </div>
         )}
-        {upcoming.length > 0 && <Upcoming events={upcoming} renderedAt={renderedAt} />}
-        {creating ? (
-          <>
-            {upcoming.length > 0 && <h2 className="d-upcoming-other">Create a different event</h2>}
-            {fields}
-            {button}
-          </>
-        ) : (
-          <button type="button" className="m-btn is-outline is-block d-phone-submit" onClick={() => setCreating(true)}>Create a different event</button>
-        )}
+        {fields}
+        {button}
       </form>
       {picking && folder && (
         <DrivePicker

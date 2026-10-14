@@ -349,12 +349,6 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-phone-submit { margin-top: 8px; }
 .d-start-head { display: flex; flex-direction: column; gap: 8px; }
 .d-start-text { font-size: 15px; line-height: 1.5; color: var(--muted); }
-.d-upcoming { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px; border: 1px solid #ffc95a40; border-radius: 14px; background: #ffb0200d; }
-.d-upcoming-timer { margin-bottom: 6px; font-variant-numeric: tabular-nums; }
-.d-upcoming-name { font-size: 20px; font-weight: 500; line-height: 1.25; letter-spacing: -0.01em; overflow-wrap: anywhere; }
-.d-upcoming-when { font-size: 14px; color: var(--muted); }
-.d-upcoming-open { margin-top: 14px; }
-.d-upcoming-other { margin-top: 12px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 17px; font-weight: 500; }
 .d-checkin-head { display: flex; flex-direction: column; gap: 4px; }
 .d-checkin-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
 .m-root .d-checkin-meta a { color: var(--muted); }
