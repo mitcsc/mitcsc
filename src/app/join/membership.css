@@ -97,3 +97,16 @@
 .m-root a.mp-soft-link { color: var(--muted); }
 .m-root a.mp-soft-link:hover, .mp-soft-link:hover { color: var(--text); }
 .mp-center .mp-footnote { margin-top: 24px; }
+
+/* Wallet buttons on the done screen, and /join/card */
+.mp-wallet { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-bottom: 8px; transition: opacity 0.2s; }
+.mp-wallet.is-busy { opacity: 0.55; pointer-events: none; }
+.mp-wallet a { display: block; border-radius: 10px; transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1); }
+.mp-wallet a:active { transform: scale(0.97); }
+.mp-wallet img { display: block; width: auto; height: 48px; }
+.mp-wallet-note { font-size: 13px; color: var(--muted); }
+.mp-wallet ~ p { margin-bottom: 12px; }
+.mp-card-action { margin-top: 24px; }
+.mp-card-form { width: 100%; margin-top: 24px; text-align: left; }
+.mp-card-sent { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mp-strong { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }

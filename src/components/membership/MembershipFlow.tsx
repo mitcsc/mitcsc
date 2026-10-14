@@ -1,14 +1,16 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
-import { lookUpKerb, refreshStatus, reportPayment, signUp, walletLink, type KerbStatus } from "@/app/join/actions";
+import { lookUpKerb, refreshStatus, reportPayment, signUp, type KerbStatus } from "@/app/join/actions";
 import WaitingPanda from "@/components/voting/WaitingPanda";
 import { CLUB_EMAIL, isKerb, money, normalizeKerb, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { MemberView } from "@/lib/membership/members";
 import type { FormConfig, PaymentMethod, Question } from "@/lib/membership/types";
 import { Icon } from "./icons";
+import WalletButtons, { type WalletInfo } from "./WalletButtons";
 
 export interface PublicYear {
   year: string;
@@ -37,7 +39,7 @@ function Email() {
   return <a href={`mailto:${CLUB_EMAIL}`}>{CLUB_EMAIL}</a>;
 }
 
-export default function MembershipFlow({ year, member: initial, venmo }: { year: PublicYear | null; member: MemberView | null; venmo: VenmoInfo | null }) {
+export default function MembershipFlow({ year, member: initial, venmo, wallet }: { year: PublicYear | null; member: MemberView | null; venmo: VenmoInfo | null; wallet: WalletInfo }) {
   const [member, setMember] = useState(initial);
   const [step, setStep] = useState<Step>(() => (!initial ? "form" : initial.status === "paid" || initial.reported ? "status" : "pay"));
 
@@ -56,7 +58,7 @@ export default function MembershipFlow({ year, member: initial, venmo }: { year:
       />
     );
   }
-  return <StatusScreen year={year} member={member} onChange={setMember} onPayAgain={() => setStep("pay")} />;
+  return <StatusScreen year={year} member={member} wallet={wallet} onChange={setMember} onPayAgain={() => setStep("pay")} />;
 }
 
 function Closed({ year }: { year?: string }) {
@@ -67,7 +69,7 @@ function Closed({ year }: { year?: string }) {
         <h1 className="mp-title">Signups are closed</h1>
         <p className="mp-muted">{year ? `Membership signups for ${year} are closed right now.` : "Membership signups are not open yet."} Check back soon.</p>
       </div>
-      <p className="mp-footnote">Questions? <Email /></p>
+      <p className="mp-footnote">{year && <>Already a member? <Link href="/join/card">Get your card</Link> · </>}Questions? <Email /></p>
     </main>
   );
 }
@@ -162,7 +164,7 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
                 {taken && (
                   <div id="kerb-note" role="alert" className="mp-kerb-note">
                     <span className="mp-bad">{kerb} is already signed up for {year.year}.</span>
-                    <span className="mp-muted">Not you? Email <Email /> and exec will sort it out.</span>
+                    <span className="mp-muted">Is this you? <Link href={`/join/card?kerb=${encodeURIComponent(kerb)}`}>Get your card by email</Link>. Not you? Email <Email />.</span>
                   </div>
                 )}
                 {!taken && lookup?.kerb === kerb && lookup.status === "returning" && discount > 0 && (
@@ -180,7 +182,7 @@ function SignupForm({ year, member, onDone }: { year: PublicYear; member: Member
         <button type="submit" className="m-btn is-block mp-continue" disabled={busy || taken}>{busy ? "Saving…" : "Continue"}</button>
       </form>
 
-      <p className="mp-footnote">Questions? <Email /></p>
+      <p className="mp-footnote">Already a member? <Link href="/join/card">Get your card</Link> · Questions? <Email /></p>
     </main>
   );
 }
@@ -405,9 +407,10 @@ function PayScreen({ year, member, venmo, onBack, onReported }: {
 
 // After paying
 
-function StatusScreen({ year, member, onChange, onPayAgain }: { year: PublicYear; member: MemberView; onChange: (view: MemberView) => void; onPayAgain: () => void }) {
+function StatusScreen({ year, member, wallet, onChange, onPayAgain }: {
+  year: PublicYear; member: MemberView; wallet: WalletInfo; onChange: (view: MemberView) => void; onPayAgain: () => void;
+}) {
   const [polls, setPolls] = useState(0);
-  const [wallet, setWallet] = useState<{ busy: boolean; error: string }>({ busy: false, error: "" });
   const [, startTransition] = useTransition();
   const watching = member.status === "unpaid" && member.method === "venmo" && member.reported && polls < POLL_TIMES;
 
@@ -422,15 +425,6 @@ function StatusScreen({ year, member, onChange, onPayAgain }: { year: PublicYear
     }, POLL_MS);
     return () => window.clearTimeout(timer);
   }, [watching, polls, onChange]);
-
-  async function openWallet() {
-    setWallet({ busy: true, error: "" });
-    const result = await walletLink().catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
-    if (result.ok) {
-      window.location.href = result.value;
-      setWallet({ busy: false, error: "" });
-    } else setWallet({ busy: false, error: result.error });
-  }
 
   const price = money(member.price);
   const paid = member.status === "paid";
@@ -449,12 +443,7 @@ function StatusScreen({ year, member, onChange, onPayAgain }: { year: PublicYear
         <h1 className="mp-title">{paid ? "You're a member!" : "You're signed up!"}</h1>
         <p className="mp-muted" aria-live="polite">{message}</p>
         <div className="mp-status-actions">
-          {year.wallet && (
-            <button type="button" className="m-btn is-light is-block" onClick={openWallet} disabled={wallet.busy}>
-              {wallet.busy ? "Making your card…" : "Add membership card to Wallet"}
-            </button>
-          )}
-          {wallet.error && <p className="m-error" role="alert">{wallet.error}</p>}
+          {year.wallet && <WalletButtons wallet={wallet} />}
           {calendarUrl && <a className="m-btn is-outline is-block" href={calendarUrl} target="_blank" rel="noreferrer">Add the CSC calendar</a>}
           {paid && instagram && <a className="mp-soft-link" href={`https://instagram.com/${encodeURIComponent(instagram)}`} target="_blank" rel="noreferrer">Follow @{instagram}</a>}
           {!paid && <button type="button" className="mp-soft-link" onClick={onPayAgain}>Pay another way</button>}

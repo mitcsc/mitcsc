@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { updateSettings, type SettingsPatch } from "@/app/dashboard/actions";
+import { importFormSignups, updateSettings, type SettingsPatch } from "@/app/dashboard/actions";
+import { CLUB_DRIVE_FOLDER } from "@/lib/membership/config";
 import type { YearConfig } from "@/lib/membership/types";
+import DrivePicker from "./DrivePicker";
 import { Switch } from "./MembersView";
 import { useSave } from "./Shell";
 
@@ -21,7 +23,7 @@ export function Setting({ title, note, children, center = false }: { title: stri
 }
 
 // Every field saves on its own: switches and checkboxes right away, text when the field loses focus.
-export default function YearSettings({ config, nextYear }: { config: YearConfig; nextYear: string | null }) {
+export default function YearSettings({ config, nextYear, connected }: { config: YearConfig; nextYear: string | null; connected: boolean }) {
   const router = useRouter();
   const save = useSave();
   const [values, setValues] = useState({
@@ -100,6 +102,8 @@ export default function YearSettings({ config, nextYear }: { config: YearConfig;
         </label>
       </Setting>
 
+      <FormImport year={config.year} connected={connected} />
+
       {nextYear && (
         <Setting title="New school year" note="Creates a new sheet and copies these settings." center>
           <Link className="m-btn is-medium" href="/dashboard/membership/new-year">Start {nextYear}</Link>
@@ -115,5 +119,53 @@ export function MoneyInput({ value, onChange, onBlur, label }: { value: string; 
       <span aria-hidden="true">$</span>
       <input className="m-input is-compact" inputMode="decimal" value={value} aria-label={label} onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ""))} onBlur={onBlur} />
     </span>
+  );
+}
+
+function rowList(rows: number[]) {
+  const shown = rows.slice(0, 8).join(", ");
+  return rows.length > 8 ? `${shown}, and ${rows.length - 8} more` : shown;
+}
+
+// Members who joined on the old Google Form this year, so they can get their Wallet card.
+function FormImport({ year, connected }: { year: string; connected: boolean }) {
+  const router = useRouter();
+  const [picking, setPicking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+
+  async function importSheet(sheetId: string, name: string) {
+    setPicking(false);
+    setBusy(true);
+    setMessage(null);
+    const result = await importFormSignups(sheetId).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
+    setBusy(false);
+    if (!result.ok) {
+      setMessage({ text: result.error, error: true });
+      return;
+    }
+    const { added, existing, unreadable } = result.value;
+    const parts = added
+      ? [`Added ${added === 1 ? "1 member" : `${added} members`} from “${name}” as paid.`, ...(existing ? [`${existing === 1 ? "1 was" : `${existing} were`} already signed up.`] : [])]
+      : [`Everyone on “${name}” was already signed up.`];
+    if (unreadable.length) parts.push(`Couldn’t read the kerb on ${unreadable.length === 1 ? "row" : "rows"} ${rowList(unreadable)}.`);
+    setMessage({ text: parts.join(" "), error: false });
+    router.refresh();
+  }
+
+  return (
+    <Setting title="Google Form signups" note={`Adds people who joined on the old Google Form for ${year}, so they can get their Wallet card.`}>
+      <div className="d-inline-actions">
+        <button type="button" className="d-chip-btn" onClick={() => setPicking(true)} disabled={!connected || busy}>
+          {busy ? "Reading the sheet…" : "Import from the form’s sheet"}
+        </button>
+        {!connected && <span className="d-field-note">Connect the club Google account first.</span>}
+      </div>
+      <p className="d-field-note">Reads the name, Kerberos, year, and dorm columns on the first tab, and marks everyone paid. Running it again skips people already added. The sheet must be in the “{CLUB_DRIVE_FOLDER}” folder.</p>
+      {message && <p className={message.error ? "m-error" : "d-success"} role="status">{message.text}</p>}
+      {picking && (
+        <DrivePicker title="Pick the Google Form’s response sheet" pick="sheet" onClose={() => setPicking(false)} onPick={(choice) => importSheet(choice.id, choice.path.at(-1) || "the sheet")} />
+      )}
+    </Setting>
   );
 }

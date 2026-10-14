@@ -19,6 +19,8 @@ const { cleanForm } = require('../src/lib/membership/form.ts');
 const { newYearConfig, canStartNextYear } = require('../src/lib/membership/config.ts');
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
+const { walletButtons } = require('../src/lib/membership/wallet.ts');
+const { redeemCardLink } = require('../src/lib/membership/card-link.ts');
 
 const YEAR = '2026-2027';
 
@@ -38,6 +40,7 @@ function run([name, ...args]) {
       return 'OK';
     }
     case 'DEL': return args.filter((k) => db.delete(k)).length;
+    case 'GETDEL': { const value = db.has(args[0]) ? db.get(args[0]) : null; db.delete(args[0]); return value; }
     case 'EXISTS': return args.filter((k) => db.has(k)).length;
     case 'EVAL': {
       const [, , key, before, after] = args;
@@ -247,4 +250,21 @@ test('the Venmo check confirms each payment once and only for the right amount',
   assert.equal(db.get(keys.venmoMessage('d')), '-');
 
   assert.deepEqual(await checkVenmo(config), { ran: false, confirmed: [] }, 'Checks closer than the minimum gap do nothing');
+});
+
+test('Wallet buttons match the device', () => {
+  assert.deepEqual(walletButtons('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15'), ['apple']);
+  assert.deepEqual(walletButtons('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15'), ['apple']);
+  assert.deepEqual(walletButtons('Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36'), ['google']);
+  assert.deepEqual(walletButtons('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'), ['apple', 'google']);
+  assert.deepEqual(walletButtons(null), ['apple', 'google']);
+});
+
+test('A card link from the email works once', async () => {
+  const id = 'A'.repeat(32);
+  db.set(keys.cardLink(id), `${YEAR}:jchen`);
+  assert.deepEqual(await redeemCardLink(id), { year: YEAR, kerb: 'jchen' });
+  assert.equal(await redeemCardLink(id), null, 'A used link must not work again');
+  assert.equal(await redeemCardLink('short'), null);
+  assert.equal(await redeemCardLink(`${'B'.repeat(31)}*`), null);
 });

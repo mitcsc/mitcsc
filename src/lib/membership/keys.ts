@@ -6,6 +6,10 @@ export const keys = {
   year: (year: string) => `${PREFIX}:year:${year}`,
   member: (year: string, kerb: string) => `${PREFIX}:member:${year}:${kerb}`,
   members: (year: string) => `${PREFIX}:members:${year}`,
+  // The signed Apple Wallet file for a member's card, kept apart so member reads stay small.
+  walletPass: (year: string, kerb: string) => `${PREFIX}:wallet-pass:${year}:${kerb}`,
+  // An unused card link from an email. Deleted when the link is used.
+  cardLink: (id: string) => `${PREFIX}:card-link:${id}`,
   // Everyone who paid in any year. They get the returning price.
   paidEver: `${PREFIX}:paid-ever`,
   venmoMessage: (messageId: string) => `${PREFIX}:venmo-message:${messageId}`,
