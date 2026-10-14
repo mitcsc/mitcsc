@@ -12,6 +12,8 @@ export const HOME_PHOTOS_TAG = "home-photos";
 export interface PhotoLibrary {
   folderId: string | null;
   photos: HomePhoto[];
+  // Signed links to Drive's resized copies, by photo id, for the dashboard. They expire after a few hours.
+  thumbnails?: Record<string, string>;
   checkedAt: number;
 }
 
@@ -32,6 +34,7 @@ export async function refreshPhotoLibrary(): Promise<PhotoLibrary> {
   const library: PhotoLibrary = {
     folderId: folder?.id || null,
     photos: files.map((f) => ({ id: f.id, name: f.name, version: f.version, createdAt: Date.parse(f.createdTime) })),
+    thumbnails: Object.fromEntries(files.filter((f) => f.thumbnailLink).map((f) => [f.id, f.thumbnailLink!])),
     checkedAt: Date.now(),
   };
   await redis("SET", keys.homePhotos, JSON.stringify(library));
