@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { saveForm } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
-import { money, questionOptions, venmoNote } from "@/lib/membership/config";
+import { DEFAULT_FORM_TITLE, formTitle, money, questionOptions, venmoNote } from "@/lib/membership/config";
 import type { FormConfig, Question, QuestionType } from "@/lib/membership/types";
 import { Setting } from "./YearSettings";
 import { useSave } from "./Shell";
@@ -98,9 +98,16 @@ export default function FormEditor({ year, form: initial, pay }: { year: string;
       <main className="d-editor-main">
         <Setting title="Top of the page" note="The first thing people see.">
           <label className="d-field">
-            <span className="m-label">Intro</span>
+            <span className="m-label">Title</span>
+            <input
+              className="m-input is-compact" value={form.title || ""} maxLength={60} placeholder={DEFAULT_FORM_TITLE}
+              onFocus={() => setScreen("signup")} onChange={(e) => update({ title: e.target.value })}
+            />
+          </label>
+          <label className="d-field">
+            <span className="m-label">Intro <span className="m-label-note">Optional</span></span>
             <textarea
-              className="m-textarea is-compact" rows={2} value={form.intro} maxLength={500}
+              className="m-textarea is-compact" rows={2} value={form.intro} maxLength={500} placeholder="A short line about membership"
               onFocus={() => setScreen("signup")} onChange={(e) => update({ intro: e.target.value })}
             />
           </label>
@@ -250,7 +257,7 @@ function Preview({ year, form }: { year: string; form: FormConfig }) {
     <div className="d-preview" aria-hidden="true">
       <div className="d-preview-hero">
         <Image src="/img/logo/logo-with-panda.png" alt="" width={48} height={48} />
-        <span className="d-preview-title">Join CSC</span>
+        <span className="d-preview-title">{formTitle(form)}</span>
         {form.intro && <span className="d-preview-intro">{form.intro}</span>}
       </div>
       {form.questions.map((q) => {
@@ -287,7 +294,11 @@ function PaymentPreview({ year, benefits, pay }: { year: string; benefits: strin
       {benefits.length > 0 && (
         <div className="d-preview-field">
           <span className="d-preview-label">Your membership includes</span>
-          <div className="d-preview-strip">{benefits.map((b, i) => <span key={i}><Icon name="check" size={9} strokeWidth={2.6} />{b}</span>)}</div>
+          <div className="d-preview-strip">
+            <div className="d-preview-track">
+              {[0, 1].map((copy) => <span key={copy}>{benefits.map((b, i) => <span key={i}><Icon name="check" size={9} strokeWidth={2.6} />{b}</span>)}</span>)}
+            </div>
+          </div>
         </div>
       )}
       {methods.length > 1 && <div className="d-preview-segments">{methods.map((m, i) => <span key={m} className={i === 0 ? "is-on" : undefined}>{m}</span>)}</div>}

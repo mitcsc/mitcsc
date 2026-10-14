@@ -37,6 +37,7 @@ export function cleanForm(form: FormConfig, current: FormConfig): FormConfig {
   const instagram = text(form.instagram, 40).replace(/^@/, "");
   if (instagram && !/^[A-Za-z0-9._]{1,30}$/.test(instagram)) throw new MembershipError("Enter the Instagram username, like @mitcsc.");
   return {
+    title: text(form.title, 60),
     intro: text(form.intro, 500),
     benefits: (Array.isArray(form.benefits) ? form.benefits : []).map((b) => text(b, 60)).filter(Boolean).slice(0, 20),
     questions,

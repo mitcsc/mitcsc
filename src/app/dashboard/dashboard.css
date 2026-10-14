@@ -273,8 +273,12 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 /* Payment preview */
 .d-preview-pay-head { display: flex; flex-direction: column; gap: 2px; }
 .d-preview-pay-title { font-size: 20px; font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; }
-.d-preview-strip { display: flex; gap: 4px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); }
-.d-preview-strip span { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px 3px 6px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 10px; color: #ffffffcc; white-space: nowrap; }
+/* Scrolls like the strip on the payment screen: the list is drawn twice and slides by one copy. */
+.d-preview-strip { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent); }
+.d-preview-track { display: flex; width: max-content; animation: d-marquee 24s linear infinite; }
+.d-preview-track > span { display: flex; gap: 4px; padding-right: 4px; }
+@keyframes d-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.d-preview-track > span > span { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px 3px 6px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 10px; color: #ffffffcc; white-space: nowrap; }
 .d-preview-strip svg { color: var(--green-text); }
 .d-preview-segments { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line-strong); border-radius: 999px; }
 .d-preview-segments span { flex: 1; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 11px; color: var(--muted); }
