@@ -64,7 +64,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
   signup: { url: string; label: string; qr: string };
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<"all" | "paid" | "pending">("all");
+  const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -203,7 +203,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
             </h2>
             <div className="d-venmo-check">
               <span suppressHydrationWarning>{venmoCheckedAt ? `Checked ${ago(venmoCheckedAt)}` : "Not checked yet"}</span>
-              <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo" || pending.length === 0} title={pending.length === 0 ? "Nobody is waiting for confirmation" : undefined}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
+              <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo" || pending.length === 0} data-tip={pending.length === 0 ? "Nobody is waiting for confirmation" : undefined} data-tip-end>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
             </div>
           </div>
           <div id="pending-list" className={`d-collapsible${pendingOpen ? " is-open" : ""}${collapseMoved ? " is-animated" : ""}`} inert={!pendingOpen}>
@@ -240,15 +240,14 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
 
         <section className="d-section">
           <div className="d-section-head is-table">
-            <h2 className="d-h2">All members</h2>
-            <button type="button" className="d-chip-btn d-add-btn" onClick={() => setAdding(true)}><Icon name="plus" size={14} />Add member</button>
+            <h2 className="d-h2">All members <span className="d-count">{shown.length === members.length ? members.length : `${shown.length} of ${members.length}`}</span></h2>
             <div className="d-table-tools">
-              <div role="tablist" aria-label="Filter" className="d-filters">
-                {([["all", `All ${members.length}`], ["paid", `Paid ${paid.length}`], ["pending", `Pending ${pending.length}`]] as const).map(([key, label]) => (
-                  <button key={key} type="button" role="tab" aria-selected={filter === key} onClick={() => setFilter(key)}>{label}</button>
-                ))}
-              </div>
               <input className="d-search" aria-label="Search members" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <FilterMenu
+                value={filter} onChange={setFilter}
+                options={[["all", "All", members.length], ["paid", "Paid", paid.length], ["pending", "Pending", pending.length]]}
+              />
+              <button type="button" className="d-icon-btn" aria-label="Add member" data-tip="Add member" data-tip-end onClick={() => setAdding(true)}><Icon name="plus" size={16} /></button>
             </div>
           </div>
           <div className="d-table-wrap">
@@ -438,5 +437,44 @@ function Choice({ label, value, options, onChange }: { label: string; value: str
         <Icon name="chevron" />
       </span>
     </label>
+  );
+}
+
+type Filter = "all" | "paid" | "pending";
+
+// The table filter, folded into an icon button with a small menu. While a filter is on, the button fills and names it.
+function FilterMenu({ value, onChange, options }: { value: Filter; onChange: (value: Filter) => void; options: [Filter, string, number][] }) {
+  const [open, setOpen] = useState(false);
+  const current = options.find(([key]) => key === value)!;
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+  return (
+    <div className="d-menu-wrap">
+      <button
+        type="button" className={`d-icon-btn${value !== "all" ? " is-on" : ""}`} aria-haspopup="menu" aria-expanded={open}
+        aria-label={`Filter: ${current[1]}`} data-tip={value === "all" ? "Filter" : `Showing ${current[1].toLowerCase()}`} onClick={() => setOpen(!open)}
+      >
+        <Icon name="filter" size={16} />
+        {value !== "all" && <span>{current[1]}</span>}
+      </button>
+      {open && (
+        <>
+          <div className="d-menu-backdrop" onClick={() => setOpen(false)} />
+          <div className="d-menu" role="menu" aria-label="Filter">
+            {options.map(([key, label, count]) => (
+              <button key={key} type="button" role="menuitemradio" aria-checked={value === key} className="d-menu-item" onClick={() => { onChange(key); setOpen(false); }}>
+                <span className="d-menu-check">{value === key && <Icon name="check" size={14} />}</span>
+                <span className="d-menu-label">{label}</span>
+                <span className="d-menu-count">{count}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

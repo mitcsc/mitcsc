@@ -119,9 +119,28 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-search { width: 180px; height: 34px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; background: transparent; font-size: 13px; }
 .d-search:focus { outline: none; border-color: #ffffff70; }
 .d-search::placeholder { color: #77777d; }
-/* A quiet text button, like the filters: the table is the focus, adding is occasional. */
-.d-add-btn { gap: 6px; padding: 6px 10px; border-color: transparent; color: var(--muted); }
-.d-add-btn:hover:not(:disabled) { border-color: transparent; background: #ffffff0d; }
+/* Round icon buttons next to the search box, at its height. */
+.d-icon-btn { position: relative; display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--muted); }
+.d-icon-btn:hover { border-color: #ffffff40; color: var(--text); }
+.d-icon-btn.is-on { display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 0 12px 0 10px; border-radius: 999px; border-color: transparent; background: #ffffff1a; color: var(--text); font-size: 13px; }
+.d-menu-wrap { position: relative; flex: none; }
+/* Hover hints. data-tip holds the text; data-tip-end aligns it to the right edge for controls near the edge of the page. */
+[data-tip] { position: relative; }
+@media (hover: hover) {
+  [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 50%; z-index: 40; padding: 5px 9px; border: 1px solid var(--line-strong); border-radius: 8px; background: #232325; box-shadow: 0 4px 16px #0008; color: var(--text); font-size: 12px; font-weight: 400; line-height: 1.3; letter-spacing: 0; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, -2px); transition: opacity 120ms ease, transform 120ms ease; }
+  [data-tip]:is(:hover, :focus-visible)::after { opacity: 1; transform: translate(-50%, 0); transition-delay: 350ms; }
+  [data-tip][data-tip-end]::after { left: auto; right: 0; transform: translateY(-2px); }
+  [data-tip][data-tip-end]:is(:hover, :focus-visible)::after { transform: none; }
+  /* No hint over an open menu. */
+  [data-tip][aria-expanded="true"]::after { display: none; }
+}
+.d-menu-backdrop { position: fixed; inset: 0; z-index: 30; }
+.d-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 31; min-width: 180px; padding: 6px; border: 1px solid var(--line-strong); border-radius: 12px; background: #1c1c1e; box-shadow: 0 8px 32px #0009; display: flex; flex-direction: column; animation: d-fade-in 120ms ease-out; }
+.d-menu-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--text); font-size: 14px; text-align: left; }
+.d-menu-item:hover { background: #ffffff10; }
+.d-menu-check { display: inline-grid; place-items: center; width: 14px; color: var(--text); }
+.d-menu-label { flex: 1; }
+.d-menu-count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .d-table-wrap { overflow-x: auto; }
 .d-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
 .d-table th { padding: 10px 12px; font-size: 12px; font-weight: 400; color: var(--faint); text-align: left; }
@@ -459,8 +478,8 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
   .d-pending-action { justify-content: flex-start; }
   .d-search { width: 100%; }
   .d-table-tools { width: 100%; justify-content: flex-start; }
-  /* Filters take one row, and the search box fills the next. */
-  .d-table-tools > .d-filters { flex: 1 1 100%; }
+  /* The search box fills the row, with the icon buttons beside it. */
+  .d-table-tools { flex-wrap: nowrap; gap: 8px; }
   .d-table-tools > .d-search { flex: 1 1 0; width: auto; min-width: 0; }
   .d-section-head.is-table > :last-child { margin-left: 0; }
   .d-phone-body { padding: 28px 16px 32px; }
@@ -470,7 +489,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 /* Motion: short eased transitions for every interaction. */
 .d-shell :is(button, a, input, select, textarea) { transition: color 180ms var(--ease), background-color 180ms var(--ease), border-color 180ms var(--ease), opacity 180ms var(--ease), filter 180ms var(--ease), transform 180ms var(--ease); }
 .d-switch span { transition: transform 240ms var(--ease); }
-.d-shell :is(.m-btn, .d-chip-btn, .d-more-btn, .d-filters button, .m-segments > *, .d-main-nav a):active:not(:disabled) { transform: scale(0.97); }
+.d-shell :is(.m-btn, .d-chip-btn, .d-more-btn, .d-icon-btn, .d-filters button, .m-segments > *, .d-main-nav a):active:not(:disabled) { transform: scale(0.97); }
 /* Every page fades up when it mounts. The header stays put; "backwards" leaves no transform behind for fixed children. */
 .d-shell > :not(.d-header) { animation: d-rise 420ms var(--ease) backwards; }
 .d-collapsible { display: grid; grid-template-rows: 0fr; opacity: 0; }
