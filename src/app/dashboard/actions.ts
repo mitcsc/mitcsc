@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath, revalidateTag } from "next/cache";
+import { HOME_PHOTOS_TAG, photoLibrary, setPhotosShown, shownPhotoIds } from "@/lib/home-photos";
 import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { execAccess, requireExec } from "@/lib/membership/exec-auth";
@@ -330,5 +332,19 @@ export async function refreshExecAccess(): Promise<Result<null>> {
     await requireExec();
     await execAccess(true);
     return null;
+  });
+}
+
+// Home page photos
+
+// Turns photos on or off for the home page. Returns the ids that are on afterwards.
+export async function setHomePhotos(ids: string[], shown: boolean): Promise<Result<string[]>> {
+  return attempt(async () => {
+    await requireExec();
+    const known = new Set((await photoLibrary())?.photos.map((p) => p.id));
+    await setPhotosShown([...new Set(ids)].filter((id) => known.has(id)), !!shown);
+    revalidateTag(HOME_PHOTOS_TAG);
+    revalidatePath("/");
+    return shownPhotoIds();
   });
 }

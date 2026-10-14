@@ -1,6 +1,6 @@
 import { CLUB_DRIVE_FOLDER } from "../config";
 import { MembershipError } from "../errors";
-import { DRIVE, google } from "./api";
+import { DRIVE, google, googleBytes } from "./api";
 import { clubEmail } from "./oauth";
 
 export const FOLDER = "application/vnd.google-apps.folder";
@@ -68,6 +68,36 @@ export async function clubPath(id: string, root?: DriveItem) {
     current = item.parents[0];
   }
   throw new MembershipError(`Pick something inside the “${CLUB_DRIVE_FOLDER}” folder.`, 403);
+}
+
+export interface DriveImage {
+  id: string;
+  name: string;
+  mimeType: string;
+  // Changes whenever the file changes, so it can key cached copies.
+  version: string;
+  createdTime: string;
+}
+
+// Image files directly inside a folder, newest first.
+export async function listImages(folderId: string) {
+  const images: DriveImage[] = [];
+  let pageToken: string | undefined;
+  do {
+    const page = await google<{ files: DriveImage[]; nextPageToken?: string }>(`${DRIVE}/files`, {
+      query: {
+        q: `${quote(folderId)} in parents and mimeType contains 'image/' and trashed = false`, orderBy: "createdTime desc", pageSize: 1000, pageToken,
+        fields: "nextPageToken,files(id,name,mimeType,version,createdTime)", supportsAllDrives: true, includeItemsFromAllDrives: true,
+      },
+    });
+    images.push(...page.files);
+    pageToken = page.nextPageToken;
+  } while (pageToken && images.length < 5000);
+  return images;
+}
+
+export async function downloadFile(id: string) {
+  return googleBytes(`${DRIVE}/files/${encodeURIComponent(id)}`, { alt: "media", supportsAllDrives: true });
 }
 
 export async function createFolder(name: string, parentId: string) {
