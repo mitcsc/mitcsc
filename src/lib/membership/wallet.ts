@@ -1,6 +1,10 @@
 import { formatDay, shortYear, TIME_ZONE } from "./config";
 import { MembershipError } from "./errors";
+import { keys } from "./keys";
+import { limit } from "./rate-limit";
+import { redis } from "./redis";
 import { cardToken } from "./signing";
+import { updateMember } from "./store";
 import type { Member, YearConfig } from "./types";
 
 // Membership cards for Apple Wallet and Google Wallet, made by WalletWallet
@@ -64,9 +68,52 @@ async function call<T>(url: string, init: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function createPass(config: YearConfig, member: Member, siteOrigin: string) {
-  const pass = await call<{ serialNumber: string; shareUrl: string }>(API, { method: "POST", body: JSON.stringify(passSpec(config, member, siteOrigin)) });
-  return { serial: pass.serialNumber, shareUrl: pass.shareUrl };
+async function createPass(config: YearConfig, member: Member, siteOrigin: string) {
+  const pass = await call<{ serialNumber: string; shareUrl: string; googleSaveUrl: string; applePass: string }>(API, {
+    method: "POST", body: JSON.stringify(passSpec(config, member, siteOrigin)),
+  });
+  return { wallet: { serial: pass.serialNumber, shareUrl: pass.shareUrl, googleUrl: pass.googleSaveUrl }, applePass: pass.applePass };
+}
+
+export interface MemberPass {
+  // The signed .pkpass file for Apple Wallet.
+  apple: Buffer;
+  // The "Save to Google Wallet" page.
+  google: string;
+}
+
+// The member's card, made on first use. Cards made before the Apple and Google buttons existed
+// lack the stored Apple file, so they are made again and the old card is cancelled.
+export async function memberPass(config: YearConfig, member: Member, siteOrigin: string): Promise<MemberPass> {
+  const key = keys.walletPass(config.year, member.kerb);
+  if (member.wallet?.googleUrl) {
+    const apple = await redis<string | null>("GET", key);
+    if (apple) return { apple: Buffer.from(apple, "base64"), google: member.wallet.googleUrl };
+  }
+  if (!walletEnabled()) throw new MembershipError("Wallet cards are not set up yet.", 503);
+  await limit("wallet", member.kerb, 5, 3600);
+  const old = member.wallet;
+  const made = await createPass(config, member, siteOrigin);
+  await redis("SET", key, made.applePass);
+  await updateMember(config.year, member.kerb, (m) => ({ ...m, wallet: made.wallet }));
+  if (old) await revokePass(old.serial).catch(() => undefined);
+  return { apple: Buffer.from(made.applePass, "base64"), google: made.wallet.googleUrl };
+}
+
+export type WalletProblem = "missing" | "limit" | "off";
+
+export const WALLET_PROBLEMS: Record<WalletProblem, string> = {
+  missing: "This browser doesn't have your signup. Get your card by email instead.",
+  limit: "Too many tries. Please wait a few minutes and try again.",
+  off: "Wallet cards are unavailable right now. Please try again later.",
+};
+
+// Apple devices get the Apple button, Android gets the Google button, and anything else gets both.
+export function walletButtons(userAgent: string | null): ("apple" | "google")[] {
+  const agent = userAgent || "";
+  if (/android/i.test(agent)) return ["google"];
+  if (/iphone|ipad|ipod|macintosh/i.test(agent)) return ["apple"];
+  return ["apple", "google"];
 }
 
 export async function revokePass(serial: string) {

@@ -54,7 +54,7 @@ export async function updateMember(year: string, kerb: string, change: (member: 
 }
 
 export async function deleteMember(year: string, kerb: string) {
-  await pipeline([["DEL", keys.member(year, kerb)], ["ZREM", keys.members(year), kerb]]);
+  await pipeline([["DEL", keys.member(year, kerb)], ["DEL", keys.walletPass(year, kerb)], ["ZREM", keys.members(year), kerb]]);
 }
 
 // Newest first.

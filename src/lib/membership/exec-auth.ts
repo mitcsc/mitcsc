@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { MembershipError } from "./errors";
 import { CLUB_DRIVE_FOLDER } from "./config";
 import { findFolder, folderEditors } from "./google/drive";
-import { clubConnection, clubEmail } from "./google/oauth";
+import { ClubNotConnected, clubConnection, clubEmail } from "./google/oauth";
 import { keys } from "./keys";
 import { getJson, redis } from "./redis";
 import { sign, verify } from "./signing";
@@ -31,18 +31,24 @@ export function devEmail() {
 }
 
 // Everyone who can edit the club's "MIT CSC" Drive folder, cached for a few minutes.
+// While Google can't be reached or the club account needs reconnecting, the last list stays in use,
+// so exec can still sign in and reconnect it.
 export async function execAccess(fresh = false): Promise<ExecAccess> {
-  if (!fresh) {
-    const cached = await getJson<ExecAccess>(keys.execAccess);
-    if (cached && Date.now() - cached.checkedAt < ACCESS_CACHE_SECONDS * 1000) return cached;
-  }
+  const cached = await getJson<ExecAccess>(keys.execAccess);
+  if (!fresh && cached && Date.now() - cached.checkedAt < ACCESS_CACHE_SECONDS * 1000) return cached;
   const connection = await clubConnection();
-  if (!connection || connection.brokenAt) return { folderId: null, people: [], checkedAt: Date.now() };
-  const folderId = (await findFolder(CLUB_DRIVE_FOLDER))?.id || null;
-  if (!folderId) return { folderId: null, people: [], checkedAt: Date.now() };
-  const access: ExecAccess = { folderId, people: await folderEditors(folderId), checkedAt: Date.now() };
-  await redis("SET", keys.execAccess, JSON.stringify(access));
-  return access;
+  if (!connection) return { folderId: null, people: [], checkedAt: Date.now() };
+  try {
+    if (connection.brokenAt) throw new ClubNotConnected();
+    const folderId = (await findFolder(CLUB_DRIVE_FOLDER))?.id || null;
+    if (!folderId) return { folderId: null, people: [], checkedAt: Date.now() };
+    const access: ExecAccess = { folderId, people: await folderEditors(folderId), checkedAt: Date.now() };
+    await redis("SET", keys.execAccess, JSON.stringify(access));
+    return access;
+  } catch (error) {
+    if (cached) return cached;
+    throw error;
+  }
 }
 
 export async function clearExecAccessCache() {

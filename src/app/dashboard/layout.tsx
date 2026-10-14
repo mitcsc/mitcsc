@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MainNav, ProblemBanner, SignIn } from "@/components/dashboard/Shell";
 import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
+import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google/oauth";
 import "@/components/membership/ui.css";
 import "./dashboard.css";
 
@@ -11,6 +12,24 @@ export const metadata: Metadata = {
   title: "CSC Dashboard",
   robots: { index: false, follow: false },
 };
+
+// Every exec sees this, so whoever knows the club account's password can fix it.
+async function ConnectionBanner() {
+  const connection = await clubConnection().catch(() => null);
+  if (!connection || canSendEmail(connection)) return null;
+  const text = connection.brokenAt
+    ? `The club Google account needs reconnecting. Venmo checks, sheet updates, and card emails are paused until someone reconnects as ${clubEmail()}.`
+    : `Reconnect the club Google account to turn on card emails. Sign in as ${clubEmail()} and allow every permission.`;
+  return (
+    <div className="d-banner" role="status">
+      <span>{text}</span>
+      <form action="/api/auth/google/connect" method="get">
+        <input type="hidden" name="next" value="/dashboard/settings" />
+        <button type="submit" className="d-banner-action">Reconnect</button>
+      </form>
+    </div>
+  );
+}
 
 function SignOut({ label }: { label: string }) {
   return (
@@ -50,6 +69,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <SignOut label="Sign out" />
         </span>
       </header>
+      <ConnectionBanner />
       <Suspense>
         <ProblemBanner />
       </Suspense>

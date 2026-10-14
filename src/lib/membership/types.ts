@@ -56,7 +56,8 @@ export interface Member {
   // "Venmo check" or the email of the exec who confirmed it.
   confirmedBy: string | null;
   venmoMessageId: string | null;
-  wallet: { serial: string; shareUrl: string } | null;
+  // googleUrl is missing on cards made before the Apple and Google buttons existed.
+  wallet: { serial: string; shareUrl: string; googleUrl?: string } | null;
   createdAt: number;
 }
 

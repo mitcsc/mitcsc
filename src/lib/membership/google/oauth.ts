@@ -4,9 +4,10 @@ import { keys } from "../keys";
 import { getJson, redis, updateJson } from "../redis";
 
 // Exec sign in asks only for the email address. Connecting the club account asks for
-// Drive (folders, sheets, sharing) and read-only Gmail (Venmo emails).
+// Drive (folders, sheets, sharing), read-only Gmail (Venmo emails), and Gmail send (card links).
 export const SIGN_IN_SCOPES = ["openid", "email"];
-export const CLUB_SCOPES = ["openid", "email", "https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/gmail.readonly"];
+export const GMAIL_SEND = "https://www.googleapis.com/auth/gmail.send";
+export const CLUB_SCOPES = ["openid", "email", "https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/gmail.readonly", GMAIL_SEND];
 
 export interface ClubConnection {
   email: string;
@@ -18,6 +19,11 @@ export interface ClubConnection {
   brokenAt: number | null;
   accessToken: string | null;
   accessTokenExpiresAt: number;
+}
+
+// Connections made before card emails existed lack the send permission until someone reconnects.
+export function canSendEmail(connection: ClubConnection | null) {
+  return !!connection && !connection.brokenAt && connection.scopes.includes(GMAIL_SEND);
 }
 
 export function clubEmail() {

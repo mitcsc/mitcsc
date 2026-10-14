@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { emailCardLink } from "@/lib/membership/card-link";
 import { isKerb, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError, publicMessage } from "@/lib/membership/errors";
 import { memberView, ownMember, priceFor, readAnswers, requireOpen, requireOwnMember, setMemberCookie, type MemberView, type SignupInput } from "@/lib/membership/members";
@@ -10,7 +10,7 @@ import { claimMember, currentYear, getMember, updateMember } from "@/lib/members
 import { syncMembersLater } from "@/lib/membership/sync";
 import type { Member, PaymentMethod } from "@/lib/membership/types";
 import { checkVenmo } from "@/lib/membership/venmo";
-import { createPass, walletEnabled } from "@/lib/membership/wallet";
+import { walletEnabled } from "@/lib/membership/wallet";
 
 export type KerbStatus = { kerb: string; status: "invalid" | "taken" | "new" | "returning"; price: number };
 
@@ -90,17 +90,18 @@ export async function refreshStatus(): Promise<Result<MemberView>> {
   });
 }
 
-// Makes the Wallet card on first use and returns the page that adds it to Apple or Google Wallet.
-export async function walletLink(): Promise<Result<string>> {
+// "Email me my card": sends kerb@mit.edu a one-time link that opens the card in that browser.
+export async function emailMyCard(raw: string): Promise<Result<{ email: string }>> {
   return attempt(async () => {
-    const { config, member } = await requireOwnMember();
-    if (member.wallet) return member.wallet.shareUrl;
-    if (!walletEnabled()) throw new MembershipError("Wallet cards are not set up yet.", 503);
-    await limit("wallet", member.kerb, 5, 3600);
-    const list = await headers();
-    const origin = `${list.get("x-forwarded-proto") || "https"}://${list.get("host")}`;
-    const pass = await createPass(config, member, origin);
-    const updated = await updateMember(config.year, member.kerb, (m) => (m.wallet ? m : { ...m, wallet: pass }));
-    return updated.wallet!.shareUrl;
+    const config = await currentYear();
+    if (!config || !walletEnabled()) throw new MembershipError("Membership cards are not set up yet.", 404);
+    await limit("card-email-ip", await clientIp(), 10, 3600);
+    const kerb = normalizeKerb(raw);
+    if (!isKerb(kerb)) throw new MembershipError("Enter your kerb, the part of your MIT email before @mit.edu.");
+    await limit("card-email", kerb, 3, 3600);
+    const member = await getMember(config.year, kerb);
+    if (!member) throw new MembershipError(`${kerb} isn't signed up for ${config.year}.`, 404);
+    await emailCardLink(member);
+    return { email: `${kerb}@mit.edu` };
   });
 }
