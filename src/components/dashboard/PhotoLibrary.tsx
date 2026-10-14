@@ -5,6 +5,7 @@ import { setHomePhotos } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
 import { photoUrl, sizedThumbnail, type HomePhoto } from "@/lib/home-photo-urls";
 import { Switch, Toast } from "./MembersView";
+import PathText from "./PathText";
 
 type Filter = "all" | "on" | "off";
 
@@ -31,7 +32,6 @@ export default function PhotoLibraryView({ photos, thumbnails, shown: initialSho
 
   const onCount = photos.filter((p) => shown.has(p.id)).length;
   const visible = photos.filter((p) => filter === "all" || (filter === "on") === shown.has(p.id));
-  const folderName = folderPath.at(-1);
 
   // Click selects one photo. Shift-click selects every photo between it and the last one clicked.
   function pick(event: MouseEvent, id: string) {
@@ -86,14 +86,14 @@ export default function PhotoLibraryView({ photos, thumbnails, shown: initialSho
         {folder && <a className="d-chip-btn" href={folder} target="_blank" rel="noreferrer">Open folder in Drive</a>}
       </div>
       <p className="d-section-note">
-        Photos come from the “{folderName}” folder in Drive ({["MIT CSC", ...folderPath].join(" › ")}). Turn on the ones you want on the home page. Each visit shows a random set of them.
+        Photos come from the <PathText path={["MIT CSC", ...folderPath]} /> folder in Drive. Turn on the ones you want on the home page. Each visit shows a random set of them.
       </p>
       {problem && <p className="m-error" role="alert">{problem}</p>}
       {photos.length > 0 && onCount === 0 && <p className="d-photos-hint">No photos are on, so the home page shows its built-in photos.</p>}
       {onCount > 0 && onCount < FULL_HERO && <p className="d-photos-hint">Turn on at least {FULL_HERO} photos so the home page fills on every screen size.</p>}
 
       {!folder && !problem && (
-        <p className="d-empty-row">No “{folderName}” folder found. Make it in Drive at {["MIT CSC", ...folderPath].join(" › ")}.</p>
+        <p className="d-empty-row">No folder found. Create <PathText path={["MIT CSC", ...folderPath]} /> in Drive.</p>
       )}
       {folder && photos.length === 0 && <p className="d-empty-row">No photos in the folder yet. Add some in Drive, then come back to this page.</p>}
 
