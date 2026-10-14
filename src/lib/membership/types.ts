@@ -12,6 +12,8 @@ export interface Question {
 }
 
 export interface FormConfig {
+  // The heading on /join. Empty or missing (years made before it was editable) shows DEFAULT_FORM_TITLE.
+  title?: string;
   intro: string;
   benefits: string[];
   questions: Question[];
@@ -33,15 +35,6 @@ export interface YearConfig {
   sheetId: string | null;
   sheetName: string;
   createdAt: number;
-}
-
-// An old membership sheet whose kerbs get the returning price.
-export interface PastSheet {
-  id: string; // the Google Sheet id, or "earlier" for kerbs imported before sheets were tracked
-  name: string;
-  count: number;
-  importedAt: number;
-  importedBy: string | null;
 }
 
 export type PaymentMethod = "venmo" | "zelle" | "cash";

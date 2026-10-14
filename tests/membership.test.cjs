@@ -16,7 +16,7 @@ const { sign, verify, cardToken, readCardToken } = require('../src/lib/membershi
 const { parseVenmoEmail, normalizeNote, checkVenmo } = require('../src/lib/membership/venmo.ts');
 const { readAnswers } = require('../src/lib/membership/members.ts');
 const { cleanForm } = require('../src/lib/membership/form.ts');
-const { newYearConfig, canStartNextYear } = require('../src/lib/membership/config.ts');
+const { newYearConfig, canStartNextYear, formTitle } = require('../src/lib/membership/config.ts');
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
 const { walletButtons } = require('../src/lib/membership/wallet.ts');
@@ -52,11 +52,7 @@ function run([name, ...args]) {
     case 'SREM': return args.slice(1).filter((v) => set(args[0]).delete(v)).length;
     case 'SISMEMBER': return set(args[0]).has(args[1]) ? 1 : 0;
     case 'SCARD': return set(args[0]).size;
-    case 'SMEMBERS': return [...set(args[0])];
     case 'SUNION': return [...new Set(args.flatMap((k) => [...set(k)]))];
-    case 'SUNIONSTORE': { const all = new Set(args.slice(1).flatMap((k) => [...set(k)])); db.set(args[0], all); return all.size; }
-    case 'HKEYS': return [...hash(args[0]).keys()];
-    case 'HDEL': return args.slice(1).filter((f) => hash(args[0]).delete(f)).length;
     case 'ZADD': hash(args[0]).set(args[2], Number(args[1])); return 1;
     case 'ZREM': return hash(args[0]).delete(args[1]) ? 1 : 0;
     case 'ZRANGE': return [...hash(args[0]).entries()].filter(([, score]) => args[3] !== 'BYSCORE' || (score >= Number(args[1]) && score <= Number(args[2]))).sort((a, b) => b[1] - a[1]).map(([member]) => member);
@@ -65,6 +61,7 @@ function run([name, ...args]) {
     case 'HGET': return hash(args[0]).get(args[1]) ?? null;
     case 'HLEN': return hash(args[0]).size;
     case 'HGETALL': return [...hash(args[0]).entries()].flat();
+    case 'HDEL': return args.slice(1).filter((f) => hash(args[0]).delete(f)).length;
     default: throw new Error(`The fake Redis does not support ${cmd}`);
   }
 }
@@ -206,6 +203,13 @@ test('cleanForm keeps built-in questions first and validates the rest', () => {
   assert.throws(() => cleanForm({ ...current, questions: [{ id: 'x', label: ' ', type: 'short', required: false }] }, current), /title/);
 });
 
+test('The /join title falls back to "Join CSC" when it is empty or was never set', () => {
+  const current = newYearConfig(YEAR, null).form;
+  assert.equal(formTitle(current), 'Join CSC', 'Years made before the title was editable have no title');
+  assert.equal(formTitle(cleanForm({ ...current, title: '   ' }, current)), 'Join CSC');
+  assert.equal(formTitle(cleanForm({ ...current, title: '  Join MIT CSC ' }, current)), 'Join MIT CSC');
+});
+
 test('the next school year opens on May 1 in Boston', () => {
   assert.equal(canStartNextYear(YEAR, new Date('2026-10-13T12:00:00Z')), false);
   assert.equal(canStartNextYear(YEAR, new Date('2027-05-01T03:59:00Z')), false, 'Still April 30 in Boston');
@@ -296,48 +300,11 @@ test('A card link from the email works once', async () => {
   assert.equal(await redeemCardLink(`${'B'.repeat(31)}*`), null);
 });
 
-test('Removing a past sheet keeps people on another sheet or who paid here', async () => {
-  const sheet = (id, count) => ({ id, name: id, count, importedAt: 1, importedBy: 'exec@mit.edu' });
-  db.set(keys.pastMoved, '1');
-  await store.markPaidEver(['paidhere']);
-  await store.savePastSheet(sheet('s2020', 3), ['alice', 'bob', 'paidhere']);
-  await store.savePastSheet(sheet('s2021', 2), ['bob', 'carol']);
-  for (const kerb of ['alice', 'bob', 'carol', 'paidhere']) assert.equal(await store.hasPaidBefore(kerb), true, kerb);
-  assert.equal(await store.pastMemberCount(), 4);
-
-  await store.removePastSheet('s2020');
-  assert.equal(await store.hasPaidBefore('alice'), false, 'Only on the removed sheet');
-  assert.equal(await store.hasPaidBefore('bob'), true, 'Also on another sheet');
-  assert.equal(await store.hasPaidBefore('paidhere'), true, 'Paid on this site');
-  assert.deepEqual((await store.listPastSheets()).map((s) => s.id), ['s2021']);
-
-  await store.savePastSheet(sheet('s2021', 1), ['dave']);
-  assert.equal(await store.hasPaidBefore('carol'), false, 'Importing a sheet again replaces its kerbs');
-  assert.equal(await store.hasPaidBefore('dave'), true);
+test('Kerbs imported from old sheets and payments on this site both get the returning price', async () => {
+  await store.markPaidEver(['paidhere', 'both']);
+  run(['SADD', keys.pastImported, 'imported', 'both']);
+  for (const kerb of ['paidhere', 'imported', 'both']) assert.equal(await store.hasPaidBefore(kerb), true, kerb);
+  assert.equal(await store.hasPaidBefore('newperson'), false);
+  assert.equal(await store.pastMemberCount(), 3);
 });
 
-test('Untracked earlier imports move to their own removable entry once', async () => {
-  await store.createYear(newYearConfig(YEAR, null));
-  await store.claimMember(member('jchen', { status: 'paid' }));
-  await store.markPaidEver(['jchen', 'oldone', 'oldtwo']);
-  const [earlier] = await store.listPastSheets();
-  assert.equal(earlier.id, 'earlier');
-  assert.equal(earlier.count, 2);
-  assert.equal(await store.hasPaidBefore('oldone'), true);
-  await store.removePastSheet('earlier');
-  assert.equal(await store.hasPaidBefore('oldone'), false);
-  assert.equal(await store.hasPaidBefore('jchen'), true, 'A paid signup on this site stays');
-  await store.markPaidEver(['newer']);
-  assert.deepEqual(await store.listPastSheets(), [], 'The move runs only once');
-});
-
-test('This year\'s new paid members are not counted as past members yet', async () => {
-  db.set(keys.pastMoved, '1');
-  await store.claimMember(member('fresh', { status: 'paid' }));
-  await store.claimMember(member('back', { status: 'paid', type: 'returning' }));
-  await store.claimMember(member('owes'));
-  await store.markPaidEver(['fresh', 'back', 'older']);
-  await store.savePastSheet({ id: 's', name: 's', count: 1, importedAt: 1, importedBy: null }, ['sheetonly']);
-  assert.deepEqual(await store.returningCounts(YEAR), { earlier: 3, thisYear: 1 });
-  assert.equal(await store.pastMemberCount(), 4, 'Starting next year counts everyone who paid');
-});

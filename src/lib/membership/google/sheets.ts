@@ -51,11 +51,3 @@ export async function replaceTab(spreadsheetId: string, tab: string, rows: Cell[
     body: { values: rows },
   });
 }
-
-// Reads the first tab of a spreadsheet, for importing past members.
-export async function readFirstTab(spreadsheetId: string) {
-  const { sheets } = await meta(spreadsheetId);
-  const tab = sheets[0].properties.title;
-  const data = await google<{ values?: string[][] }>(`${SHEETS}/${spreadsheetId}/values/${encodeURIComponent(a1(tab))}`, { query: { valueRenderOption: "FORMATTED_VALUE" } });
-  return data.values || [];
-}
