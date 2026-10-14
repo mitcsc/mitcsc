@@ -16,7 +16,7 @@ const { sign, verify, cardToken, readCardToken } = require('../src/lib/membershi
 const { parseVenmoEmail, normalizeNote, checkVenmo } = require('../src/lib/membership/venmo.ts');
 const { readAnswers } = require('../src/lib/membership/members.ts');
 const { cleanForm } = require('../src/lib/membership/form.ts');
-const { newYearConfig, canStartNextYear, formTitle } = require('../src/lib/membership/config.ts');
+const { newYearConfig, canStartNextYear, formTitle, carryForm } = require('../src/lib/membership/config.ts');
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
 const { walletButtons } = require('../src/lib/membership/wallet.ts');
@@ -210,11 +210,13 @@ test('cleanForm keeps built-in questions first and validates the rest', () => {
   assert.throws(() => cleanForm({ ...current, questions: [{ id: 'x', label: ' ', type: 'short', required: false }] }, current), /title/);
 });
 
-test('The /join title falls back to "Join CSC" when it is empty or was never set', () => {
+test('The /join title defaults to "Join CSC <year>!" and follows the year forward', () => {
   const current = newYearConfig(YEAR, null).form;
-  assert.equal(formTitle(current), 'Join CSC', 'Years made before the title was editable have no title');
-  assert.equal(formTitle(cleanForm({ ...current, title: '   ' }, current)), 'Join CSC');
-  assert.equal(formTitle(cleanForm({ ...current, title: '  Join MIT CSC ' }, current)), 'Join MIT CSC');
+  assert.equal(formTitle(current, YEAR), `Join CSC ${YEAR}!`, 'Years made before the title was editable have no title');
+  assert.equal(formTitle(cleanForm({ ...current, title: '   ' }, current), YEAR), `Join CSC ${YEAR}!`);
+  assert.equal(formTitle(cleanForm({ ...current, title: '  Join MIT CSC ' }, current), YEAR), 'Join MIT CSC');
+  assert.equal(carryForm({ ...current, title: 'Join CSC 2026-2027 now' }, '2026-2027', '2027-2028').title, 'Join CSC 2027-2028 now');
+  assert.equal(carryForm(current, '2026-2027', '2027-2028').title, undefined, 'An empty title stays empty and keeps following the year');
 });
 
 test('the next school year opens on May 1 in Boston', () => {

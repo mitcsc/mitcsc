@@ -52,10 +52,13 @@ export function classYearOptions(year: string) {
   return [end, end + 1, end + 2, end + 3].map(String).concat("Grad student", "Other");
 }
 
-export const DEFAULT_FORM_TITLE = "Join CSC";
+// The /join heading when exec leave the title empty. It follows the school year on its own.
+export function defaultFormTitle(year: string) {
+  return `Join CSC ${year}!`;
+}
 
-export function formTitle(form: FormConfig) {
-  return form.title || DEFAULT_FORM_TITLE;
+export function formTitle(form: FormConfig, year: string) {
+  return form.title || defaultFormTitle(year);
 }
 
 export function defaultForm(year: string): FormConfig {
@@ -74,9 +77,10 @@ export function defaultForm(year: string): FormConfig {
   };
 }
 
-// The intro mentions the year, so carry it forward when the text was not customized.
+// The title and intro may mention the year, so carry it forward.
 export function carryForm(form: FormConfig, from: string, to: string): FormConfig {
-  return { ...form, intro: form.intro.split(from).join(to), questions: form.questions.map((q) => ({ ...q })) };
+  const next = (text: string) => text.split(from).join(to);
+  return { ...form, title: form.title && next(form.title), intro: next(form.intro), questions: form.questions.map((q) => ({ ...q })) };
 }
 
 export function questionOptions(question: Question, year: string) {
