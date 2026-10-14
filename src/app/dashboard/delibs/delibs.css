@@ -14,6 +14,8 @@
 .voting-root.d-delibs .voting-admin.president-ballot-setup { max-width: none; height: auto; margin: 0; padding: 0; border: 0; background: transparent; }
 .voting-root.d-delibs .president-ballot-setup .voting-setup-editor { overflow: visible; }
 .voting-root.d-delibs .president-ballot-setup .voting-setup-editor > .voting-admin-editor { overflow: visible; }
+/* Room on both sides for a dragged candidate's lifted card, which reaches 8px past the row. */
+.voting-root.d-delibs .president-ballot-setup .voting-setup-editor > .voting-admin-editor { padding-inline: 8px; margin-inline: -8px; }
 .voting-root.d-delibs .d-narrow-actions > .m-btn { width: auto; min-height: 40px; margin: 0; padding: 0 18px; border-radius: 999px; font-size: 14px; font-weight: 500; }
 .voting-root.d-delibs .d-narrow-actions > .m-btn:not(.is-outline) { border: 0; background: var(--accent); color: #fff; }
 .voting-root.d-delibs .d-narrow-actions > .m-btn.is-outline { border: 1px solid var(--border); background: transparent; color: var(--text); }

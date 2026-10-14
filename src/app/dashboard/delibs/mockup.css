@@ -148,11 +148,10 @@
 .voting-root .voting-admin .voting-admin-edit-row input:not([type=checkbox]):not([type=radio]):placeholder-shown,.voting-root .voting-admin .voting-admin-criterion>label input:placeholder-shown,.voting-root .voting-admin .voting-admin-criterion>label textarea:placeholder-shown{border:1px solid #ffffff26;background:#ffffff03;padding-left:10px;padding-right:10px}
 /* Integrated navigation and sortable setup rows. */
 .voting-candidate-editor-list{list-style:none;margin:0;padding:0;clear:both}
-.voting-root .voting-admin .voting-admin-edit-row{position:relative;display:flex;align-items:center;gap:10px;border:1px solid transparent;border-bottom-color:#ffffff0d;border-radius:6px;margin:2px 0;padding:10px 8px;cursor:grab;transition:background .15s}
-.voting-root .voting-admin .voting-admin-edit-row:hover{background:#ffffff04}
-.voting-root .voting-admin .voting-admin-edit-row:active{cursor:grabbing}
-.voting-root .voting-admin .voting-drag-handle{display:grid;place-items:center;flex:none;width:24px;height:32px;padding:0;border:0;color:#ffffff40;cursor:grab;touch-action:none}
-.voting-root .voting-admin .voting-drag-handle:hover{background:none;color:#ffffffa6}
+.voting-root .voting-admin .voting-admin-edit-row{position:relative;display:flex;align-items:center;gap:10px;border:1px solid transparent;border-bottom-color:#ffffff0d;border-radius:6px;margin:2px 0;padding:10px 8px}
+/* The shared drag handle (dashboard.css), without the delib button frame. */
+.voting-root .voting-admin .d-drag-handle{padding:0;border:0;background:none;opacity:1;transition:color .15s,background-color .15s}
+.voting-root .voting-admin .d-drag-handle:hover:not(:disabled){border:0;background:#ffffff0d}
 .voting-root .voting-admin .voting-admin-number{width:14px;flex:none;font-size:12px}
 .voting-root .voting-admin .voting-candidate-name{display:block;flex:1;min-width:0}
 .voting-root .voting-admin .voting-admin-row-actions{align-items:center;gap:4px;flex:none}
@@ -221,15 +220,13 @@
 .voting-root .voting-admin .voting-admin-scale>button{justify-self:end;align-self:center}
 .voting-root .voting-admin .voting-admin-edit-row{flex-wrap:nowrap;min-height:56px}
 .voting-root .voting-admin .voting-admin-row-actions{flex-shrink:0}
-.voting-root .voting-admin .voting-admin-edit-row.is-dragging{background:#1b1b1d;box-shadow:0 8px 24px #0006;cursor:grabbing;user-select:none}
-.voting-root .voting-admin .voting-admin-edit-row{transition:background-color .15s;will-change:auto}
 
 /* Fixed workspace, independent pane scrolling, and geometry without layout animation. */
 .voting-root{height:100svh;min-height:0;overflow:hidden;box-sizing:border-box}
 .voting-root .voting-admin.voting-console{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
 .voting-root .voting-setup-editor{height:100%;min-height:0;grid-template-columns:minmax(0,var(--candidate-width,38%)) 1px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;overflow:hidden}
 .voting-root .voting-setup-editor>.voting-admin-editor{min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;overscroll-behavior:contain;align-content:start}
-.voting-root .voting-admin .voting-admin-edit-row{height:56px;min-height:56px;max-height:56px;flex-shrink:0;transform:none;contain:layout}
+.voting-root .voting-admin .voting-admin-edit-row{height:56px;min-height:56px;max-height:56px;flex-shrink:0;contain:layout}
 .voting-root .voting-admin .voting-candidate-name input{width:100%;min-width:0;box-sizing:border-box}
 .voting-root .voting-live-page .voting-admin-controls{height:100%;min-height:0;margin-bottom:0;flex:1;overflow:hidden}
 .voting-root .voting-live-page .voting-admin-candidates{height:100%;min-height:0;overflow:hidden}

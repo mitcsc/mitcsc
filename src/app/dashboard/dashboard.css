@@ -169,16 +169,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-slug-copy { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); }
 .d-slug-copy:hover { background: #ffffff14; color: var(--text); }
 .d-link-status { display: inline-flex; align-items: center; gap: 8px; }
-/* Drag handles. While sorting, the other rows slide to show where the dragged row lands. */
 .d-table .d-drag-cell { width: 1%; padding-right: 4px; }
-.d-drag-handle { display: inline-grid; place-items: center; width: 28px; height: 32px; margin-left: -6px; padding: 0; border: 0; border-radius: 8px; background: none; color: #ffffff40; cursor: grab; touch-action: none; }
-.d-drag-handle:hover { background: #ffffff0d; color: var(--muted); }
-.d-links tbody tr { transition: transform 160ms var(--ease); }
-.d-links.is-sorting { cursor: grabbing; user-select: none; }
-.d-links.is-sorting .d-drag-handle { cursor: grabbing; }
-.d-links.is-sorting [data-tip]::after { display: none; }
-.d-links tr.is-dragging { position: relative; z-index: 2; transition: none; }
-.d-links tr.is-dragging td { background: #1a1a1c; }
 .d-links tr.is-dragging td:first-child { border-radius: 10px 0 0 10px; }
 .d-links tr.is-dragging td:last-child { border-radius: 0 10px 10px 0; }
 /* A text field with a fixed prefix, like "csc.mit.edu/". */
@@ -322,9 +313,6 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-editor-main .d-setting-head, .d-editor-main .d-setting-body { flex: none; }
 .d-questions { display: flex; flex-direction: column; }
 .d-question { display: flex; align-items: center; gap: 12px; min-height: 48px; border-bottom: 1px solid #ffffff0f; background: var(--bg); }
-.d-question.is-dragging { opacity: 0.5; }
-.d-grip { flex: none; width: 14px; display: inline-flex; padding: 0; border: 0; background: none; color: #ffffff26; }
-.d-grip.is-movable { color: #ffffff66; cursor: grab; }
 .d-question-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .d-question-type { font-size: 12px; color: var(--faint); white-space: nowrap; }
 .d-question-end { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; width: 104px; flex: none; font-size: 12px; color: #ffffff59; }
@@ -552,3 +540,25 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 @media (prefers-reduced-motion: reduce) {
   .d-shell *, .d-shell *::before, .d-shell *::after, .d-dialog, .d-dialog::backdrop { animation: none !important; transition: none !important; }
 }
+
+/* Lists reordered by dragging (useReorder.tsx): the links table, form questions, and delib candidates.
+   The row in hand follows the pointer and lifts above the rest. The other rows slide aside to show where it lands. */
+.d-drag-handle { flex: none; display: inline-grid; place-items: center; width: 28px; height: 32px; margin-left: -6px; padding: 0; border: 0; border-radius: 8px; background: none; color: #ffffff40; cursor: grab; touch-action: none; transition: color 150ms, background-color 150ms; }
+.d-drag-handle:hover:not(:disabled) { background: #ffffff0d; color: var(--muted); }
+.d-drag-handle:disabled { cursor: default; color: #ffffff1f; }
+.d-drag-handle.is-locked { color: #ffffff1f; cursor: default; }
+.is-sorting { user-select: none; -webkit-user-select: none; }
+.is-sorting, .is-sorting .d-drag-handle { cursor: grabbing; }
+.is-sorting [data-tip]::after { display: none; }
+[data-reorder] { transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+[data-reorder].is-dragging, [data-reorder][data-lifted] { position: relative; z-index: 2; }
+[data-reorder].is-dragging { transition: none; }
+/* The lifted card reaches 8px past each side of the row, so the handle sits inside it. */
+[data-reorder]:not(tr) { position: relative; isolation: isolate; }
+[data-reorder]:not(tr)::before { content: ""; position: absolute; inset: 0 -8px; z-index: -1; border-radius: 10px; background: #1a1a1c; box-shadow: 0 8px 24px #0006; opacity: 0; transition: opacity 200ms; pointer-events: none; }
+[data-reorder].is-dragging:not(tr)::before { opacity: 1; }
+tr[data-reorder] > td { transition: background-color 200ms; }
+tr[data-reorder].is-dragging > td { background: #1a1a1c; }
+/* For one frame after a move the rows jump to their new places without sliding, then the moved rows glide in. */
+[data-settling] > [data-reorder] { transition: none; }
+@media (prefers-reduced-motion: reduce) { [data-reorder], [data-reorder]::before { transition: none; } }
