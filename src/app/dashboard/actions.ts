@@ -201,7 +201,7 @@ export async function createSchoolYear(input: { year: string; folderId: string; 
 
 // Events
 
-// Check-in hours from a form: both times or neither, with the end after the start.
+// Event hours from a form: both times or neither, with the end after the start.
 function eventHours(starts: unknown, ends: unknown) {
   const [from, to] = [starts, ends].map((t) => (typeof t === "string" ? t.trim() : ""));
   if (!from && !to) return { starts: null, ends: null };

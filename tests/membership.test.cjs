@@ -270,7 +270,7 @@ test('Deleting an event removes it and its check-ins only', async () => {
   assert.deepEqual(await store.eventsOn(YEAR, '2026-10-14'), [], 'A deleted event frees its day');
 });
 
-test('check-in hours: overlaps, open and closed, and an exec choice', () => {
+test('event hours: overlaps, open and closed, and an exec choice', () => {
   const day = '2026-10-13';
   const at = (time) => new Date(`${day}T${time}:00-04:00`); // EDT, the club's time zone in October
   const party = { date: day, starts: '19:00', ends: '21:00' };
