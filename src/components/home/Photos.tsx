@@ -1,4 +1,6 @@
 import type { CSSProperties } from "react";
+import { photoUrl } from "@/lib/home-photo-urls";
+import { homePagePhotos } from "@/lib/home-photos";
 import { getEventImages, pickRandom } from "@/lib/images";
 
 /**
@@ -58,7 +60,9 @@ const SIZES = PHOTO_MAX.map(([minWidth, px]) => {
 }).join(", ");
 
 interface PhotoSlot {
-  file: string;
+  key: string;
+  caption: string;
+  src: (width: number) => string;
   /** Horizontal position inside the grid cell, 0..1. */
   jx: number;
   /** Vertical position inside the grid cell, 0..1. */
@@ -76,9 +80,22 @@ interface PhotoSlot {
   driftPx: number;
 }
 
-function buildSlots(): PhotoSlot[] {
-  return pickRandom(getEventImages(), PHOTO_COUNT).map((file) => ({
-    file,
+interface Source {
+  key: string;
+  caption: string;
+  src: (width: number) => string;
+}
+
+// Photos turned on in the dashboard, from Drive. While none are on, the photos in public/img/event.
+async function photoSources(): Promise<Source[]> {
+  const drive = await homePagePhotos().catch(() => []);
+  if (drive.length) return drive.map((photo) => ({ key: photo.id, caption: photo.name, src: (width) => photoUrl(photo, width) }));
+  return getEventImages().map((file) => ({ key: file, caption: file, src: (width) => optimizedUrl(file, width) }));
+}
+
+function buildSlots(sources: Source[]): PhotoSlot[] {
+  return pickRandom(sources, PHOTO_COUNT).map((source) => ({
+    ...source,
     jx: Math.random(),
     jy: Math.random(),
     tilt: (Math.random() * 2 - 1) * MAX_TILT_DEG,
@@ -102,8 +119,8 @@ function optimizedUrl(file: string, width: number): string {
   return `/_next/image?url=${src}&w=${width}&q=${QUALITY}`;
 }
 
-export default function Photos() {
-  const slots = buildSlots();
+export default async function Photos() {
+  const slots = buildSlots(await photoSources());
 
   return (
     <section
@@ -113,7 +130,7 @@ export default function Photos() {
       <ul className="hero-photos relative w-full h-full xl:max-w-7xl list-none m-0 p-0">
         {slots.map((slot, index) => (
           <li
-            key={slot.file}
+            key={slot.key}
             className="hero-photo"
             style={
               {
@@ -133,8 +150,8 @@ export default function Photos() {
               <div className="hero-polaroid-frame relative overflow-hidden bg-gray-200">
                 {/* eslint-disable-next-line @next/next/no-img-element -- see optimizedUrl */}
                 <img
-                  src={optimizedUrl(slot.file, WIDTHS[WIDTHS.length - 1])}
-                  srcSet={WIDTHS.map((w) => `${optimizedUrl(slot.file, w)} ${w}w`).join(", ")}
+                  src={slot.src(WIDTHS[WIDTHS.length - 1])}
+                  srcSet={WIDTHS.map((w) => `${slot.src(w)} ${w}w`).join(", ")}
                   sizes={SIZES}
                   alt=""
                   width={256}
@@ -146,7 +163,7 @@ export default function Photos() {
                 />
               </div>
               <span className="block text-neutral-700 text-2xl font-primary font-bold truncate">
-                {slot.file}
+                {slot.caption}
               </span>
             </div>
           </li>

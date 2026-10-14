@@ -20,6 +20,10 @@ export const keys = {
   event: (id: string) => `${PREFIX}:event:${id}`,
   attendance: (id: string) => `${PREFIX}:attendance:${id}`,
   google: `${PREFIX}:google`,
+  // The image files in Drive's "Front Page Photos" folder, as last listed.
+  homePhotos: `${PREFIX}:home-photos`,
+  // Drive file ids of the photos turned on for the home page.
+  homePhotosShown: `${PREFIX}:home-photos:shown`,
   execAccess: `${PREFIX}:exec-access`,
   sync: (target: string) => `${PREFIX}:sync:${target}`,
   rateLimit: (scope: string, id: string) => `${PREFIX}:limit:${scope}:${id}`,

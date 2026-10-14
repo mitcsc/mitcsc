@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { refreshPhotoLibrary } from "@/lib/home-photos";
 import { publicMessage } from "@/lib/membership/errors";
 import { clubConnection } from "@/lib/membership/google/oauth";
 import { currentYear } from "@/lib/membership/store";
@@ -11,7 +12,8 @@ export const maxDuration = 60;
 
 const reply = (status: number, body: object) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
-// Daily safety net: catches Venmo payments nobody checked for, and rewrites the members sheet.
+// Daily safety net: catches Venmo payments nobody checked for, rewrites the members sheet,
+// and lists the home page photo folder again so photos changed in Drive keep loading.
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return reply(503, { error: "Cron is not configured." });
@@ -33,6 +35,12 @@ export async function GET(request: Request) {
   } catch (error) {
     result.ok = false;
     result.sync = publicMessage(error, "Sheet sync failed.");
+  }
+  try {
+    result.photos = (await refreshPhotoLibrary()).photos.length;
+  } catch (error) {
+    result.ok = false;
+    result.photos = publicMessage(error, "Photo folder refresh failed.");
   }
   return reply(result.ok ? 200 : 500, result);
 }

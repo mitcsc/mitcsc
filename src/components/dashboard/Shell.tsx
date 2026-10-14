@@ -10,6 +10,7 @@ import { Icon } from "@/components/membership/icons";
 const MAIN_TABS = [
   { href: "/dashboard/check-in", label: "Check-in", also: "/dashboard/events" },
   { href: "/dashboard/membership", label: "Members" },
+  { href: "/dashboard/photos", label: "Photos" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 
