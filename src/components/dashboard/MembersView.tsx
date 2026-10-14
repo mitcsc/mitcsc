@@ -197,6 +197,10 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 <Icon name="chevron" size={18} className="d-collapse-icon" />
               </button>
             </h2>
+            <div className="d-venmo-check">
+              <span suppressHydrationWarning>{venmoCheckedAt ? `Checked ${ago(venmoCheckedAt)}` : "Not checked yet"}</span>
+              <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo"}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
+            </div>
           </div>
           <div id="pending-list" className={`d-collapsible${pendingOpen ? " is-open" : ""}${collapseMoved ? " is-animated" : ""}`} inert={!pendingOpen}>
             <div className="d-collapsible-inner">
@@ -204,10 +208,6 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 The Venmo check confirms a payment only when its note matches exactly, like <span className="d-nowrap"><span className="d-code">{venmoNote(year.year, example)}</span>.</span>
                 {" "}All other payments need manual confirmation.
               </p>
-              <div className="d-venmo-row">
-                <span suppressHydrationWarning>{venmoCheckedAt ? `Venmo last checked ${ago(venmoCheckedAt)}.` : "Venmo not checked yet."}</span>
-                <button type="button" className="d-chip-btn" onClick={checkVenmo} disabled={busy === "venmo"}>{busy === "venmo" ? "Checking…" : "Check Venmo"}</button>
-              </div>
               {pending.length === 0 && <p className="d-empty-row">Nobody is waiting.</p>}
               {(showAll ? pending : pending.slice(0, PENDING_PREVIEW)).map((m) => (
                 <div className="d-pending" key={m.kerb}>

@@ -98,9 +98,10 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-section-note { margin-bottom: 8px; font-size: 13px; color: #ffffff73; }
 .d-code { color: #c3c3c8; white-space: nowrap; }
 .d-nowrap { white-space: nowrap; }
-.d-venmo-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 13px; color: #ffffff73; }
-.d-venmo-row > span { min-width: 0; }
-.d-venmo-row > button { flex: none; }
+.d-venmo-check { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #ffffff73; }
+.d-venmo-check > button { flex: none; }
+/* On phones the Venmo check wraps under the heading and spans the width. */
+@media (max-width: 640px) { .d-section-head > .d-venmo-check { width: 100%; margin-left: 0; justify-content: space-between; } }
 .d-pending { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 1.5fr) auto; align-items: center; gap: 8px 20px; padding: 16px 0; border-bottom: 1px solid #ffffff0f; }
 .d-pending-who, .d-pending-pay { min-width: 0; display: flex; flex-direction: column; }
 .d-pending-who .d-tags { margin-top: 4px; }
