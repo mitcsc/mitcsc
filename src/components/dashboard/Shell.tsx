@@ -6,14 +6,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useState } from "react";
 import { Icon } from "@/components/membership/icons";
 
-// Check-in comes first: it is what exec open the dashboard for at events.
+// Check-in comes first: it is what exec open the dashboard for at events. Its Events sub-tab lives at /dashboard/events.
 const MAIN_TABS = [
-  { href: "/dashboard/events", label: "Event check-in" },
+  { href: "/dashboard/check-in", label: "Check-in", also: "/dashboard/events" },
   { href: "/dashboard/membership", label: "Members" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 
-function active(pathname: string, href: string) {
+function within(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -22,21 +22,21 @@ export function MainNav() {
   return (
     <nav aria-label="Dashboard" className="d-main-nav">
       {MAIN_TABS.map((tab) => (
-        <Link key={tab.href} href={tab.href} aria-current={active(pathname, tab.href) ? "page" : undefined}>{tab.label}</Link>
+        <Link key={tab.href} href={tab.href} aria-current={within(pathname, tab.href) || (!!tab.also && within(pathname, tab.also)) ? "page" : undefined}>{tab.label}</Link>
       ))}
     </nav>
   );
 }
 
-// Sub-tabs under Membership, with the save status on the right.
-export function SubNav({ tabs, children }: { tabs: { href: string; label: string }[]; children?: React.ReactNode }) {
+// Sub-tabs under a main tab, with the save status on the right. A nested tab stays selected on its sub-pages.
+export function SubNav({ label, tabs, children }: { label: string; tabs: { href: string; label: string; nested?: boolean }[]; children?: React.ReactNode }) {
   const pathname = usePathname();
   const status = useContext(SaveContext).status;
   return (
     <div className="d-subnav">
-      <nav aria-label="Membership" className="d-sub-tabs">
+      <nav aria-label={label} className="d-sub-tabs">
         {tabs.map((tab) => (
-          <Link key={tab.href} href={tab.href} aria-current={pathname === tab.href ? "page" : undefined}>{tab.label}</Link>
+          <Link key={tab.href} href={tab.href} aria-current={(tab.nested ? within(pathname, tab.href) : pathname === tab.href) ? "page" : undefined}>{tab.label}</Link>
         ))}
       </nav>
       <span className="d-subnav-meta">

@@ -1,13 +1,12 @@
-import { notFound } from "next/navigation";
 import type { Person } from "@/app/dashboard/actions";
-import CheckInDesk from "@/components/dashboard/CheckInDesk";
 import { formatDay } from "@/lib/membership/config";
 import { sheetUrl } from "@/lib/membership/google/drive";
-import { getEvent, listAttendance, listMembers } from "@/lib/membership/store";
+import { listAttendance, listMembers } from "@/lib/membership/store";
+import type { EventInfo } from "@/lib/membership/types";
+import CheckInDesk from "./CheckInDesk";
 
-export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
-  const event = await getEvent((await params).id);
-  if (!event) notFound();
+// The check-in page for one event, on the Check in tab or opened from the Events tab.
+export default async function EventDesk({ event, back }: { event: EventInfo; back: { href: string; label: string } | null }) {
   const [records, members] = await Promise.all([listAttendance(event.id), listMembers(event.year)]);
   const people: Person[] = members.map((m) => ({
     kerb: m.kerb, name: m.name, classYear: m.classYear, price: m.price, method: m.method, paid: m.status === "paid", reportedAt: m.reportedAt,
@@ -18,6 +17,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       records={records}
       people={people}
       renderedAt={Date.now()}
+      back={back}
     />
   );
 }
