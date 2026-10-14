@@ -12,7 +12,7 @@ export default async function MembershipLayout({ children }: { children: React.R
   const config = await currentYear();
   return (
     <SaveStatusProvider>
-      <SubNav tabs={TABS}>
+      <SubNav label="Membership" tabs={TABS}>
         {config && (
           <>
             <span className="d-year">{config.year}</span>

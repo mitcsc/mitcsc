@@ -55,7 +55,7 @@ function run([name, ...args]) {
     case 'SUNION': return [...new Set(args.flatMap((k) => [...set(k)]))];
     case 'ZADD': hash(args[0]).set(args[2], Number(args[1])); return 1;
     case 'ZREM': return hash(args[0]).delete(args[1]) ? 1 : 0;
-    case 'ZRANGE': return [...hash(args[0]).entries()].sort((a, b) => b[1] - a[1]).map(([member]) => member);
+    case 'ZRANGE': return [...hash(args[0]).entries()].filter(([, score]) => args[3] !== 'BYSCORE' || (score >= Number(args[1]) && score <= Number(args[2]))).sort((a, b) => b[1] - a[1]).map(([member]) => member);
     case 'HSETNX': if (hash(args[0]).has(args[1])) return 0; hash(args[0]).set(args[1], args[2]); return 1;
     case 'HSET': hash(args[0]).set(args[1], args[2]); return 1;
     case 'HGET': return hash(args[0]).get(args[1]) ?? null;
@@ -239,8 +239,10 @@ test('a kerb can sign up once, and check-in records the first scan', async () =>
 });
 
 test('Deleting an event removes it and its check-ins only', async () => {
-  const make = (name) => store.createEvent({ year: YEAR, name, date: '2026-10-13', sheetId: null, sheetTab: 'Check-ins', createdBy: 'a@mit.edu' });
-  const [keep, gone] = [await make('Keep'), await make('Gone')];
+  const make = (name, date) => store.createEvent({ year: YEAR, name, date, sheetId: null, sheetTab: 'Check-ins', createdBy: 'a@mit.edu' });
+  const [keep, gone] = [await make('Keep', '2026-10-13'), await make('Gone', '2026-10-14')];
+  assert.equal((await store.eventOn(YEAR, '2026-10-13')).name, 'Keep', 'Each day has at most one event');
+  assert.equal(await store.eventOn(YEAR, '2026-10-15'), null);
   const record = { kerb: 'jchen', name: 'Jamie', classYear: '2029', paid: true, at: 1, by: 'a@mit.edu' };
   await store.checkIn(keep.id, record);
   await store.checkIn(gone.id, record);
@@ -251,6 +253,7 @@ test('Deleting an event removes it and its check-ins only', async () => {
   assert.equal(await store.attendanceCount(gone.id), 0);
   assert.equal(db.has(`${keys.sync(`event:${gone.id}`)}:status`), false);
   assert.deepEqual((await store.listEvents(YEAR)).map((e) => [e.event.name, e.count]), [['Keep', 1]]);
+  assert.equal(await store.eventOn(YEAR, '2026-10-14'), null, 'A deleted event frees its day');
 });
 
 test('the Venmo check confirms each payment once and only for the right amount', async () => {

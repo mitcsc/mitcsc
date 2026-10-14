@@ -14,11 +14,13 @@ import Scanner from "./Scanner";
 const REFRESH_MS = 15_000;
 const MAX_RESULTS = 25;
 
-export default function CheckInDesk({ event, records: initialRecords, people: initialPeople, renderedAt }: {
+// back is null on the Check in tab, where the sub-tabs already lead elsewhere.
+export default function CheckInDesk({ event, records: initialRecords, people: initialPeople, renderedAt, back }: {
   event: { id: string; name: string; date: string; sheet: string | null };
   records: Attendance[];
   people: Person[];
   renderedAt: number;
+  back: { href: string; label: string } | null;
 }) {
   const [records, setRecords] = useState(initialRecords);
   const [people, setPeople] = useState(initialPeople);
@@ -76,7 +78,7 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
   return (
     <main className="d-phone">
       <div className="d-phone-body">
-        <Link className="m-back" href="/dashboard/events"><Icon name="back" />Events</Link>
+        {back && <Link className="m-back" href={back.href}><Icon name="back" />{back.label}</Link>}
         <div className="d-checkin-head">
           <h1 className="d-phone-title">{event.name}</h1>
           <span className="d-checkin-meta">

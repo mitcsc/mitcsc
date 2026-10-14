@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function DashboardHome() {
-  redirect("/dashboard/events");
+  redirect("/dashboard/check-in");
 }
