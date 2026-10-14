@@ -1,7 +1,12 @@
 export type VotingPhase = "waiting" | "initial" | "deliberation" | "revision" | "final" | "locked";
 export interface Candidate { id: string; name: string; context: string; order: number; completed: boolean }
-export interface Criterion { id: string; label: string; description: string; min: number; max: number; required: boolean }
-export type Ratings = Record<string, number | null>;
+// A criterion asks for a rating on a scale, or for a short written answer ("notes"). Criteria made before short answers have no kind.
+export interface Criterion { id: string; label: string; description: string; min: number; max: number; required: boolean; kind?: "rating" | "notes" }
+export const NOTES_MAX = 2000;
+export const isNotes = (criterion: Criterion) => criterion.kind === "notes";
+// A rating, a short answer, or null for a skipped optional criterion.
+export type Answer = number | string | null;
+export type Ratings = Record<string, Answer>;
 export interface VotingState {
   sessionId: string;
   active: boolean;

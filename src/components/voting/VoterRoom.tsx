@@ -5,7 +5,7 @@ import VotingNotice from "./VotingNotice";
 import WaitingPanda from "./WaitingPanda";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import type { FinalBallot, RecoveredBallot, Ratings, VotingPhase, VotingState } from "@/lib/voting/types";
+import { isNotes, NOTES_MAX, type Answer, type FinalBallot, type RecoveredBallot, type Ratings, type VotingPhase, type VotingState } from "@/lib/voting/types";
 
 type Draft = {
   ratings: Ratings;
@@ -31,7 +31,7 @@ function emptyDraft(): Draft { return { ratings: {}, initial: null, final: {}, s
 function parseDraft(raw: string | null): Draft {
   if (!raw) return emptyDraft();
   const value = JSON.parse(raw) as Draft;
-  const validRatings = (ratings: unknown) => ratings !== null && typeof ratings === "object" && !Array.isArray(ratings) && Object.values(ratings).every(v => v === null || (typeof v === "number" && Number.isFinite(v)));
+  const validRatings = (ratings: unknown) => ratings !== null && typeof ratings === "object" && !Array.isArray(ratings) && Object.values(ratings).every(v => v === null || (typeof v === "number" && Number.isFinite(v)) || (typeof v === "string" && v.length <= NOTES_MAX));
   if (!validRatings(value.ratings) || !validRatings(value.final) || (value.initial !== null && !validRatings(value.initial)) || typeof value.submitted !== "boolean") throw new Error("Invalid local ballot");
   return value;
 }
@@ -265,12 +265,16 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   function validate(ratings: Ratings) {
     return state.criteria.every(c => {
       const value = ratings[c.id];
+      if (isNotes(c)) return typeof value === "string" ? value.length <= NOTES_MAX && (!c.required || !!value.trim()) : !c.required;
       if (value === undefined) return !c.required;
-      return value === null ? !c.required : Number.isInteger(value) && value >= c.min && value <= c.max;
+      return value === null ? !c.required : typeof value === "number" && Number.isInteger(value) && value >= c.min && value <= c.max;
     });
   }
-  function complete(ratings: Ratings): Ratings { return Object.fromEntries(state.criteria.map(c => [c.id, ratings[c.id] ?? null])); }
-  function setRating(id: string, value: number | null) {
+  // Fills skipped criteria with null. A blank short answer counts as skipped.
+  function complete(ratings: Ratings): Ratings {
+    return Object.fromEntries(state.criteria.map(c => { const value = ratings[c.id]; return [c.id, typeof value === "string" ? value.trim() || null : value ?? null]; }));
+  }
+  function setRating(id: string, value: Answer) {
     setError("");
     const current = draftRef.current;
     if (current.initial) persist({ ...current, final: { ...current.final, [id]: value } });
@@ -279,7 +283,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
   async function saveInitial() {
     if (busy || !connected) return;
     const ratings = draft.initial || complete(draft.ratings);
-    if (!validate(ratings)) { setError("Choose a numeric rating for each required criterion."); return; }
+    if (!validate(ratings)) { setError("Answer each required criterion."); return; }
     const next = {...draft, initial: {...ratings}, final: draft.initial ? draft.final : {...ratings}};
     persist(next);
     setBusy(true); setError("");
@@ -325,7 +329,7 @@ function VoterBallot({ state, connected, onSubmitted }: { state: VotingState; co
     <div className="voter-criteria">{state.criteria.map((criterion) => <fieldset className="voter-criterion" key={criterion.id} disabled={!editable}>
       <legend>{criterion.label}{!criterion.required && <span className="voter-required">Optional</span>}</legend>
       {criterion.description && <p>{criterion.description}</p>}
-      <div className="voter-scale" style={{"--rating-count": criterion.max - criterion.min + 1, "--rating-mobile-columns": Math.ceil((criterion.max - criterion.min + 1) / Math.ceil((criterion.max - criterion.min + 1) / 5))} as CSSProperties} role="radiogroup" aria-label={criterion.label}>{Array.from({ length: Math.max(0, Math.min(21, criterion.max - criterion.min + 1)) }, (_, i) => criterion.min + i).map(value => <label key={value} className={`voter-rating ${values[criterion.id] === value ? "voter-rating-selected" : draft.initial?.[criterion.id] === value ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} value={value} title={draft.initial?.[criterion.id] === value ? "Initial rating" : undefined} checked={values[criterion.id] === value} onChange={() => setRating(criterion.id, value)} /><span>{value}</span></label>)}{!criterion.required && <label className={`voter-rating voter-rating-na ${values[criterion.id] === null ? "voter-rating-selected" : draft.initial?.[criterion.id] === null ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} checked={values[criterion.id] === null} onChange={() => setRating(criterion.id, null)} /><span>Not enough information</span></label>}</div>
+      {isNotes(criterion) ? <textarea className="voter-notes" aria-label={criterion.label} rows={3} maxLength={NOTES_MAX} placeholder="Write your answer" value={typeof values[criterion.id] === "string" ? values[criterion.id] as string : ""} onChange={e => setRating(criterion.id, e.target.value)}/> : <div className="voter-scale" style={{"--rating-count": criterion.max - criterion.min + 1, "--rating-mobile-columns": Math.ceil((criterion.max - criterion.min + 1) / Math.ceil((criterion.max - criterion.min + 1) / 5))} as CSSProperties} role="radiogroup" aria-label={criterion.label}>{Array.from({ length: Math.max(0, Math.min(21, criterion.max - criterion.min + 1)) }, (_, i) => criterion.min + i).map(value => <label key={value} className={`voter-rating ${values[criterion.id] === value ? "voter-rating-selected" : draft.initial?.[criterion.id] === value ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} value={value} title={draft.initial?.[criterion.id] === value ? "Initial rating" : undefined} checked={values[criterion.id] === value} onChange={() => setRating(criterion.id, value)} /><span>{value}</span></label>)}{!criterion.required && <label className={`voter-rating voter-rating-na ${values[criterion.id] === null ? "voter-rating-selected" : draft.initial?.[criterion.id] === null ? "voter-rating-initial" : ""}`}><input type="radio" name={`${key}-${criterion.id}`} checked={values[criterion.id] === null} onChange={() => setRating(criterion.id, null)} /><span>Not enough information</span></label>}</div>}
     </fieldset>)}</div>
     <VotingNotice message={error}/>
     {!draft.submitted && <div className="voter-ballot-actions">

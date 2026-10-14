@@ -1,7 +1,8 @@
 "use client";
 import { useRef, useState, type RefObject } from "react";
 import { useScrollEdges } from "./useScrollEdges";
-import type { Candidate, Criterion } from "@/lib/voting/types";
+import { Icon } from "@/components/membership/icons";
+import { isNotes, type Candidate, type Criterion } from "@/lib/voting/types";
 
 interface Props {
   candidates: Candidate[];
@@ -56,19 +57,21 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
     if (value !== undefined && value.trim() !== "" && Number.isFinite(Number(value))) setScaleDrafts(drafts => ({...drafts, [key]: String(Number(value))}));
   };
   const save = async () => {
-    if (criteria.some(c => (["min", "max"] as const).some(field => {
+    // Short answers have no scale.
+    const badScale = (c: Criterion) => !isNotes(c) && (!Number.isInteger(c.min) || !Number.isInteger(c.max) || c.min < 0 || c.max > 10 || c.min >= c.max);
+    if (criteria.some(c => !isNotes(c) && (["min", "max"] as const).some(field => {
       const value = scaleDrafts[`${c.id}:${field}`];
       return value !== undefined && (value.trim() === "" || !Number.isFinite(Number(value)));
     }))) { setMessage("Enter a minimum and maximum for each criterion."); return; }
 
     if (setupStep === "criteria") {
-      if (!criteria.length || criteria.some(c => !c.label.trim() || !Number.isInteger(c.min) || !Number.isInteger(c.max) || c.min < 0 || c.max > 10 || c.min >= c.max)) {
+      if (!criteria.length || criteria.some(c => !c.label.trim() || badScale(c))) {
         setMessage("Add at least one named criterion with a valid rating scale from 0 to 10.");
         return;
       }
       setMessage(""); onContinue(); return;
     }
-    if (!candidates.length || candidates.some(c => !c.name.trim()) || !criteria.length || criteria.some(c => !c.label.trim() || !Number.isInteger(c.min) || !Number.isInteger(c.max) || c.min < 0 || c.max > 10 || c.min >= c.max)) {
+    if (!candidates.length || candidates.some(c => !c.name.trim()) || !criteria.length || criteria.some(c => !c.label.trim() || badScale(c))) {
       setMessage("Add at least one named candidate and criterion. Rating scales must use whole numbers from 0 to 10, with minimum below maximum.");
       return;
     }
@@ -89,7 +92,7 @@ export default function AdminSetup({ candidates: initialCandidates, criteria: in
           {candidates.map((c, i) => <CandidateRow listRef={listRef} dragging={drag !== null} shift={drag && i !== drag.from ? (drag.from < drag.to && i > drag.from && i <= drag.to ? -drag.step : drag.from > drag.to && i >= drag.to && i < drag.from ? drag.step : 0) : 0} onDragChange={setDrag} key={c.id} candidate={c} index={i} count={candidates.length} busy={busy} onPlatform={context => updateCandidates(candidates.map(x => x.id === c.id ? {...x, context} : x))} onRename={name => updateCandidates(candidates.map(x => x.id === c.id ? {...x, name} : x))} onMove={direction => move(i, direction)} onMoveTo={target => { const next = [...candidates]; next.splice(i, 1); next.splice(target, 0, c); updateCandidates(next); }} onRemove={() => updateCandidates(candidates.filter(x => x.id !== c.id))}/>)}
         </ul>
       </fieldset>
-      <fieldset ref={criteriaScroll} hidden={setupStep === "candidates"} disabled={busy} className="voting-admin-editor"><legend className="voting-sr-only">Criteria</legend><div className="voting-pane-heading voting-criteria-heading"><div className="voting-pane-title"><h3>Criteria <span>{criteria.length}</span></h3></div><div className="voting-criteria-actions"><button onClick={() => updateCriteria([...criteria, {id: crypto.randomUUID(), label: "", description: "", min: 1, max: 5, required: true}])}>+ Add criteria</button><button className="voting-shuffle-criteria" aria-label="Shuffle criteria order" disabled={criteria.length < 2} onClick={() => updateCriteria(shuffled(criteria))}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg>Shuffle</button></div></div>{criteria.map(c => <div className="voting-admin-criterion" key={c.id}><div className="voting-criterion-heading"><label>Criterion<input placeholder="Criterion name" value={c.label} maxLength={150} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, label: e.target.value} : x))}/></label><button className="voting-remove-criterion" aria-label={`Remove ${c.label || "criterion"}`} onClick={() => updateCriteria(criteria.filter(x => x.id !== c.id))}>×</button></div><label>Description<textarea placeholder="Short description (optional)" value={c.description} rows={2} maxLength={1000} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, description: e.target.value} : x))}/></label><div className="voting-admin-scale"><label>Minimum<input type="number" min={0} max={9} step={1} value={scaleDrafts[`${c.id}:min`] ?? c.min} onChange={e => editScale(c.id, "min", e.target.value)} onBlur={() => normalizeScale(c.id, "min")}/></label><label>Maximum<input type="number" min={1} max={10} step={1} value={scaleDrafts[`${c.id}:max`] ?? c.max} onChange={e => editScale(c.id, "max", e.target.value)} onBlur={() => normalizeScale(c.id, "max")}/></label><label className="voting-admin-check"><input type="checkbox" checked={c.required} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, required: e.target.checked} : x))}/> Required</label></div></div>)}</fieldset>
+      <fieldset ref={criteriaScroll} hidden={setupStep === "candidates"} disabled={busy} className="voting-admin-editor"><legend className="voting-sr-only">Criteria</legend><div className="voting-pane-heading voting-criteria-heading"><div className="voting-pane-title"><h3>Criteria <span>{criteria.length}</span></h3></div><div className="voting-criteria-actions"><button onClick={() => updateCriteria([...criteria, {id: crypto.randomUUID(), label: "", description: "", min: 1, max: 5, required: true}])}>+ Add criteria</button><button className="voting-shuffle-criteria" aria-label="Shuffle criteria order" disabled={criteria.length < 2} onClick={() => updateCriteria(shuffled(criteria))}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3M18 15l3 3-3 3M3 18h3c2 0 4-2 5-4M13 10c2-3 3-4 5-4h3M18 3l3 3-3 3"/></svg>Shuffle</button></div></div>{criteria.map(c => <div className="voting-admin-criterion" key={c.id}><div className="voting-criterion-heading"><label>Criterion<input placeholder="Criterion name" value={c.label} maxLength={150} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, label: e.target.value} : x))}/></label><button className="voting-remove-criterion" aria-label={`Remove ${c.label || "criterion"}`} onClick={() => updateCriteria(criteria.filter(x => x.id !== c.id))}>×</button></div><label>Description<textarea placeholder="Short description (optional)" value={c.description} rows={2} maxLength={1000} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, description: e.target.value} : x))}/></label><label className="voting-admin-kind">Answer type<span className="m-select-wrap"><select className="m-select is-compact" value={isNotes(c) ? "notes" : "rating"} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, kind: e.target.value as "rating" | "notes"} : x))}><option value="rating">Rating scale</option><option value="notes">Short answer</option></select><Icon name="chevron"/></span></label><div className="voting-admin-scale">{!isNotes(c) && <><label>Minimum<input type="number" min={0} max={9} step={1} value={scaleDrafts[`${c.id}:min`] ?? c.min} onChange={e => editScale(c.id, "min", e.target.value)} onBlur={() => normalizeScale(c.id, "min")}/></label><label>Maximum<input type="number" min={1} max={10} step={1} value={scaleDrafts[`${c.id}:max`] ?? c.max} onChange={e => editScale(c.id, "max", e.target.value)} onBlur={() => normalizeScale(c.id, "max")}/></label></>}<label className="voting-admin-check"><input type="checkbox" checked={c.required} onChange={e => updateCriteria(criteria.map(x => x.id === c.id ? {...x, required: e.target.checked} : x))}/> Required</label></div></div>)}</fieldset>
     {message && <p role="status">{message}</p>}
     <div className="d-narrow-actions"><button className="m-btn is-outline is-medium" disabled={busy} onClick={onBack}>Back</button><button className="m-btn is-medium" disabled={busy} onClick={save}>{busy ? "Starting…" : actionLabel}</button></div>
   </section>;

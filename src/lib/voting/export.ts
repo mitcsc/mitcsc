@@ -1,8 +1,9 @@
 import type { ElectionResults } from "./results";
+import type { Answer } from "./types";
 
-// One row per submitted vote: the final ratings first, then the ratings from before the discussion.
+// One row per submitted vote: the final answers first, then the answers from before the discussion.
 export function resultRows(results: ElectionResults): string[][] {
-  const rating = (value: number | null | undefined) => value == null ? "" : String(value);
+  const rating = (value: Answer | undefined) => value == null ? "" : String(value);
   return [
     ["Candidate", "Voter", ...results.criteria.map(c => c.label), ...results.criteria.map(c => `${c.label} (initial)`), "Submitted"],
     ...results.candidates.flatMap(({candidate, ballots}) => ballots.map(b => [
