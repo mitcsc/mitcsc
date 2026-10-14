@@ -7,15 +7,13 @@ import { createEventAction } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
 
-type Target = { kind: "default" } | { kind: "folder"; choice: DriveChoice } | { kind: "sheet"; choice: DriveChoice };
-
 // clubFolder is the "MIT CSC" folder, or null when the club Google account is not connected; then attendance stays on this site only.
 export default function NewEventForm({ today, clubFolder }: { today: string; clubFolder: DriveChoice | null }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [date, setDate] = useState(today);
-  const [target, setTarget] = useState<Target>({ kind: "default" });
-  const [picking, setPicking] = useState<"folder" | "sheet" | null>(null);
+  const [folder, setFolder] = useState(clubFolder);
+  const [picking, setPicking] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -23,11 +21,7 @@ export default function NewEventForm({ today, clubFolder }: { today: string; clu
     event.preventDefault();
     setBusy(true);
     setError("");
-    const result = await createEventAction({
-      name, date,
-      folderId: target.kind === "folder" ? target.choice.id : target.kind === "default" ? clubFolder?.id ?? null : null,
-      sheetId: target.kind === "sheet" ? target.choice.id : null,
-    }).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
+    const result = await createEventAction({ name, date, folderId: folder?.id ?? null }).catch(() => ({ ok: false as const, error: "Something went wrong. Please try again." }));
     if (!result.ok) {
       setBusy(false);
       setError(result.error);
@@ -36,7 +30,6 @@ export default function NewEventForm({ today, clubFolder }: { today: string; clu
     router.push(`/dashboard/events/${result.value}`);
   }
 
-  const path = target.kind === "default" ? clubFolder?.path || [] : target.choice.path;
   return (
     <main className="d-phone">
       <form className="d-phone-body" onSubmit={submit}>
@@ -50,21 +43,16 @@ export default function NewEventForm({ today, clubFolder }: { today: string; clu
           <span className="m-label">Date</span>
           <input className="m-input" type="date" value={date} required onChange={(e) => setDate(e.target.value)} />
         </label>
-        {clubFolder ? (
+        {folder ? (
           <div className="m-field">
             <span className="m-label">Save attendance in</span>
             <div className="d-location is-large">
               <span className="d-location-path">
-                {path.map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}{s}</span>)}
+                {folder.path.map((s, i) => <span key={i}>{i > 0 && <span className="d-crumb-sep" aria-hidden="true">/</span>}{s}</span>)}
               </span>
-              <button type="button" className="d-chip-btn" onClick={() => setPicking("folder")}>Change</button>
+              <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>Change</button>
             </div>
-            <span className="d-field-note is-large">
-              {target.kind === "sheet" ? `Adds a tab named “${name.trim() || "the event name"}” to this sheet.` : `Creates a new sheet named “${name.trim() || "the event name"}”.`}
-            </span>
-            {target.kind === "sheet"
-              ? <button type="button" className="d-text-btn" onClick={() => setTarget({ kind: "default" })}>Make a new sheet instead</button>
-              : <button type="button" className="d-text-btn" onClick={() => setPicking("sheet")}>Add to an existing sheet instead</button>}
+            <span className="d-field-note is-large">Creates a new sheet named “{name.trim() || "the event name"}”.</span>
           </div>
         ) : (
           <p className="d-field-note is-large">Attendance is saved here only. Connect the club Google account in Settings to also save it to a Google Sheet.</p>
@@ -72,13 +60,13 @@ export default function NewEventForm({ today, clubFolder }: { today: string; clu
         {error && <p className="m-error" role="alert">{error}</p>}
         <button type="submit" className="m-btn is-block d-phone-submit" disabled={busy}>{busy ? "Creating…" : "Start check-in"}</button>
       </form>
-      {picking && (
+      {picking && folder && (
         <DrivePicker
-          title={picking === "sheet" ? "Pick a sheet" : "Save attendance in"}
-          start={target.kind === "default" ? clubFolder?.id : target.choice.id}
-          pick={picking}
-          onClose={() => setPicking(null)}
-          onPick={(choice) => { setTarget({ kind: picking, choice }); setPicking(null); }}
+          title="Save attendance in"
+          start={folder.id}
+          pick="folder"
+          onClose={() => setPicking(false)}
+          onPick={(choice) => { setFolder(choice); setPicking(false); }}
         />
       )}
     </main>
