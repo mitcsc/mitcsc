@@ -240,12 +240,11 @@
 .voting-root .voting-roster { width: min(380px, calc(100vw - 32px)); }
 
 .voting-root .president-live-title { min-width: 0; gap: 12px; }
-.election-results { width:min(1100px,100%); margin:0 auto; padding:32px 24px 64px; color:#eee; }
-.results-heading,.results-section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-.results-heading h1 { font-size:32px; margin:4px 0 0; font-weight:500; }
-.results-heading p,.results-section p,.results-totals span { color:#929298; font-size:13px; line-height:1.6; margin:0; }
-.results-actions { display:flex; gap:8px; }
-.results-actions a,.results-actions button,.results-section select { border:1px solid #ffffff20; border-radius:7px; background:#151516; color:#ccc; padding:8px 12px; font-size:13px; text-decoration:none; }
+.election-results { color:#eee; }
+.results-section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.results-section p,.results-totals span { color:#929298; font-size:13px; line-height:1.6; margin:0; }
+.results-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.results-section select { border:1px solid #ffffff20; border-radius:7px; background:#151516; color:#ccc; padding:8px 12px; font-size:13px; text-decoration:none; }
 .results-totals { display:flex; gap:48px; padding:28px 0; border-bottom:1px solid #ffffff14; }
 .results-totals div { display:flex; flex-direction:column; gap:4px; }
 .results-totals strong { font-size:28px; font-weight:500; }
@@ -260,7 +259,7 @@
 .results-chart { height:300px; margin-top:16px; font-size:12px; }
 .results-ballots { margin-top:24px; }
 .results-ballots summary { cursor:pointer; font-size:14px; margin-bottom:12px; }
-@media(max-width:600px) { .election-results { padding:24px 16px; } .results-heading { align-items:flex-start; flex-direction:column; } .results-totals { gap:28px; } .results-section-heading { flex-wrap:wrap; } .results-section select { max-width:100%; } }
+@media(max-width:600px) { .results-totals { gap:28px; } .results-section-heading { flex-wrap:wrap; } .results-section select { max-width:100%; } }
 
 .voting-root .president-round-label { font-size:13px; color:#aaaab0; white-space:nowrap; }
 .voting-root .voting-admin .voting-roster-moderation { margin:6px 0 10px; flex:none; }
@@ -271,15 +270,8 @@
 .voting-root .voting-admin .voting-roster-row.is-banned { opacity: .45; }
 .voting-root .voting-admin .voting-roster-row.is-banned .voting-roster-select { cursor: default; }
 .voting-root .voting-admin .voting-roster-row.is-banned .voting-roster-person small { color: #929298; }
-/* Results stay in the same console, with a compact header and scrolling body. */
-.voting-root .election-results { width:100%; max-width:none; padding:0; height:calc(100dvh - 48px); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
-.voting-root .results-heading { flex:none; margin:0; padding:12px 20px; min-height:58px; }
-.voting-root .results-heading h1 { font-size:18px; line-height:24px; margin:0; }
-.voting-root .results-heading>div>p { font-size:11px; line-height:16px; }
-.voting-root .results-actions { flex-wrap:wrap; justify-content:flex-end; }
-.voting-root .results-actions button,.voting-root .results-actions a { min-height:34px; height:auto; padding:7px 12px; font-size:13px; border-radius:7px; line-height:18px; }
-.results-body { min-height:0; overflow:auto; overscroll-behavior:contain; padding:0 24px 32px; scrollbar-gutter:stable; }
-.results-body>* { max-width:1100px; margin-left:auto; margin-right:auto; }
+/* Results read like the other dashboard pages (.d-page): the whole page scrolls. */
+.results-heading { display:flex; flex-direction:column; }
 .results-section-heading { align-items:flex-start; }
 .results-filter { display:flex; flex-direction:column; gap:5px; width:240px; max-width:100%; min-width:0; flex-shrink:1; }
 .results-filter>span { color:#929298; font-size:11px; }
@@ -294,7 +286,7 @@
 .results-table tr>:first-child { position:sticky; left:0; background:#101011; z-index:1; border-right:1px solid #ffffff12; }
 .results-table thead tr>:first-child { z-index:3; }
 .results-chart { height:auto; max-height:420px; overflow:auto; border:1px solid #ffffff12; border-radius:8px; padding:12px; }
-@media(max-width:600px){.voting-root .results-heading { flex-direction:row; flex-wrap:wrap; gap:12px; }.results-body{padding:0 16px 24px}.results-filter{width:100%}.results-section-heading{gap:8px}.results-totals{gap:24px}.voting-root .election-results{height:calc(100dvh - 32px)}}
+@media(max-width:600px){.results-filter{width:100%}.results-section-heading{gap:8px}.results-totals{gap:24px}}
 .results-overview-filter { padding-top:20px; }
 .results-candidate-breakdown + .results-candidate-breakdown { border-top:1px solid #ffffff14; margin-top:28px; padding-top:16px; }
 /* Progress forward is primary; reopening is a secondary correction. */
@@ -302,7 +294,6 @@
 .voting-root .voting-round-actions > p { flex-basis:100%; margin-top:2px; }
 .voting-root .voting-admin .voting-round-actions button.voting-reopen-action { background:transparent; border:1px solid #ffffff26; color:#b8b8bf; }
 .voting-root .voting-admin .voting-round-actions button.voting-reopen-action:hover:not(:disabled) { background:#ffffff08; border-color:#ffffff40; color:#eee; }
-.voting-root .election-results.voting-console { border-radius:0; }
 .voting-root .candidate-platform-control { margin-top:12px; }
 .voting-root .candidate-platform-trigger { background:transparent; color:#b8b8bf; border:1px solid #ffffff26; border-radius:7px; padding:7px 12px; min-height:34px; font-size:13px; line-height:18px; }
 .candidate-platform-dialog { position:fixed; inset:0; margin:auto; padding:0; width:min(600px,calc(100vw - 32px)); max-height:min(680px,calc(100dvh - 48px)); border:1px solid #ffffff26; border-radius:10px; background:#151516; color:#ddd; overflow:hidden; text-align:left; }

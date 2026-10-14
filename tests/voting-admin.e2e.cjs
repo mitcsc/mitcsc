@@ -34,7 +34,7 @@ const baseURL = process.env.VOTING_TEST_URL || 'http://localhost:3020';
         return reply({sessionId: 'test-delib'});
       }
       if (payload?.action === 'end') { ended = true; return reply({ok: true}); }
-      return reply({me: {name: 'Test Host'}, election: ended ? null : election, hosted: election ? [{sessionId: 'test-delib', name: election.name, open: !ended, createdAt: Date.UTC(2026, 9, 14)}] : []});
+      return reply({me: {name: 'Test Host'}, election: ended ? null : election});
     }
     if (endpoint === 'state') return reply(state);
     if (endpoint === 'presence') return reply({presence: {}});
@@ -109,11 +109,17 @@ const baseURL = process.env.VOTING_TEST_URL || 'http://localhost:3020';
     await button('Shuffle order').click();
     const shuffledNames = await names();
     assert.equal(creates.length, 0, 'Setup changes stay local until the delib starts');
+    // Record whether the empty screen flashes between the form and the new delib.
+    await page.evaluate(() => {
+      window.__emptyFlash = false;
+      new MutationObserver(() => { if (document.body.innerText.includes('No delib is running')) window.__emptyFlash = true; }).observe(document.body, {childList: true, subtree: true});
+    });
     await button('Start delib').click();
 
     // Live host controls.
     await page.getByRole('heading', { name: 'Spring delib', level: 1 }).waitFor();
     assert.equal(creates.length, 1);
+    assert.equal(await page.evaluate(() => window.__emptyFlash), false, 'Starting a delib must not show "No delib is running"');
     assert.equal(creates[0].name, 'Spring delib');
     assert.match(creates[0].requestId, /^[0-9a-f-]{36}$/);
     assert.deepEqual(creates[0].candidates.map(c => c.name), shuffledNames, 'The delib keeps the shuffled order');
@@ -163,14 +169,11 @@ const baseURL = process.env.VOTING_TEST_URL || 'http://localhost:3020';
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'Mobile page should not horizontally overflow');
     await page.setViewportSize({ width: 1280, height: 1000 });
 
-    // Ending shows the results, and the delib then appears in the host's past delibs.
+    // Ending opens the delib's results page under History.
     await button('End voting').click();
-    await page.getByRole('link', {name: 'Download CSV'}).waitFor();
+    await page.waitForURL('**/dashboard/delibs/history/test-delib');
     assert.equal(ended, true);
-    await button('Back').click();
-    await page.getByRole('heading', { name: 'No delib is running' }).waitFor();
-    await page.locator('.delibs-past').getByText('Spring delib', {exact: true}).waitFor();
     assert.deepEqual(errors, []);
-    console.log(`PASS: delib setup steps, validation, paste, drag and keyboard reorder, draft kept on Back, shuffle, start, phase flow, reopen, roster, mobile layout, end and past delibs (${actions.length} host actions mocked).`);
+    console.log(`PASS: delib setup steps, validation, paste, drag and keyboard reorder, draft kept on Back, shuffle, start without an empty flash, phase flow, reopen, roster, mobile layout, end opens History (${actions.length} host actions mocked).`);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

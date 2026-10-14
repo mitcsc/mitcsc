@@ -270,16 +270,13 @@ export async function endElection(sessionId: string, host: Person) {
   if (!await redisCommand("EVAL", "if redis.call('GET',KEYS[1]) == ARGV[1] then redis.call('SET',KEYS[1],ARGV[2]); return 1 else return 0 end", 1, activeElectionKey(), JSON.stringify(config), JSON.stringify(ended))) throw new VotingError("The delib changed. Reload before continuing.", 409);
 }
 
-// Delibs this exec hosted, newest first.
-export async function hostedElections(host: Person) {
+// Every delib, newest first.
+export async function allElections() {
   const flat = await redisCommand<string[]>("HGETALL", historyKey());
   const all: Settings[] = [];
   for (let i = 1; i < flat.length; i += 2) all.push(JSON.parse(flat[i]) as Settings);
-  return all.filter(c => c.host === host.email).sort((a, b) => b.createdAt - a.createdAt);
+  return all.sort((a, b) => b.createdAt - a.createdAt);
 }
-
-// Full results, with each voter's name and ratings. Only the host may call this.
-// Reads the authoritative ballots, never the redacted polling projection.
 export async function electionResults(sessionId: string, host: Person) {
   const raw = await redisCommand<string | null>("HGET", historyKey(), sessionId);
   const config = raw ? JSON.parse(raw) as Settings : null;

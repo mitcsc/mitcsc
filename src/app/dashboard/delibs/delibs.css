@@ -4,11 +4,6 @@
 
 .delibs-status { padding: 48px 24px; color: var(--muted); text-align: center; }
 .voting-root.d-delibs .delibs-start { align-self: flex-start; margin-top: 20px; }
-.delibs-past { margin-top: 48px; }
-.delibs-past ul { margin-top: 8px; border-top: 1px solid var(--line); }
-.delibs-past li { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.delibs-past-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.delibs-past-date { font-size: 13px; color: var(--muted); white-space: nowrap; }
 
 /* Setup follows the dashboard's other forms: a centered column with the actions at the bottom right. */
 .voting-root.d-delibs .d-narrow-body .president-setup-progress { margin: 0 0 20px; }
@@ -32,12 +27,17 @@
 .voting-root.d-delibs .voter-room .voter-rating:hover:not(.voter-rating-selected) { border-color: #ffffff4d; }
 .voting-root.d-delibs .voter-room .voter-rating-na { border-color: var(--border); color: var(--muted); }
 
-.voting-root .results-back { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); }
-.voting-root .results-back:hover { background: #ffffff14; color: var(--text); }
-.save-to-drive { display: inline-flex; align-items: center; }
+
+/* Google draws Save to Drive in an iframe that cannot be styled. A pill in the button's own colors
+   (#f0f4f9) makes it as tall and as round as the buttons beside it; the clip hides the iframe's border. */
+.save-to-drive { flex: none; display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 11px; border-radius: 999px; background: #f0f4f9; }
+.save-to-drive[hidden] { display: none; }
+.save-to-drive iframe { display: block; clip-path: inset(2px); }
 
 @media (max-width: 600px) {
   .delibs-voter { padding: 28px 16px 48px; }
+  /* The buttons wrap below the title, so they line up with it on the left. */
+  .results-heading .d-section-head > .results-actions { margin-left: 0; }
 }
 
 /* Setup fields and small buttons look like the dashboard's own (.m-input, .d-chip-btn, .m-label). */

@@ -11,7 +11,7 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
   const heartbeats=[];
   await page.route('**/api/voting/**',async route=>{
    const url=new URL(route.request().url());
-   if(url.pathname.endsWith('/delibs'))return route.fulfill({json:{me:{name:'Tester'},election:{sessionId:session,name:'Test delib',hostName:'Host Exec',isHost:false},hosted:[]}});
+   if(url.pathname.endsWith('/delibs'))return route.fulfill({json:{me:{name:'Tester'},election:{sessionId:session,name:'Test delib',hostName:'Host Exec',isHost:false}}});
    if(url.pathname.endsWith('/join')){kicked=false;return route.fulfill({json:{ok:true}});}
    if(kicked)return route.fulfill({status:401,json:{error:'You were kicked from this session. You can join again.'}});
    if(url.searchParams.has('presence'))heartbeats.push({session,visibility:url.searchParams.get('presence')});

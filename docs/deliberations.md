@@ -12,11 +12,11 @@ The old `/vote` and `/deliberations` links redirect to the tab.
 3. That exec is the host. The host runs the rounds and does not vote.
 4. Every other exec who opens the tab joins automatically under their Google name.
 5. For each candidate, the host opens initial ratings, then discussion, then final voting, and then closes the round.
-6. After the last round, the host selects **End voting** and sees the full results.
+6. After the last round, the host selects **End voting**. The delib's results page opens under **History**.
 
 Only one delib can be open at a time.
-Only the host sees the results, and only for delibs they hosted.
-The host can open past results from **Your past delibs** on the Delibs tab.
+The **History** tab lists every delib for all execs.
+Only the host can open a delib's results, and only after the delib ends.
 
 Execs must sign in again after this change so that the dashboard session has their Google name.
 

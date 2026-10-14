@@ -35,7 +35,7 @@ async function main() {
   await page.route('**/api/voting/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const reply = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-    if (path.endsWith('/delibs')) return reply(200,{me:{name:'Test Voter'},election:state.active?{sessionId:state.sessionId,name:'Test delib',hostName:'Host Exec',isHost:false}:null,hosted:[]});
+    if (path.endsWith('/delibs')) return reply(200,{me:{name:'Test Voter'},election:state.active?{sessionId:state.sessionId,name:'Test delib',hostName:'Host Exec',isHost:false}:null});
     if (path.endsWith('/state')) {
       stateRequests++;
       return authenticated ? reply(200, state) : reply(401, { error: 'Join the session.' });
