@@ -308,3 +308,14 @@ test('Untracked earlier imports move to their own removable entry once', async (
   await store.markPaidEver(['newer']);
   assert.deepEqual(await store.listPastSheets(), [], 'The move runs only once');
 });
+
+test('This year\'s new paid members are not counted as past members yet', async () => {
+  db.set(keys.pastMoved, '1');
+  await store.claimMember(member('fresh', { status: 'paid' }));
+  await store.claimMember(member('back', { status: 'paid', type: 'returning' }));
+  await store.claimMember(member('owes'));
+  await store.markPaidEver(['fresh', 'back', 'older']);
+  await store.savePastSheet({ id: 's', name: 's', count: 1, importedAt: 1, importedBy: null }, ['sheetonly']);
+  assert.deepEqual(await store.returningCounts(YEAR), { earlier: 3, thisYear: 1 });
+  assert.equal(await store.pastMemberCount(), 4, 'Starting next year counts everyone who paid');
+});

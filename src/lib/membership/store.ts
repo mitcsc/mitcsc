@@ -80,6 +80,16 @@ export async function pastMemberCount() {
   return (await redis<string[]>("SUNION", keys.paidEver, keys.pastImported)).length;
 }
 
+// Splits the returning-price list into people from earlier years and this year's new members,
+// who join the list when they pay but get the returning price only from next year.
+export async function returningCounts(year: string) {
+  const [all, imported] = await pipeline<[string[], string[]]>([["SUNION", keys.paidEver, keys.pastImported], ["SMEMBERS", keys.pastImported]]);
+  const everyone = new Set(all);
+  const fromSheets = new Set(imported);
+  const thisYear = (await listMembers(year)).filter((m) => m.status === "paid" && m.type === "new" && everyone.has(m.kerb) && !fromSheets.has(m.kerb)).length;
+  return { earlier: everyone.size - thisYear, thisYear };
+}
+
 // Past members from old sheets. Each sheet keeps its own kerbs, so removing one sheet
 // keeps people who are also on another sheet or who paid on this site.
 
