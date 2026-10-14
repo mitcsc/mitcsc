@@ -30,7 +30,7 @@ export default function AdminRoom({initialState, onExit, onStateChange, showVote
       if (running || document.hidden || controller.signal.aborted) return;
       running = true;
       try {
-        const response = await fetch("/api/voting/presence", {cache:"no-store", signal:controller.signal});
+        const response = await fetch(`/api/voting/presence?session=${encodeURIComponent(initialState.sessionId)}`, {cache:"no-store", signal:controller.signal});
         const data = await responseData(response);
         if (!controller.signal.aborted) setPresence(data.presence || {});
       } catch { if (!controller.signal.aborted) setPresence({}); }
@@ -63,22 +63,26 @@ export default function AdminRoom({initialState, onExit, onStateChange, showVote
   const mutating = useRef(false);
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
+  // The parent passes new callbacks on every render. Polling reads the latest ones from a ref,
+  // so a new callback does not restart the poll timer and send an extra request.
+  const parent = useRef({onExit, onStateChange});
+  useEffect(() => { parent.current = {onExit, onStateChange}; });
   const applyState = useCallback((next: VotingState) => {
     setState(next);
-    onStateChange?.(next);
-  }, [onStateChange]);
+    parent.current.onStateChange?.(next);
+  }, []);
   const refresh = useCallback(async () => {
     if (pollInFlight.current || mutating.current || document.hidden || Date.now() < pollAfter.current) return;
     pollInFlight.current = true;
     const revision = generation.current;
     const abort = new AbortController(); controller.current = abort;
     try {
-      const response = await fetch("/api/voting/state", {cache: "no-store", signal: AbortSignal.any([abort.signal, AbortSignal.timeout(20000)])});
+      const response = await fetch(`/api/voting/state?session=${encodeURIComponent(initialState.sessionId)}`, {cache: "no-store", signal: AbortSignal.any([abort.signal, AbortSignal.timeout(20000)])});
       if (revision !== generation.current) return;
-      if (response.status === 401) { onExit(); return; }
+      if (response.status === 401) { parent.current.onExit(); return; }
       const next: VotingState = await responseData(response);
       pollFailures.current = 0; pollAfter.current = 0;
-      if (!next.isAdmin) { onExit(); return; }
+      if (!next.isAdmin) { parent.current.onExit(); return; }
       if (revision === generation.current) {applyState(next); setConnectionError("");}
     } catch (e) {
       if (!abort.signal.aborted && revision === generation.current) {
@@ -86,7 +90,7 @@ export default function AdminRoom({initialState, onExit, onStateChange, showVote
         setConnectionError(e instanceof Error ? e.message : "Connection lost. Retrying automatically.");
       }
     } finally {pollInFlight.current = false; setLoading(false);}
-  }, [applyState, onExit]);
+  }, [applyState, initialState.sessionId]);
   useEffect(() => {
     void refresh();
     const timer = window.setInterval(() => {void refresh();}, initialState.pollIntervalMs || 8000);

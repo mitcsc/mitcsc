@@ -57,7 +57,7 @@ export default function DelibsRoom() {
   // Loads the open delib, and the host's view of it. Nothing is shown until both arrive.
   const load = useCallback(async () => {
     const next = await call<Overview>("delibs");
-    return {overview: next, state: next.election?.isHost ? await call<VotingState>("state") : null};
+    return {overview: next, state: next.election?.isHost ? await call<VotingState>(`state?session=${encodeURIComponent(next.election.sessionId)}`) : null};
   }, []);
   const apply = useCallback((next: {overview: Overview; state: VotingState | null}) => {
     setState(next.state);

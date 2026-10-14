@@ -33,8 +33,9 @@ export function devEmail() {
 // Everyone who can edit the club's "MIT CSC" Drive folder, cached for a few minutes.
 // While Google can't be reached or the club account needs reconnecting, the last list stays in use,
 // so exec can still sign in and reconnect it.
-export async function execAccess(fresh = false): Promise<ExecAccess> {
-  const cached = await getJson<ExecAccess>(keys.execAccess);
+// `stored` is the cached list when the caller already read keys.execAccess, to save a Redis read.
+export async function execAccess(fresh = false, stored?: ExecAccess | null): Promise<ExecAccess> {
+  const cached = stored !== undefined ? stored : await getJson<ExecAccess>(keys.execAccess);
   if (!fresh && cached && Date.now() - cached.checkedAt < ACCESS_CACHE_SECONDS * 1000) return cached;
   const connection = await clubConnection();
   if (!connection) return { folderId: null, people: [], checkedAt: Date.now() };
@@ -56,9 +57,9 @@ export async function clearExecAccessCache() {
 }
 
 // The club account can always sign in, so the dashboard can be set up before any folder exists.
-export async function hasExecAccess(email: string) {
+export async function hasExecAccess(email: string, stored?: ExecAccess | null) {
   if (email === clubEmail() || email === devEmail()) return true;
-  const access = await execAccess().catch(() => null);
+  const access = await execAccess(false, stored).catch(() => null);
   return !!access?.people.some((p) => p.email === email);
 }
 
@@ -72,15 +73,15 @@ export async function signedInEmail() {
 
 // The signed-in exec, with the name from their Google account. Sessions from before names were saved
 // fall back to the part of the email before the @.
-export async function requireExecPerson() {
-  const email = await requireExec();
+export async function requireExecPerson(stored?: ExecAccess | null) {
+  const email = await requireExec(stored);
   return { email, name: (await session())?.name || email.split("@")[0] };
 }
 
 // Every dashboard action calls this first.
-export async function requireExec() {
+export async function requireExec(stored?: ExecAccess | null) {
   const email = await signedInEmail();
   if (!email) throw new MembershipError("Sign in to use the dashboard.", 401);
-  if (!(await hasExecAccess(email))) throw new MembershipError("This Google account does not have access.", 403);
+  if (!(await hasExecAccess(email, stored))) throw new MembershipError("This Google account does not have access.", 403);
   return email;
 }
