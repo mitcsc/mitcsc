@@ -186,7 +186,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
             <div className="d-collapsible-inner">
               <p className="d-section-note" suppressHydrationWarning>
                 Check Venmo confirms a payment only when its note matches exactly, like “{venmoNote(year.year, example)}”.
-                {venmoCheckedAt ? ` Last checked ${ago(venmoCheckedAt)}.` : ""} Everything else needs Confirm payment.
+                {venmoCheckedAt ? ` Last checked ${ago(venmoCheckedAt)}.` : ""} All other payments need manual confirmation.
               </p>
               {pending.length === 0 && <p className="d-empty-row">Nobody is waiting.</p>}
               {(showAll ? pending : pending.slice(0, PENDING_PREVIEW)).map((m) => (
