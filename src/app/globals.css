@@ -234,8 +234,14 @@
     var(--top-max)
   );
   z-index: var(--z);
+  /* --dx and --dy come from PhotoPile: they keep the polaroid inside the pile and move it when dragged. */
+  translate: var(--dx, 0px) var(--dy, 0px);
   rotate: var(--tilt);
   scale: var(--s);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45);
   transition: scale 300ms ease-out;
   /* Entrance, seen from above: each polaroid starts large and faint as if
@@ -248,6 +254,16 @@
   scale: calc(var(--s) * 1.06);
   z-index: 20;
 }
+.hero-polaroid.is-dragging {
+  cursor: grabbing;
+  box-shadow: 0 24px 40px -8px rgb(0 0 0 / 0.55), 0 8px 12px -6px rgb(0 0 0 / 0.5);
+}
+
+/* The polaroid, not the image inside it, takes the drag. */
+.hero-polaroid img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
 
 .hero-polaroid-frame {
   width: var(--photo);
@@ -257,7 +273,7 @@
 @keyframes hero-photo-land {
   0% {
     opacity: 0;
-    translate: var(--drift) calc(var(--drift) * -0.6);
+    translate: calc(var(--dx, 0px) + var(--drift)) calc(var(--dy, 0px) + var(--drift) * -0.6);
     scale: calc(var(--s) * 1.5);
     rotate: calc(var(--tilt) + var(--spin));
     box-shadow: 0 40px 50px -10px rgb(0 0 0 / 0);
@@ -268,14 +284,14 @@
     opacity: 1;
   }
   86% {
-    translate: 0 0;
+    translate: var(--dx, 0px) var(--dy, 0px);
     scale: calc(var(--s) * 0.985);
     rotate: calc(var(--tilt) - var(--spin) * 0.06);
     box-shadow: 0 3px 4px -2px rgb(0 0 0 / 0.55), 0 1px 2px -1px rgb(0 0 0 / 0.55);
     animation-timing-function: ease-out;
   }
   100% {
-    translate: 0 0;
+    translate: var(--dx, 0px) var(--dy, 0px);
     scale: var(--s);
     rotate: var(--tilt);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45);

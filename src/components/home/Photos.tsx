@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import PhotoPile from "@/components/home/PhotoPile";
 import { photoUrl } from "@/lib/home-photo-urls";
 import { homePagePhotos } from "@/lib/home-photos";
 import { getEventImages, pickRandom } from "@/lib/images";
@@ -127,7 +128,7 @@ export default async function Photos() {
       aria-label="Photos from past CSC events"
       className="relative w-full h-full flex-1 flex items-center justify-center overflow-x-clip max-h-[min(65vh,800px)] sm:max-h-none"
     >
-      <ul className="hero-photos relative w-full h-full xl:max-w-7xl list-none m-0 p-0">
+      <PhotoPile className="hero-photos relative w-full h-full xl:max-w-7xl list-none m-0 p-0">
         {slots.map((slot, index) => (
           <li
             key={slot.key}
@@ -168,7 +169,7 @@ export default async function Photos() {
             </div>
           </li>
         ))}
-      </ul>
+      </PhotoPile>
     </section>
   );
 }
