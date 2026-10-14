@@ -2,8 +2,8 @@
 
 import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
-import { clearExecAccessCache, execAccess, requireExec } from "@/lib/membership/exec-auth";
-import { createFolder, getItem, itemPath, listChildren, listShared, FOLDER, SPREADSHEET } from "@/lib/membership/google/drive";
+import { execAccess, requireExec } from "@/lib/membership/exec-auth";
+import { clubFolder, clubPath, createFolder, getItem, listChildren, FOLDER, SPREADSHEET } from "@/lib/membership/google/drive";
 import { clubEmail } from "@/lib/membership/google/oauth";
 import { addTab, createSheet, readFirstTab } from "@/lib/membership/google/sheets";
 import { cleanForm, text } from "@/lib/membership/form";
@@ -139,15 +139,13 @@ export interface DriveListing {
   items: { id: string; name: string; kind: "folder" | "sheet" }[];
 }
 
+// The picker only sees the club folder and what is inside it. An empty id means the club folder.
 export async function browseDrive(folderId: string, includeSheets: boolean): Promise<Result<DriveListing>> {
   return attempt(async () => {
     await requireExec();
-    // "root" is My Drive and "shared" is Shared with me.
-    const id = folderId || "root";
-    const [path, children] = await Promise.all([
-      id === "root" || id === "shared" ? [] : itemPath(id),
-      id === "shared" ? listShared(includeSheets) : listChildren(id, includeSheets),
-    ]);
+    const root = await clubFolder();
+    const path = await clubPath(folderId || root.id, root);
+    const children = await listChildren(path.at(-1)!.id, includeSheets);
     return {
       path,
       items: children.map((c) => ({ id: c.id, name: c.name, kind: c.mimeType === FOLDER ? "folder" as const : "sheet" as const })),
@@ -160,7 +158,9 @@ export async function makeFolder(name: string, parentId: string): Promise<Result
     await requireExec();
     const clean = text(name, 100);
     if (!clean) throw new MembershipError("Name the folder.");
-    const folder = await createFolder(clean, !parentId || parentId === "shared" ? "root" : parentId);
+    const root = await clubFolder();
+    const parent = (await clubPath(parentId || root.id, root)).at(-1)!;
+    const folder = await createFolder(clean, parent.id);
     return { id: folder.id, name: folder.name };
   });
 }
@@ -176,8 +176,10 @@ export async function createSchoolYear(input: { year: string; folderId: string; 
       throw new MembershipError(`You can start the next school year from ${formatDay(nextYearOpens(previous.year), true)}.`);
     }
     const sheetName = text(input.sheetName, 100) || `CSC ${input.year} Membership`;
-    const folder = input.folderId ? await getItem(input.folderId) : null;
-    if (!folder || folder.mimeType !== FOLDER) throw new MembershipError("Pick the folder for the membership sheet.");
+    if (!input.folderId) throw new MembershipError("Pick the folder for the membership sheet.");
+    await clubPath(input.folderId);
+    const folder = await getItem(input.folderId);
+    if (folder.mimeType !== FOLDER) throw new MembershipError("Pick the folder for the membership sheet.");
     const sheetId = await createSheet(sheetName, folder.id, "Members", clubEmail());
     const config: YearConfig = {
       ...newYearConfig(input.year, previous),
@@ -187,8 +189,6 @@ export async function createSchoolYear(input: { year: string; folderId: string; 
       sheetName,
     };
     await createYear(config);
-    // The sheet's folder decides who has exec access.
-    await clearExecAccessCache();
     syncMembersLater(config.year);
     console.info(`Membership year ${config.year} created by ${by}`);
     return config.year;
@@ -207,12 +207,14 @@ export async function createEventAction(input: { name: string; date: string; fol
     let sheetId: string | null = null;
     let sheetTab = "Attendance";
     if (input.sheetId) {
+      await clubPath(input.sheetId);
       const sheet = await getItem(input.sheetId);
       if (sheet.mimeType !== SPREADSHEET) throw new MembershipError("Pick a Google Sheet.");
       sheetTab = await addTab(sheet.id, name.slice(0, 90), clubEmail());
       sheetId = sheet.id;
     } else if (input.folderId || config.eventsFolderId || config.folderId) {
       const folderId = input.folderId || config.eventsFolderId || config.folderId!;
+      await clubPath(folderId);
       sheetId = await createSheet(name, folderId, sheetTab, clubEmail());
       // The next event starts in the same folder.
       if (folderId !== config.eventsFolderId) await updateYear(config.year, (c) => ({ ...c, eventsFolderId: folderId }));
@@ -305,6 +307,7 @@ export async function refreshExecAccess(): Promise<Result<null>> {
 export async function importPastMembers(sheetId: string): Promise<Result<{ found: number }>> {
   return attempt(async () => {
     await requireExec();
+    await clubPath(sheetId);
     const rows = await readFirstTab(sheetId);
     const header = (rows[0] || []).map((h) => String(h).toLowerCase());
     let column = header.findIndex((h) => /kerb/.test(h));

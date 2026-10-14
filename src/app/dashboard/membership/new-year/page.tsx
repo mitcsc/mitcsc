@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import NewYearForm from "@/components/dashboard/NewYearForm";
-import { canStartNextYear, CLUB_DRIVE_FOLDER, nextSchoolYear, schoolYearOn } from "@/lib/membership/config";
-import { findFolder } from "@/lib/membership/google/drive";
+import { canStartNextYear, nextSchoolYear, schoolYearOn } from "@/lib/membership/config";
 import { clubConnection } from "@/lib/membership/google/oauth";
 import { currentYear, pastMemberCount } from "@/lib/membership/store";
 
@@ -19,13 +18,11 @@ export default async function NewYearPage() {
     );
   }
   const year = config ? nextSchoolYear(config.year) : schoolYearOn(new Date());
-  const clubFolder = await findFolder(CLUB_DRIVE_FOLDER).catch(() => null);
   return (
     <NewYearForm
       year={year}
       previous={config?.year || null}
       prices={config?.prices || { new: 8, returning: 6 }}
-      pickerStart={clubFolder?.id || "root"}
       pastMembers={pastMembers}
     />
   );

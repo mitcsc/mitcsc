@@ -3,18 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { importPastMembers, refreshExecAccess } from "@/app/dashboard/actions";
+import { CLUB_DRIVE_FOLDER } from "@/lib/membership/config";
 import DrivePicker from "./DrivePicker";
 import { ago } from "./format";
 import { Setting } from "./YearSettings";
 
-export function DashboardSettings({ year, folder, people, accessCheckedAt, club, pastMembers, pickerStart }: {
-  year: string | null;
+export function DashboardSettings({ folder, people, accessCheckedAt, club, pastMembers }: {
   folder: string | null;
   people: { email: string; role: "Owner" | "Editor" }[];
   accessCheckedAt: number | null;
   club: { email: string; state: "missing" | "broken" | "connected" };
   pastMembers: number;
-  pickerStart: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"access" | "import" | null>(null);
@@ -49,7 +48,7 @@ export function DashboardSettings({ year, folder, people, accessCheckedAt, club,
     <main className="d-settings">
       <Setting
         title="Exec access"
-        note={year ? `Everyone who can edit the Drive folder with the ${year} membership sheet can use this dashboard. Change it in Drive.` : "After you start a school year, everyone who can edit the folder with its membership sheet can use this dashboard."}
+        note={`Everyone who can edit the “${CLUB_DRIVE_FOLDER}” folder in ${club.email}’s Google Drive can use this dashboard. Change it in Drive.`}
       >
         {people.length > 0 ? (
           <div className="d-people">
@@ -66,11 +65,11 @@ export function DashboardSettings({ year, folder, people, accessCheckedAt, club,
             </div>
           </div>
         ) : (
-          <p className="d-field-note is-large">{connected ? "Nobody yet." : "Connect the club Google account to see who has access."} {club.email} can always sign in.</p>
+          <p className="d-field-note is-large">{!connected ? "Connect the club Google account to see who has access." : folder ? "Nobody yet." : `No “${CLUB_DRIVE_FOLDER}” folder found in this Drive.`} {club.email} can always sign in.</p>
         )}
         <div className="d-inline-actions">
           {folder && <a className="d-quiet-link" href={folder} target="_blank" rel="noreferrer">Open sharing in Drive</a>}
-          {connected && year && (
+          {connected && folder && (
             <button type="button" className="d-text-btn" onClick={refresh} disabled={busy === "access"} suppressHydrationWarning>
               {busy === "access" ? "Checking…" : `Checked ${accessCheckedAt ? ago(accessCheckedAt) : "never"}. Check again`}
             </button>
@@ -102,12 +101,12 @@ export function DashboardSettings({ year, folder, people, accessCheckedAt, club,
           </button>
           {!connected && <span className="d-field-note">Connect the club Google account first.</span>}
         </div>
-        <p className="d-field-note">Reads the Kerberos or email column on the sheet’s first tab. The sheet must be shared with {club.email}.</p>
+        <p className="d-field-note">Reads the Kerberos or email column on the sheet’s first tab. The sheet must be in the “{CLUB_DRIVE_FOLDER}” folder.</p>
         {message && <p className={message.error ? "m-error" : "d-success"} role="status">{message.text}</p>}
       </Setting>
 
       {picking && (
-        <DrivePicker title="Pick an old membership sheet" start={pickerStart} pick="sheet" onClose={() => setPicking(false)} onPick={(choice) => importSheet(choice.id, choice.path.at(-1) || "the sheet")} />
+        <DrivePicker title="Pick an old membership sheet" pick="sheet" onClose={() => setPicking(false)} onPick={(choice) => importSheet(choice.id, choice.path.at(-1) || "the sheet")} />
       )}
     </main>
   );

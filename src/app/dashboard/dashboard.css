@@ -151,9 +151,6 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-crumbs button { padding: 4px 6px; border: 0; border-radius: 6px; background: none; color: var(--muted); }
 .d-crumbs button:hover { color: var(--text); }
 .d-crumbs button[aria-current="page"] { color: var(--text); }
-.d-crumb-roots { display: inline-flex; gap: 4px; }
-.d-crumb-roots button { padding: 5px 12px; border-radius: 999px; }
-.d-crumb-roots button[aria-current="page"] { background: #ffffff1a; }
 .d-crumb-sep { margin: 0 4px; color: #ffffff59; }
 .d-drive-list { max-height: min(360px, 50svh); overflow-y: auto; border-top: 1px solid var(--line); }
 .d-drive-list li { border-bottom: 1px solid var(--line); }

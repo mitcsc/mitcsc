@@ -29,7 +29,7 @@ export interface YearConfig {
   zelle: string;
   cashAllowed: boolean;
   form: FormConfig;
-  folderId: string | null; // holds the membership sheet; its editors are the exec allowlist
+  folderId: string | null; // holds the membership sheet, inside the club's "MIT CSC" folder
   eventsFolderId: string | null; // where the last event sheet was saved
   sheetId: string | null;
   sheetName: string;

@@ -74,7 +74,7 @@ export default function NewEventForm({ today, googleReady, eventsFolder }: { tod
       {picking && (
         <DrivePicker
           title={picking === "sheet" ? "Pick a sheet" : "Save attendance in"}
-          start={target.kind === "default" ? eventsFolder?.id || "root" : target.choice.id}
+          start={target.kind === "default" ? eventsFolder?.id : target.choice.id}
           pick={picking}
           onClose={() => setPicking(null)}
           onPick={(choice) => { setTarget({ kind: picking, choice }); setPicking(null); }}

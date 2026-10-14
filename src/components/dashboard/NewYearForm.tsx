@@ -8,8 +8,8 @@ import { createSchoolYear } from "@/app/dashboard/actions";
 import DrivePicker, { type DriveChoice } from "./DrivePicker";
 import { MoneyInput } from "./YearSettings";
 
-export default function NewYearForm({ year, previous, prices, pickerStart, pastMembers }: {
-  year: string; previous: string | null; prices: { new: number; returning: number }; pickerStart: string; pastMembers: number;
+export default function NewYearForm({ year, previous, prices, pastMembers }: {
+  year: string; previous: string | null; prices: { new: number; returning: number }; pastMembers: number;
 }) {
   const router = useRouter();
   const [folder, setFolder] = useState<DriveChoice | null>(null);
@@ -57,7 +57,7 @@ export default function NewYearForm({ year, previous, prices, pickerStart, pastM
               </span>
               <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>{folder ? "Change" : "Pick folder"}</button>
             </div>
-            <span className="d-field-note">The sheet goes straight into this folder. Everyone who can edit the folder can use the dashboard.</span>
+            <span className="d-field-note">The sheet goes straight into this folder.</span>
           </div>
           <label className="d-field">
             <span className="m-label">Sheet name</span>
@@ -87,7 +87,7 @@ export default function NewYearForm({ year, previous, prices, pickerStart, pastM
       </form>
       {picking && (
         <DrivePicker
-          title="Save the sheet in" start={folder?.id || pickerStart} pick="folder" onClose={() => setPicking(false)}
+          title="Save the sheet in" start={folder?.id} pick="folder" onClose={() => setPicking(false)}
           onPick={(choice) => { setFolder(choice); setPicking(false); }}
         />
       )}
