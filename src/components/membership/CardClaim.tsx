@@ -74,7 +74,7 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
           </>
         )}
       </div>
-      <p className="mp-footnote">{!showLink && !sentTo && <>Not a member yet? <Link href="/join">Join CSC</Link> · </>}Questions? <Email /></p>
+      <p className="mp-footnote">{!showLink && !sentTo && <span>Not a member yet? <Link href="/join">Join CSC</Link></span>}<span>Questions? <Email /></span></p>
     </main>
   );
 }

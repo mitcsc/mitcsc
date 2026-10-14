@@ -9,7 +9,8 @@
 .mp-nowrap { white-space: nowrap; }
 .mp-price-now { color: var(--text); font-weight: 500; }
 .m-hint .m-strike { font-size: 11px; }
-.mp-footnote { margin-top: auto; text-align: center; font-size: 13px; color: #ffffff73; }
+/* Each sentence gets its own line. */
+.mp-footnote { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 13px; color: #ffffff73; }
 
 /* Benefits on the pay screen: a labeled strip of chips that scrolls sideways. The block fades up on load. */
 .mp-benefits { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; animation: mp-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms backwards; }
