@@ -34,6 +34,7 @@ npm run dev
 `npm run dev:live` runs the site with the live database and the club Google account.
 Changes there reach the real site, and emails go to real members.
 Use it only when a problem needs real data.
+It asks you to type `y` before it starts.
 
 It needs the values in `.env.local`. Pull them from Vercel while signed in as the club account:
 

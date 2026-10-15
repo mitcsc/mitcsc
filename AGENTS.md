@@ -57,7 +57,7 @@ This file tells you how the site is wired and how to make the common changes cor
    `npm run dev` is local mode: a private database on this computer, with Google, Wallet cards, and emails off.
    `npm run dev:live` uses the values from `vercel env pull`. It reads and writes the live database and acts as the club Google account.
    It can change Drive files and Sheets, and it can send real emails to members.
-   Never start `npm run dev:live` without the user's yes, and say why local mode is not enough.
+   `npm run dev:live` asks for `y` before it starts. Never start it or answer `y` without the user's yes, and say why local mode is not enough.
    In live mode, before any action that writes data or sends email, tell the user it affects the real site and wait for a yes.
    Avoid deployment or credential changes during an election.
 7. **Preserve exec order.** The order on the Exec and Alumni pages is the order in Dashboard > Website, and it follows the role hierarchy in the Roles tab (section 3).

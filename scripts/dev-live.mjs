@@ -2,6 +2,7 @@
 // The site then reads and writes the live database and acts as the club Google account.
 // Use `npm run dev` (local mode) unless a problem needs real data.
 import { spawn, spawnSync } from "node:child_process";
+import { createInterface } from "node:readline/promises";
 import nextEnv from "@next/env";
 
 const { combinedEnv: env } = nextEnv.loadEnvConfig(process.cwd(), true, { info() {}, error: console.error });
@@ -16,13 +17,24 @@ if (!redis || !env.MEMBERSHIP_SECRET) {
   process.exit(1);
 }
 
-spawnSync(process.execPath, ["scripts/generate-event-images.mjs"], { stdio: "inherit" });
-
 console.log(`
 LIVE MODE: this site uses the live database and the club Google account.
 Changes here reach the real site, and emails go to real members.
-Stop now and use \`npm run dev\` unless you need real data.
+Use \`npm run dev\` instead unless you need real data.
 `);
+const prompt = createInterface({ input: process.stdin, output: process.stdout });
+// Closed input (no terminal) counts as "no".
+const answer = await new Promise((resolve) => {
+  prompt.once("close", () => resolve(""));
+  prompt.question("Type y to start in live mode: ").then(resolve, () => resolve(""));
+});
+prompt.close();
+if (answer.trim().toLowerCase() !== "y") {
+  console.log("Stopped. Nothing was started.");
+  process.exit(1);
+}
+
+spawnSync(process.execPath, ["scripts/generate-event-images.mjs"], { stdio: "inherit" });
 
 const next = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--turbopack", ...process.argv.slice(2)], { stdio: "inherit" });
 process.on("SIGINT", () => next.kill("SIGINT"));
