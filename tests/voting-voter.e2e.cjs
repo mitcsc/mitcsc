@@ -1,7 +1,7 @@
 /* Run against a local dev server:
  * PLAYWRIGHT_MODULE_PATH=/path/to/node_modules/playwright \
  * VOTING_TEST_URL=http://localhost:3112 node tests/voting-voter.e2e.cjs
- * Start the server with DASHBOARD_DEV_EMAIL set so the dashboard lets the test in.
+ * Start the server with PORT=3112 npm run dev (local mode) so the dashboard lets the test in.
  * All voting API traffic is intercepted. No Google credentials or writes are used.
  */
 /* eslint-disable @typescript-eslint/no-require-imports */

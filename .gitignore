@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# private local database for npm run dev:local
+# private local database for npm run dev
 /.local-data/

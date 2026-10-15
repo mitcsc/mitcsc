@@ -73,10 +73,10 @@ Reopening a closed candidate keeps its votes and its original ballot version.
 It starts a separate local Redis server and checks concurrent joins and submissions, phase races, retries, kick and ban, presence, and results.
 
 The browser tests in `tests/voting-*.e2e.cjs` mock the voting API, so they never touch Redis.
-Run them against a local dev server started with `DASHBOARD_DEV_EMAIL` set, for example:
+Run them against a local mode server, which signs the dashboard in without Google:
 
 ```bash
-DASHBOARD_DEV_EMAIL=exec@mit.edu npx next dev -p 3020
+PORT=3020 npm run dev
 ```
 
 ```bash
