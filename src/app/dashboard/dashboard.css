@@ -125,7 +125,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-icon-btn.is-on { display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 0 12px 0 10px; border-radius: 999px; border-color: transparent; background: #ffffff1a; color: var(--text); font-size: 13px; }
 .d-menu-wrap { position: relative; flex: none; }
 /* Tooltips (useTooltip.tsx), for data-tip="..." and useTooltip. They are fixed to the window, so no container clips them. */
-.csc-tooltip { position: fixed; z-index: 1000; box-sizing: border-box; width: max-content; max-width: min(240px, calc(100vw - 24px)); padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 7px; background: #242426; color: #e4e4e7; font-family: var(--font-instrument-sans), Arial, sans-serif; font-size: 12px; line-height: 1.4; pointer-events: none; box-shadow: 0 4px 16px #0004; animation: csc-tooltip-in 120ms ease-out both; }
+.csc-tooltip { position: fixed; z-index: 1000; box-sizing: border-box; width: max-content; max-width: min(240px, calc(100vw - 24px)); padding: 7px 10px; border: 1px solid #ffffff20; border-radius: 7px; background: #242426; color: #e4e4e7; font-family: var(--font-instrument-sans), Arial, sans-serif; font-size: 12px; font-weight: 500; line-height: 1.4; pointer-events: none; box-shadow: 0 4px 16px #0004; animation: csc-tooltip-in 120ms ease-out both; }
 @keyframes csc-tooltip-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
 @media(prefers-reduced-motion:reduce) { .csc-tooltip { animation: none; } }
 .csc-tooltip-arrow { position: absolute; width: 6px; height: 6px; background: #242426; transform: translateX(-50%) rotate(45deg); }

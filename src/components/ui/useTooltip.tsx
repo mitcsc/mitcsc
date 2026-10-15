@@ -7,7 +7,8 @@ import { createPortal } from "react-dom";
 const HOVER_DELAY_MS = 300;
 
 // The dashboard sets its font on a wrapper (`.m-font`), so the tooltip renders inside it to use the same font.
-const fontRoot = (anchor: HTMLElement) => anchor.closest<HTMLElement>(".m-font") ?? document.body;
+// In an open dialog it renders inside the dialog instead: a modal dialog covers everything outside it.
+const fontRoot = (anchor: HTMLElement) => anchor.closest<HTMLElement>("dialog[open]") ?? anchor.closest<HTMLElement>(".m-font") ?? document.body;
 
 // The tooltip box. It is fixed to the window, so a scrolling or clipping container never cuts it off.
 // It sits below the anchor, or above when there is no room below, and stays 12px inside the window.
