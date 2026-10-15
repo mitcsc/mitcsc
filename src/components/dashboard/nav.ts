@@ -33,7 +33,7 @@ export const DELIB_TABS: NavTab[] = [
 
 // Everything that changes the public site.
 export const WEBSITE_TABS: NavTab[] = [
-  { href: "/dashboard/website/photos", label: "Home Photos" },
+  { href: "/dashboard/website/photos", label: "Home" },
   { href: "/dashboard/website/exec", label: "Exec" },
   { href: "/dashboard/website/alumni", label: "Alumni" },
   { href: "/dashboard/website/roles", label: "Roles" },
