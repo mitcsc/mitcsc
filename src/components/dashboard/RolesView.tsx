@@ -38,7 +38,7 @@ export default function RolesView({ roles, holders }: { roles: string[]; holders
         <h1 className="d-h2">Roles <span className="d-count">{order.length}</span></h1>
         <button type="button" className="d-icon-btn" aria-label="Add role" data-tip="Add role" onClick={() => setEditing("new")}><Icon name="plus" size={16} /></button>
       </div>
-      <p className="d-section-note">The positions to pick from when you edit a person. Renaming a role renames it for the current exec who have it.</p>
+      <p className="d-section-note">The positions current exec can have. Renaming a role renames it for the current exec who have it. Alumni keep the title they held.</p>
       <div className="d-table-wrap">
         <table className={`d-table is-roomy d-links d-roles${reorder.sorting ? " is-sorting" : ""}`}>
           <thead>

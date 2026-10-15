@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { pastAlumni } from "@/config/exec/alumni";
+import { pastAlumni } from "@/config/past-alumni";
 
 // Exec from before the photo cards, by graduation year.
 export default function AlumniYears() {
