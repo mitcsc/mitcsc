@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import { photoUrl, sizedThumbnail, type HomePhoto } from "./home-photo-urls";
 import { HERO_PHOTO_WIDTHS, optimizerUrl } from "./images";
 import { googleBytes } from "./membership/google/api";
-import { clubFolder, findFolder, listImages } from "./membership/google/drive";
+import { clubFolder, findFolder, getItem, listImages } from "./membership/google/drive";
 import { keys } from "./membership/keys";
 import { getJson, redis } from "./membership/redis";
 
@@ -29,6 +29,17 @@ async function findPhotoFolder() {
     folder = child;
   }
   return folder;
+}
+
+// The folder and its photos. The saved folder id skips the lookups from "MIT CSC" down, which run one after another,
+// and the folder is checked in the same round trip as the listing. A renamed, moved to trash, or deleted folder is looked up again.
+async function listPhotoFolder(savedId: string | null | undefined) {
+  if (savedId) {
+    const [item, files] = await Promise.all([getItem(savedId).catch(() => null), listImages(savedId).catch(() => null)]);
+    if (item && files && !item.trashed && item.name === PHOTO_FOLDER_PATH.at(-1)) return { folder: item, files };
+  }
+  const folder = await findPhotoFolder();
+  return { folder, files: folder ? await listImages(folder.id) : [] };
 }
 
 // Drive names a copied file "Copy of IMG_5946.jpeg". Show just the original file name.
@@ -62,8 +73,8 @@ async function fetchPlaceholder(thumbnailLink: string | undefined) {
 
 // Lists the Drive folder again and saves the list.
 export async function refreshPhotoLibrary(): Promise<PhotoLibrary> {
-  const [folder, previous, shown] = await Promise.all([findPhotoFolder(), photoLibrary(), shownPhotoIds()]);
-  const files = folder ? await listImages(folder.id) : [];
+  const [previous, shown] = await Promise.all([photoLibrary(), shownPhotoIds()]);
+  const { folder, files } = await listPhotoFolder(previous?.folderId);
   const photos: HomePhoto[] = files.map((f) => ({ id: f.id, name: photoName(f.name), version: f.version, createdAt: Date.parse(f.createdTime) }));
   // A photo keeps its placeholder until the file changes in Drive.
   const before = new Map((previous?.photos || []).map((p) => [p.id, p]));

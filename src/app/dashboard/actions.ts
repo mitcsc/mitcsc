@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
-import { HOME_PHOTOS_TAG, photoLibrary, setPhotosShown, shownPhotoIds, warmHomePhotos } from "@/lib/home-photos";
+import { HOME_PHOTOS_TAG, photoLibrary, refreshPhotoLibrary, setPhotosShown, shownPhotoIds, warmHomePhotos } from "@/lib/home-photos";
 import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { execAccess, requireExec } from "@/lib/membership/exec-auth";
@@ -424,6 +424,17 @@ export async function refreshExecAccess(): Promise<Result<null>> {
 }
 
 // Home page photos
+
+// Lists the Drive folder again. The Photos page calls this after it shows the saved list.
+export async function refreshHomePhotos(): Promise<Result<null>> {
+  return attempt(async () => {
+    await requireExec();
+    await refreshPhotoLibrary().catch((error) => {
+      throw error instanceof MembershipError ? error : new MembershipError("Could not read the Drive folder.", 502);
+    });
+    return null;
+  });
+}
 
 // Turns photos on or off for the home page. Returns the ids that are on afterwards.
 export async function setHomePhotos(ids: string[], shown: boolean): Promise<Result<string[]>> {
