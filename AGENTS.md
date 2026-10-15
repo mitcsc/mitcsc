@@ -159,7 +159,7 @@ Only dig into the code if something is broken or they want a change.
   The club account can always sign in.
   A sign-in lasts 30 days from the last visit (`src/lib/membership/session.ts`, renewed by `src/middleware.ts`).
   Local mode (`npm run dev`) signs in as `exec@mit.edu` without Google.
-- **Sections**: Check-In (Check-In, Events), Membership (Members, Edit Form, Settings), Delibs (Live, History), Website (Links, Home, Exec, Alumni, Roles), Settings.
+- **Sections**: Check-In (Check-In, Events), Membership (Members, Edit Form, Settings), Website (Links, Home, Exec, Alumni, Roles), Delibs (Live, History), Settings.
   Each tab's URL ends with its name, like `/dashboard/website/home` or `/dashboard/membership/edit-form`.
   The tabs are listed in `src/components/dashboard/nav.ts`.
 - **Membership**: `/join` is the public signup and payment page (Venmo, Zelle, cash).
