@@ -47,9 +47,6 @@ Use the writable REST token, not the read-only token.
 Keep eviction disabled: ballots must not be removed to make room for other keys.
 
 Delibs uses the dashboard's Google sign-in and `MEMBERSHIP_SECRET`.
-It no longer uses `VOTING_PRESIDENT_PASSWORD`, `VOTING_COOKIE_SECRET`, `VOTING_SETTINGS_SHEET_ID`, or the Google service account.
-You can delete those voting variables from Vercel.
-The service account is still used for the public links sheet.
 
 Redis is required.
 Missing Redis data fails closed and must be restored from a backup.
