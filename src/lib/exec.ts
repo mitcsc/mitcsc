@@ -7,10 +7,10 @@ import { listImages, uploadImage, type DriveImage } from "./membership/google/dr
 import { keys } from "./membership/keys";
 import { getJson, redis, updateJson } from "./membership/redis";
 
-export type { ExecPerson, ExecPhoto, ExecRoster, PersonInput, RosterList } from "./exec-roster";
+export type { ExecPhoto, PersonInput, RosterList } from "./exec-roster";
 
 // The Drive folder for exec photos, inside the club's "MIT CSC" folder.
-export const EXEC_PHOTO_FOLDER_PATH = ["Website", "Exec Photos"];
+const EXEC_PHOTO_FOLDER_PATH = ["Website", "Exec Photos"];
 
 // Public reads come from Next's data cache. Every change in the dashboard clears it through this tag.
 export const EXEC_TAG = "exec";

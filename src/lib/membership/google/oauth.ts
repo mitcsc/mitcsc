@@ -7,10 +7,10 @@ import { getJson, redis, updateJson } from "../redis";
 // Drive (folders, sheets, sharing), read-only Gmail (Venmo emails), and Gmail send (card links).
 // "profile" shares the person's name, which Delibs shows to the host.
 export const SIGN_IN_SCOPES = ["openid", "email", "profile"];
-export const GMAIL_SEND = "https://www.googleapis.com/auth/gmail.send";
+const GMAIL_SEND = "https://www.googleapis.com/auth/gmail.send";
 export const CLUB_SCOPES = ["openid", "email", "https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/gmail.readonly", GMAIL_SEND];
 
-export interface ClubConnection {
+interface ClubConnection {
   email: string;
   refreshToken: string;
   scopes: string[];
@@ -38,7 +38,7 @@ function client() {
   return { id, secret };
 }
 
-export function redirectUri(origin: string) {
+function redirectUri(origin: string) {
   return `${origin}/api/auth/google/callback`;
 }
 

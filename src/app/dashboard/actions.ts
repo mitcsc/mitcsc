@@ -110,7 +110,7 @@ export async function lookUpNewMember(raw: string): Promise<Result<NewMemberKerb
   });
 }
 
-export interface NewMember {
+interface NewMember {
   kerb: string;
   name: string;
   classYear: string;

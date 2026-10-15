@@ -8,7 +8,7 @@ import { redis, updateJson } from "./membership/redis";
 export type { ShortLink } from "./link-rules";
 
 // What the public Links page shows.
-export interface LinkItem {
+interface LinkItem {
   title: string;
   url: string;
 }

@@ -40,6 +40,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/deliberations/:path*", destination: "/dashboard/delibs", permanent: true },
+      // The site's pages moved into the dashboard's Website section.
+      { source: "/dashboard/website", destination: "/dashboard/website/photos", permanent: false },
+      { source: "/dashboard/photos", destination: "/dashboard/website/photos", permanent: true },
+      { source: "/dashboard/links", destination: "/dashboard/website/links", permanent: true },
+      { source: "/dashboard/exec", destination: "/dashboard/website/exec", permanent: true },
+      { source: "/dashboard/exec/:list(alumni|roles)", destination: "/dashboard/website/:list", permanent: true },
       { source: "/vote/:path*", destination: "/dashboard/delibs", permanent: true },
       {
         source: "/link",

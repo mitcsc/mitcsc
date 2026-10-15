@@ -5,7 +5,7 @@ import { sign, verify } from "./signing";
 import { currentYear, getMember, hasPaidBefore } from "./store";
 import type { Member, PaymentMethod, YearConfig } from "./types";
 
-export const MEMBER_COOKIE = "csc_member";
+const MEMBER_COOKIE = "csc_member";
 const MEMBER_COOKIE_MS = 365 * 24 * 3600_000;
 
 export interface SignupInput {

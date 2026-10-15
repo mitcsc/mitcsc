@@ -20,7 +20,7 @@ export const RESERVED_SLUGS = [
   "join", "link", "links", "manifest.webmanifest", "vote",
 ];
 
-export const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/;
+const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/;
 
 // "  Formal-Tickets " → "formal-tickets". Spaces become hyphens.
 export function normalizeSlug(raw: string) {

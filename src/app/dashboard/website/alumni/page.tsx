@@ -1,4 +1,4 @@
-import RosterPage from "../load";
+import RosterPage from "../exec/load";
 
 export const maxDuration = 60;
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   movePersonAction, refreshExecPhotosAction, removePersonAction, reorderRosterAction, savePersonAction, uploadExecPhotoAction,
-} from "@/app/dashboard/exec/actions";
+} from "@/app/dashboard/website/exec/actions";
 import { Icon } from "@/components/membership/icons";
 import { execPhotoUrl, type ExecPerson, type ExecPhoto, type RosterList } from "@/lib/exec-roster";
 import { sizedThumbnail } from "@/lib/home-photo-urls";
@@ -20,8 +20,8 @@ type Close = (then?: () => void) => void;
 const FAILED = { ok: false as const, error: "Something went wrong. Please try again." };
 const THUMB_WIDTHS = [256, 384, 512];
 const NAMES: Record<RosterList, { title: string; other: RosterList; move: string; site: string }> = {
-  current: { title: "Current exec", other: "alumni", move: "Move to alumni", site: "/exec" },
-  alumni: { title: "Alumni", other: "current", move: "Move to current exec", site: "/alumni" },
+  current: { title: "Active", other: "alumni", move: "Move to alumni", site: "/exec" },
+  alumni: { title: "Alumni", other: "current", move: "Move to active", site: "/alumni" },
 };
 
 // A photo's URL at `width`: straight from Google while a fresh signed link is at hand, else through the site.
@@ -75,11 +75,11 @@ export default function ExecRosterView({ list, people, roles, photos: initialPho
     if (!result.ok) return;
     const from = result.value;
     setNotice({
-      text: `Moved ${person.name} to ${names.other === "alumni" ? "alumni" : "current exec"}.`,
+      text: `Moved ${person.name} to ${names.other === "alumni" ? "alumni" : "active"}.`,
       undo: async () => {
         setNotice(null);
         const back = await save(() => movePersonAction(person.id, from.list, from.index));
-        if (back.ok) setNotice({ text: `${person.name} is back in ${from.list === "alumni" ? "alumni" : "current exec"}.` });
+        if (back.ok) setNotice({ text: `${person.name} is back in ${from.list === "alumni" ? "alumni" : "active"}.` });
         router.refresh();
       },
     });
@@ -213,7 +213,7 @@ function PersonDialog({ list, person, roles, photos, thumbnails, checkDrive, loc
                 </label>
               ) : (
                 <label className="d-field">
-                  <span className="m-label">Position<Link className="d-quiet-link" href="/dashboard/exec/roles">Edit roles</Link></span>
+                  <span className="m-label">Position<Link className="d-quiet-link" href="/dashboard/website/roles">Edit roles</Link></span>
                   <span className="m-select-wrap">
                     <select className="m-select is-compact" value={position} required onChange={(e) => setPosition(e.target.value)}>
                       {options.length === 0 && <option value="">No roles yet</option>}

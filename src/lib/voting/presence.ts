@@ -1,6 +1,6 @@
 import { redisCommand, redisKey } from './redis';
 import type { Settings } from './service';
-export type Presence = 'online' | 'away' | 'offline' | 'unknown';
+type Presence = 'online' | 'away' | 'offline' | 'unknown';
 export function presenceStatus(lastSeen: number, hidden: boolean, now = Date.now()): Presence {
   if (!lastSeen) return 'offline';
   const age = now - lastSeen;

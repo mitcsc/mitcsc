@@ -12,7 +12,7 @@ export const DORMS = [
 // The club's main folder in its Drive. Folder pickers open here.
 export const CLUB_DRIVE_FOLDER = "MIT CSC";
 
-export const YEAR_PATTERN = /^(\d{4})-(\d{4})$/;
+const YEAR_PATTERN = /^(\d{4})-(\d{4})$/;
 
 export function isSchoolYear(value: string) {
   const match = YEAR_PATTERN.exec(value);
@@ -61,7 +61,7 @@ export function formTitle(form: FormConfig, year: string) {
   return form.title || defaultFormTitle(year);
 }
 
-export function defaultForm(year: string): FormConfig {
+function defaultForm(year: string): FormConfig {
   return {
     intro: `Membership for ${year}. One payment covers the whole year.`,
     benefits: ["Study breaks", "Boba chats", "Chinatown runs", "Movie nights", "Famlines", "Care packages", "Merch and formal discounts"],

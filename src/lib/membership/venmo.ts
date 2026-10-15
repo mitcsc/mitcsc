@@ -16,7 +16,7 @@ interface Message {
   payload: Part;
 }
 
-export interface VenmoPayment {
+interface VenmoPayment {
   messageId: string;
   amount: number;
   year: string;
