@@ -20,7 +20,7 @@ const { newYearConfig, canStartNextYear, formTitle, carryForm } = require('../sr
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
 const hours = require('../src/lib/membership/event-times.ts');
-const { walletButtons } = require('../src/lib/membership/wallet.ts');
+const { walletButtons, walletAvailable, walletPausedUntil, memberPass } = require('../src/lib/membership/wallet.ts');
 const { renameFile, trashFile } = require('../src/lib/membership/google/drive.ts');
 const { redeemCardLink } = require('../src/lib/membership/card-link.ts');
 
@@ -41,6 +41,8 @@ function run([name, ...args]) {
       db.set(key, String(value));
       return 'OK';
     }
+    case 'INCR': db.set(args[0], String(Number(db.get(args[0]) || 0) + 1)); return Number(db.get(args[0]));
+    case 'EXPIRE': return 1;
     case 'DEL': return args.filter((k) => db.delete(k)).length;
     case 'GETDEL': { const value = db.has(args[0]) ? db.get(args[0]) : null; db.delete(args[0]); return value; }
     case 'EXISTS': return args.filter((k) => db.has(k)).length;
@@ -71,8 +73,16 @@ function run([name, ...args]) {
 // Gmail messages by id, served to the Venmo check, and the Drive changes the dashboard asked for.
 const gmail = new Map();
 const driveChanges = [];
+// WalletWallet's replies, in order, and the requests it got.
+const walletReplies = [];
+const walletCalls = [];
 global.fetch = async (url, options = {}) => {
   const target = new URL(String(url));
+  if (target.hostname === 'api.walletwallet.dev') {
+    walletCalls.push(`${options.method} ${target.pathname}`);
+    const reply = walletReplies.shift();
+    return Response.json(reply.body, { status: reply.status });
+  }
   if (target.hostname === 'redis.test.invalid') {
     const body = JSON.parse(options.body);
     if (target.pathname === '/pipeline') return Response.json(body.map((command) => ({ result: run(command) })));
@@ -121,6 +131,8 @@ function member(kerb, overrides = {}) {
 beforeEach(() => {
   db.clear();
   gmail.clear();
+  walletReplies.length = 0;
+  walletCalls.length = 0;
 });
 
 test('signed values reject tampering, the wrong purpose, and expiry', () => {
@@ -328,6 +340,32 @@ test('the Venmo check confirms each payment once and only for the right amount',
   assert.equal(db.get(keys.venmoMessage('d')), '-');
 
   assert.deepEqual(await checkVenmo(config), { ran: false, confirmed: [] }, 'Checks closer than the minimum gap do nothing');
+});
+
+test('a used-up WalletWallet month hides new Wallet cards until the reset day', async () => {
+  process.env.WALLETWALLET_API_KEY = 'test-wallet-key';
+  try {
+    const config = newYearConfig(YEAR, null);
+    assert.equal(await walletAvailable(), true);
+    walletReplies.push({ status: 429, body: { error: 'Rate limit exceeded', resetDate: '2999-01-01', message: 'Monthly limit reached. Resets on 2999-01-01' } });
+    await assert.rejects(memberPass(config, member('jchen'), 'https://csc.mit.edu'), /unavailable/);
+    assert.equal(await walletPausedUntil(), '2999-01-01');
+    assert.equal(await walletAvailable(), false);
+
+    // While paused, nothing asks WalletWallet again, but a card made before still opens.
+    const calls = walletCalls.length;
+    await assert.rejects(memberPass(config, member('amy'), 'https://csc.mit.edu'), /unavailable/);
+    db.set(keys.walletPass(YEAR, 'lin'), Buffer.from('pkpass').toString('base64'));
+    const made = await memberPass(config, member('lin', { wallet: { serial: 's', shareUrl: 'u', googleUrl: 'https://pay.google.com/save' } }), 'https://csc.mit.edu');
+    assert.equal(made.apple.toString(), 'pkpass');
+    assert.equal(walletCalls.length, calls);
+
+    // Once the reset day comes, cards are back.
+    db.set(keys.walletPaused, '2000-01-01');
+    assert.equal(await walletAvailable(), true);
+  } finally {
+    delete process.env.WALLETWALLET_API_KEY;
+  }
 });
 
 test('Wallet buttons match the device', () => {

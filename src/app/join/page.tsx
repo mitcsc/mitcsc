@@ -8,7 +8,7 @@ import { signupsAreOpen, venmoLink } from "@/lib/membership/config";
 import { memberView, ownMember } from "@/lib/membership/members";
 import { qrSvg } from "@/lib/membership/qr";
 import { currentYear } from "@/lib/membership/store";
-import { WALLET_PROBLEMS, walletButtons, walletEnabled, type WalletProblem } from "@/lib/membership/wallet";
+import { WALLET_PROBLEMS, walletAvailable, walletButtons, type WalletProblem } from "@/lib/membership/wallet";
 import "@/components/membership/ui.css";
 import "./membership.css";
 
@@ -47,7 +47,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
     zelle: config.zelle,
     cashAllowed: config.cashAllowed,
     form: config.form,
-    wallet: walletEnabled(),
+    wallet: await walletAvailable(),
   };
   // The Venmo link and its QR code need the kerb, so they exist only after signup.
   const venmo = member && member.status === "unpaid"

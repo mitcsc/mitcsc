@@ -10,7 +10,7 @@ import { claimMember, currentYear, getMember, updateMember } from "@/lib/members
 import { syncMembersLater } from "@/lib/membership/sync";
 import type { Member, PaymentMethod } from "@/lib/membership/types";
 import { checkVenmo } from "@/lib/membership/venmo";
-import { walletEnabled } from "@/lib/membership/wallet";
+import { walletAvailable } from "@/lib/membership/wallet";
 
 // "yours": this browser already signed up this kerb. "paying": that signup still waits on the payment screen.
 export type KerbStatus = { kerb: string; status: "invalid" | "taken" | "yours" | "new" | "returning"; price: number; paying?: boolean };
@@ -97,7 +97,7 @@ export async function refreshStatus(): Promise<Result<MemberView>> {
 export async function emailMyCard(raw: string): Promise<Result<{ email: string }>> {
   return attempt(async () => {
     const config = await currentYear();
-    if (!config || !walletEnabled()) throw new MembershipError("Membership cards are not set up yet.", 404);
+    if (!config || !(await walletAvailable())) throw new MembershipError("Membership cards are not set up yet.", 404);
     await limit("card-email-ip", await clientIp(), 10, 3600);
     const kerb = normalizeKerb(raw);
     if (!isKerb(kerb)) throw new MembershipError("Enter your kerb, the part of your MIT email before @mit.edu.");
