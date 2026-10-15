@@ -1,11 +1,12 @@
 /* The exec dashboard at /dashboard. Every page fills the viewport; the header spans the full width. */
-.d-shell { --ease: cubic-bezier(0.22, 1, 0.36, 1); display: flex; flex-direction: column; }
+/* --gutter is the left and right padding of the header, the sub-tabs, and the page, so their contents line up. */
+.d-shell { --ease: cubic-bezier(0.22, 1, 0.36, 1); --gutter: 32px; display: flex; flex-direction: column; }
 .d-muted { color: var(--muted); }
 .d-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .d-spacer { flex: 1; }
 
 /* Header */
-.d-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; min-height: 61px; padding: 12px 28px; border-bottom: 1px solid #ffffff18; background: var(--raised); }
+.d-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; min-height: 61px; padding: 12px var(--gutter); border-bottom: 1px solid #ffffff18; background: var(--raised); }
 .d-brand { flex: none; display: block; }
 .d-brand img { display: block; width: 28px; height: 28px; object-fit: contain; }
 .d-main-nav { display: flex; gap: 4px; }
@@ -19,13 +20,13 @@
 .d-signout:hover { color: var(--text); }
 .d-signout.is-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; }
 .d-signout.is-icon:hover { background: #ffffff12; }
-.d-banner { display: flex; align-items: center; gap: 12px; padding: 10px 28px; background: var(--yellow-bg); color: var(--yellow-text); font-size: 14px; }
+.d-banner { display: flex; align-items: center; gap: 12px; padding: 10px var(--gutter); background: var(--yellow-bg); color: var(--yellow-text); font-size: 14px; }
 .d-banner span { flex: 1; }
 .d-banner .m-copy { color: inherit; }
 .d-banner-action { flex: none; min-height: 32px; padding: 0; border: 0; background: none; color: inherit; font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
 
 /* Sub-tabs */
-.d-subnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; padding: 0 28px; border-bottom: 1px solid #ffffff18; }
+.d-subnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; padding: 0 var(--gutter); border-bottom: 1px solid #ffffff18; }
 .d-sub-tabs { display: flex; gap: 24px; overflow-x: auto; }
 .d-sub-tabs a { padding: 14px 0 12px; border-bottom: 2px solid transparent; font-size: 14px; text-decoration: none; white-space: nowrap; }
 .m-root .d-sub-tabs a { color: var(--muted); }
@@ -45,7 +46,7 @@
 .d-gate .d-signout { margin-top: 12px; text-decoration: underline; text-underline-offset: 3px; }
 
 /* Empty states */
-.d-empty { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; max-width: 560px; padding: 56px 44px; }
+.d-empty { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; max-width: 560px; padding: 56px var(--gutter); }
 .d-empty-title { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
 .d-empty-row { padding: 16px 0; font-size: 14px; color: #ffffff73; }
 
@@ -76,7 +77,8 @@
 
 /* Members: side panel and main column */
 .d-body { flex: 1; display: flex; flex-wrap: wrap; }
-.d-aside { flex: 0 0 272px; padding: 20px 16px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+/* The aside's links pad their text by 10px, so the text lines up with the header. */
+.d-aside { flex: 0 0 272px; padding: 20px calc(var(--gutter) - 10px); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
 .d-aside-title { margin: 0 10px 12px; font-size: 13px; font-weight: 400; color: #ffffff73; }
 .d-aside-switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 0 10px; }
 .d-facts { margin: 0; }
@@ -92,11 +94,12 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-aside-link.is-static { cursor: default; }
 .d-aside-sub { font-size: 12px; color: var(--faint); overflow-wrap: anywhere; }
 .d-aside-sub.is-error { color: var(--yellow-text); }
-.d-main { flex: 999 1 560px; min-width: 0; padding: 36px 44px 44px; display: flex; flex-direction: column; gap: 44px; }
+.d-main { flex: 999 1 560px; min-width: 0; padding: 36px var(--gutter) 44px; display: flex; flex-direction: column; gap: 44px; }
 .d-section { display: flex; flex-direction: column; }
 .d-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 6px; }
 .d-section-head > :last-child:not(:first-child) { margin-left: auto; }
 .d-section-head.is-table { margin-bottom: 8px; }
+.d-head-actions { display: flex; align-items: center; gap: 8px; }
 .d-section-note { margin-bottom: 8px; font-size: 13px; color: #ffffff73; }
 .d-code { color: #c3c3c8; white-space: nowrap; }
 .d-nowrap { white-space: nowrap; }
@@ -251,7 +254,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-new-folder .m-input { flex: 1; min-width: 0; }
 
 /* Settings pages: one row per topic */
-.d-settings { padding: 8px 44px 16px; }
+.d-settings { padding: 8px var(--gutter) 16px; }
 .d-setting { display: flex; flex-wrap: wrap; gap: 16px 40px; padding: 28px 0; border-bottom: 1px solid var(--line); }
 .d-setting:last-of-type { border-bottom: 0; }
 .d-setting-head { flex: 1 1 240px; display: flex; flex-direction: column; gap: 4px; }
@@ -303,7 +306,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .m-textarea.is-compact { padding: 12px 16px; font-size: 15px; line-height: 1.45; }
 
 /* New school year */
-.d-narrow { flex: 1; display: flex; justify-content: center; padding: 48px 24px 64px; }
+.d-narrow { flex: 1; display: flex; justify-content: center; padding: 48px var(--gutter) 64px; }
 .d-narrow-body { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 8px; }
 .d-narrow-logo { width: 64px; height: 64px; object-fit: contain; margin-bottom: 8px; }
 .d-narrow-title { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
@@ -319,7 +322,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 
 /* Form editor */
 .d-editor { flex: 1; display: flex; flex-wrap: wrap; }
-.d-editor-main { flex: 1 1 640px; max-width: 920px; min-width: 0; padding: 8px 48px 16px; }
+.d-editor-main { flex: 1 1 640px; max-width: 920px; min-width: 0; padding: 8px var(--gutter) 16px; }
 .d-editor-main .d-setting { flex-direction: column; flex-wrap: nowrap; }
 .d-editor-main .d-setting-head, .d-editor-main .d-setting-body { flex: none; }
 .d-questions { display: flex; flex-direction: column; }
@@ -377,7 +380,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-preview-rows > div > span:last-child { color: var(--text); }
 
 /* Events list */
-.d-page { flex: 1; padding: 36px 44px 44px; display: flex; flex-direction: column; gap: 8px; }
+.d-page { flex: 1; padding: 36px var(--gutter) 44px; display: flex; flex-direction: column; gap: 8px; }
 .d-page .d-section-note { margin-bottom: 8px; }
 
 /* Tab loading: grey lines that fade in only if the wait is long enough to notice. */
@@ -495,14 +498,14 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-mobile-signout { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent; font-size: 13px; color: var(--text); }
 
 @media (max-width: 720px) {
+  .d-shell { --gutter: 16px; }
   /* One menu replaces the tabs and sub-tabs, and the save status moves into the header. */
-  .d-header { flex-wrap: nowrap; gap: 8px; padding: 10px 16px; }
+  .d-header { flex-wrap: nowrap; gap: 8px; padding: 10px var(--gutter); }
   .d-brand img { width: 26px; height: 26px; }
   .d-main-nav, .d-account, .d-subnav { display: none; }
   .d-mobile-nav { display: flex; }
   /* The save status and the menu sit at the right edge. */
   .d-header-save { display: inline-flex; margin-left: auto; }
-  .d-banner { padding-left: 16px; padding-right: 16px; }
   /* Stats as a 2 x 2 grid, and the sheet, link, and QR code as one row of icons. */
   .d-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 10px; }
   .d-facts div { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
@@ -519,11 +522,11 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
   .d-section-head.is-table + .d-table-wrap { max-height: min(60vh, 520px); overflow: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   .d-section-head.is-table + .d-table-wrap th { position: sticky; top: 0; z-index: 1; background: var(--bg); }
   .d-aside { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--line); padding: 16px 6px; }
-  .d-main, .d-page { padding: 28px 16px 40px; }
-  .d-settings { padding: 0 16px 16px; }
-  .d-editor-main { padding: 0 16px 16px; }
+  .d-main, .d-page { padding-top: 28px; padding-bottom: 40px; }
+  .d-settings { padding-top: 0; }
+  .d-editor-main { padding-top: 0; }
   .d-preview-pane { padding: 24px 16px 32px; border-left: 0; border-top: 1px solid var(--line); }
-  .d-empty { padding: 40px 16px; }
+  .d-empty { padding-top: 40px; padding-bottom: 40px; }
   .d-pending { grid-template-columns: 1fr; }
   .d-pending-action { justify-content: flex-start; }
   .d-search { width: 100%; }

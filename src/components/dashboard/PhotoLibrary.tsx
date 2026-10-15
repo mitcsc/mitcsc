@@ -126,11 +126,11 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
   return (
     <main className="d-page d-photos">
       <div className="d-section-head">
-        <h1 className="d-h2">Home page photos</h1>
+        <h1 className="d-h2">Home</h1>
         {folder && <a className="d-chip-btn" href={folder} target="_blank" rel="noreferrer">Open folder in Drive</a>}
       </div>
       <p className="d-section-note">
-        Photos are from the <PathText path={["MIT CSC", ...folderPath]} /> folder in Drive. To add more, just upload photos to the folder.
+        Photos displayed on the home page. You can find these in the <PathText path={["MIT CSC", ...folderPath]} /> folder in Drive. To add more, just upload photos to the folder.
         Photos will only show if you mark them as active (a random set is selected every time you visit the home page).
       </p>
       {checking && <p className="d-photos-hint" role="status">Checking Drive for new photos…</p>}

@@ -35,7 +35,7 @@ Use it only when a problem needs real data.
 
 ## Where things are
 
-- Exec roster: the dashboard's Exec tab, with photos in the club Drive's "Website/Exec Photos" folder. Code: `src/lib/exec.ts`.
+- Exec roster: the dashboard's Exec and Alumni tabs, with photos in the club Drive's "Website/Exec Photos/Active" and "Website/Exec Photos/Alumni" folders. A photo moves with its person. Code: `src/lib/exec.ts`.
 - The alumni name lists by year: `src/config/past-alumni.ts`.
 - Footer and menu links: `src/config/links.ts`.
 - Dashboard: `src/app/dashboard/`, `src/components/dashboard/`, and `src/lib/membership/`.

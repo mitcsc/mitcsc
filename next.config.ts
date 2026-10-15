@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/deliberations/:path*", destination: "/dashboard/delibs", permanent: true },
       // The site's pages moved into the dashboard's Website section.
-      { source: "/dashboard/website", destination: "/dashboard/website/photos", permanent: false },
+      { source: "/dashboard/website", destination: "/dashboard/website/links", permanent: false },
       { source: "/dashboard/photos", destination: "/dashboard/website/photos", permanent: true },
       { source: "/dashboard/links", destination: "/dashboard/website/links", permanent: true },
       { source: "/dashboard/exec", destination: "/dashboard/website/exec", permanent: true },

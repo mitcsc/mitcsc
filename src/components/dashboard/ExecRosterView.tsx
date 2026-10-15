@@ -41,8 +41,8 @@ function initials(name: string) {
 }
 
 // The Current and Alumni tabs: a grid of cards in the order of the public page.
-export default function ExecRosterView({ list, people, roles, photos: initialPhotos, thumbnails: initialThumbnails, checkDrive, local }: {
-  list: RosterList; people: ExecPerson[]; roles: string[]; photos: LibraryPhoto[]; thumbnails: Record<string, string>; checkDrive: boolean; local: boolean;
+export default function ExecRosterView({ list, people, roles, photos: initialPhotos, thumbnails: initialThumbnails, folder, checkDrive, local }: {
+  list: RosterList; people: ExecPerson[]; roles: string[]; photos: LibraryPhoto[]; thumbnails: Record<string, string>; folder: string | null; checkDrive: boolean; local: boolean;
 }) {
   const router = useRouter();
   const save = useSave();
@@ -90,7 +90,10 @@ export default function ExecRosterView({ list, people, roles, photos: initialPho
     <main className="d-page">
       <div className="d-section-head">
         <h1 className="d-h2">{names.title} <span className="d-count">{order.length}</span></h1>
-        <button type="button" className="d-icon-btn" aria-label="Add person" data-tip="Add person" onClick={() => setEditing("new")}><Icon name="plus" size={16} /></button>
+        <div className="d-head-actions">
+          {folder && <a className="d-chip-btn" href={folder} target="_blank" rel="noreferrer">Open folder in Drive</a>}
+          <button type="button" className="d-icon-btn" aria-label="Add person" data-tip="Add person" onClick={() => setEditing("new")}><Icon name="plus" size={16} /></button>
+        </div>
       </div>
       <p className="d-section-note">
         This is what is displayed on <a className="d-quiet-link" href={names.site} target="_blank" rel="noreferrer">csc.mit.edu{names.site}</a>. Click a card to edit everything. Drag a card to change the display order.
@@ -185,7 +188,7 @@ function PersonDialog({ list, person, roles, photos, thumbnails, checkDrive, loc
     <Dialog title={picking ? "Choose a photo" : person ? `Edit ${person.name}` : "Add person"} wide={picking} onClose={onClose}>
       {(close) => picking ? (
         <PhotoPicker
-          photos={photos} thumbnails={thumbnails} selected={photo?.id ?? null} checkDrive={checkDrive} local={local} uploadName={name}
+          list={list} photos={photos} thumbnails={thumbnails} selected={photo?.id ?? null} checkDrive={checkDrive} local={local} uploadName={name}
           onPhotos={onPhotos}
           onPick={(picked) => { setPhoto(picked); setPicking(false); }}
           onBack={() => setPicking(false)}
@@ -247,8 +250,8 @@ function PersonDialog({ list, person, roles, photos, thumbnails, checkDrive, loc
   );
 }
 
-function PhotoPicker({ photos, thumbnails, selected, checkDrive, local, uploadName, onPhotos, onPick, onBack }: {
-  photos: LibraryPhoto[]; thumbnails: Record<string, string>; selected: string | null; checkDrive: boolean; local: boolean; uploadName: string;
+function PhotoPicker({ list, photos, thumbnails, selected, checkDrive, local, uploadName, onPhotos, onPick, onBack }: {
+  list: RosterList; photos: LibraryPhoto[]; thumbnails: Record<string, string>; selected: string | null; checkDrive: boolean; local: boolean; uploadName: string;
   onPhotos: (photos: LibraryPhoto[], thumbnails?: Record<string, string>) => void; onPick: (photo: ExecPhoto | null) => void; onBack: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -279,6 +282,7 @@ function PhotoPicker({ photos, thumbnails, selected, checkDrive, local, uploadNa
       const base = uploadName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || file.name.replace(/\.[^.]+$/, "");
       const form = new FormData();
       form.set("file", await shrinkImage(file, base));
+      form.set("list", list);
       const result = await uploadExecPhotoAction(form).catch(() => FAILED);
       if (!result.ok) return setError(result.error);
       onPhotos([result.value, ...photos.filter((p) => p.id !== result.value.id)]);
@@ -294,7 +298,7 @@ function PhotoPicker({ photos, thumbnails, selected, checkDrive, local, uploadNa
   return (
     <div className="d-dialog-form">
       <p className="d-muted d-picker-note">
-        {local ? "Local mode has no Google, so there are no photos to pick." : "Photos come from the MIT CSC › Website › Exec Photos folder in Drive. An upload goes into that folder."}
+        {local ? "Local mode has no Google, so there are no photos to pick." : `Photos come from the MIT CSC › Website › Exec Photos folder in Drive. Each photo on the site is kept in its person’s Active or Alumni folder, and moves with them. An upload goes into the ${list === "alumni" ? "Alumni" : "Active"} folder.`}
       </p>
       <div className="d-picker-bar">
         <button type="button" className="d-chip-btn" onClick={onBack}>Back</button>
