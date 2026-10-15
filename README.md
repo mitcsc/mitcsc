@@ -3,7 +3,8 @@
 The website of the MIT Chinese Students Club, live at [csc.mit.edu](https://csc.mit.edu).
 Exec manage members, events, links, home page photos, the exec and alumni pages, and delibs in the dashboard at [csc.mit.edu/dashboard](https://csc.mit.edu/dashboard).
 
-The club's maintenance guide (a Google Doc in the club Drive) covers day-to-day changes and the dashboard.
+[AGENTS.md](AGENTS.md) is the maintainers' technical guide, for people and AI assistants.
+The club's maintenance guide (a Google Doc in the club Drive) covers how exec use the site and the dashboard.
 
 ## Stack
 
@@ -28,8 +29,16 @@ npm run dev:local
 - Test data stays in `.local-data/` between runs. Delete that folder to start over.
 
 `npm run dev` runs the site with the values in `.env.local`.
-Copy `.env.example` to `.env.local` and fill in the values from Vercel (Settings > Environment Variables).
-With production values, the local site reads and writes the live database and acts as the club Google account.
+Pull the values from Vercel while signed in as the club account:
+
+```bash
+npx vercel login                 # Continue with GitHub, as the club account
+npx vercel link                  # once: pick the mitcsc project
+npx vercel env pull .env.local   # the Development values
+```
+
+`.env.example` lists every variable.
+These values connect to the live database, so the local site reads and writes real records and acts as the club Google account.
 Use it only when a problem needs real data.
 `DASHBOARD_DEV_EMAIL` signs you in to the dashboard without Google, in development only.
 
