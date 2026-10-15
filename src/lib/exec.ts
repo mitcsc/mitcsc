@@ -1,22 +1,28 @@
 import { randomUUID } from "node:crypto";
 import { unstable_cache } from "next/cache";
-import { fetchPlaceholder, findPhotoFolder, forEachLimited, listPhotoFolder, photoName } from "./drive-photos";
+import { fetchPlaceholder, findPhotoFolder, forEachLimited, photoName } from "./drive-photos";
 import { execPhotoUrl, type ExecPerson, type ExecPhoto, type ExecRoster, type PersonInput, type RosterList } from "./exec-roster";
 import { MembershipError } from "./membership/errors";
-import { listImages, uploadImage, type DriveImage } from "./membership/google/drive";
+import { createFolder, getItem, listChildren, listImages, moveFile, uploadImage, type DriveImage } from "./membership/google/drive";
 import { keys } from "./membership/keys";
 import { getJson, redis, updateJson } from "./membership/redis";
 
 export type { ExecPhoto, PersonInput, RosterList } from "./exec-roster";
 
-// The Drive folder for exec photos, inside the club's "MIT CSC" folder.
+// The Drive folder for exec photos, inside the club's "MIT CSC" folder. A photo on the site is kept in the folder
+// for its person's list, and moves with them. The site finds photos by id, so a move never breaks a page.
 const EXEC_PHOTO_FOLDER_PATH = ["Website", "Exec Photos"];
+const LIST_FOLDERS: Record<RosterList, string> = { current: "Active", alumni: "Alumni" };
+
+interface ExecFolders { top: string; current: string; alumni: string }
 
 // Public reads come from Next's data cache. Every change in the dashboard clears it through this tag.
 export const EXEC_TAG = "exec";
 
 export interface ExecPhotoLibrary {
+  // The Exec Photos folder, and the Active and Alumni folders inside it.
   folderId: string | null;
+  folders?: Record<RosterList, string>;
   photos: (ExecPhoto & { createdAt: number })[];
   // Signed links to Drive's resized copies, by photo id, for the dashboard. They expire after a few hours.
   thumbnails?: Record<string, string>;
@@ -107,7 +113,7 @@ export async function savePerson(list: RosterList, id: string | null, input: Per
   const fields = cleanPerson(input);
   const photo = await photoFor(input.photoId);
   let saved: ExecPerson | null = null;
-  await changeRoster((roster) => {
+  const roster = await changeRoster((roster) => {
     if (!id) {
       checkRole(roster, list, fields.position, undefined);
       saved = { id: randomUUID().slice(0, 8), ...fields, photo };
@@ -119,6 +125,7 @@ export async function savePerson(list: RosterList, id: string | null, input: Per
     checkRole(roster, at.list, fields.position, roster[at.list][at.index].position);
     return { ...roster, [at.list]: roster[at.list].map((p) => (p.id === id ? (saved = { ...p, ...fields, photo }) : p)) };
   });
+  await placePhoto(roster, saved!.photo?.id);
   return saved!;
 }
 
@@ -144,12 +151,12 @@ function alumniPlace(alumni: ExecPerson[], from: number, now: number) {
   return place;
 }
 
-// Moves someone between current exec and alumni. Without an index, they go into the active exec by role
+// Moves someone between current exec and alumni, and their photo between the Active and Alumni folders. Without an index, they go into the active exec by role
 // (see activePlace), or to the top of alumni (see alumniPlace). An index puts them at an exact place instead,
 // which is how Undo returns someone to where they were. Returns where they were, for Undo.
 export async function movePerson(id: string, to: RosterList, index?: number) {
   let from: { list: RosterList; index: number } | null = null;
-  await changeRoster((roster) => {
+  const roster = await changeRoster((roster) => {
     const at = (from = where(roster, id));
     if (at.list === to) return roster;
     const now = Date.now();
@@ -164,6 +171,7 @@ export async function movePerson(id: string, to: RosterList, index?: number) {
     target.splice(place, 0, person);
     return { ...roster, [at.list]: roster[at.list].filter((p) => p.id !== id), [to]: target };
   });
+  await placePhoto(roster, roster[to].find((p) => p.id === id)?.photo?.id);
   return from!;
 }
 
@@ -222,14 +230,77 @@ export async function reorderRoles(names: string[]) {
   });
 }
 
-// Lists the Drive folder again and saves the list. People whose photo changed in Drive get the new version.
-export async function refreshExecPhotoLibrary(): Promise<ExecPhotoLibrary> {
-  const previous = await execPhotoLibrary();
-  const { folder, files } = await listPhotoFolder(EXEC_PHOTO_FOLDER_PATH, previous?.folderId);
-  return saveLibrary(folder?.id || null, files, previous);
+// The Exec Photos folder and its Active and Alumni folders, making the two if missing. With `create`, a missing
+// Exec Photos folder is made too; without it, there is no folder and this returns null.
+async function execFolders(savedId: string | null | undefined, create: boolean): Promise<ExecFolders | null> {
+  // The saved id skips the lookups from "MIT CSC" down. A renamed, moved to trash, or deleted folder is looked up again.
+  const [saved, savedChildren] = savedId
+    ? await Promise.all([getItem(savedId).catch(() => null), listChildren(savedId, false).catch(() => null)])
+    : [null, null];
+  const valid = saved && savedChildren && !saved.trashed && saved.name === EXEC_PHOTO_FOLDER_PATH.at(-1);
+  const top = valid ? saved : await findPhotoFolder(EXEC_PHOTO_FOLDER_PATH, create);
+  if (!top) return null;
+  const children = valid ? savedChildren : await listChildren(top.id, false);
+  const sub = async (list: RosterList) => (children.find((c) => c.name === LIST_FOLDERS[list]) || await createFolder(LIST_FOLDERS[list], top.id)).id;
+  const [current, alumni] = await Promise.all([sub("current"), sub("alumni")]);
+  return { top: top.id, current, alumni };
 }
 
-async function saveLibrary(folderId: string | null, files: DriveImage[], previous: ExecPhotoLibrary | null) {
+// Which list's folder each photo on the site belongs in. A photo that people in both lists use stays where it is.
+function photoLists(roster: ExecRoster) {
+  const lists = new Map<string, RosterList | null>();
+  for (const list of ["current", "alumni"] as const) {
+    for (const p of roster[list]) {
+      if (!p.photo) continue;
+      const other = lists.get(p.photo.id);
+      lists.set(p.photo.id, other === undefined || other === list ? list : null);
+    }
+  }
+  return lists;
+}
+
+// Moves each photo on the site into the folder for its person's list. Photos outside the exec photo folders stay put.
+// A failed move is only logged: the photo stays where it is, and the site still finds it by id.
+async function sortPhotos(folders: ExecFolders, files: Pick<DriveImage, "id" | "parents">[], roster: ExecRoster) {
+  const lists = photoLists(roster);
+  const ours = new Set([folders.top, folders.current, folders.alumni]);
+  await forEachLimited(files, 4, async (file) => {
+    const list = lists.get(file.id);
+    const from = file.parents?.[0];
+    if (!list || !from || !ours.has(from) || from === folders[list]) return;
+    try {
+      await moveFile(file.id, from, folders[list]);
+      file.parents = [folders[list]];
+    } catch (error) {
+      console.warn(`Could not move exec photo ${file.id} to ${LIST_FOLDERS[list]}`, error);
+    }
+  });
+}
+
+// After a change to the roster, moves this photo into the folder for its person's list (see sortPhotos).
+async function placePhoto(roster: ExecRoster, photoId: string | undefined) {
+  const library = photoId ? await execPhotoLibrary() : null;
+  if (!photoId || !library?.folderId || !library.folders) return;
+  try {
+    const file = await getItem(photoId);
+    if (!file.trashed) await sortPhotos({ top: library.folderId, ...library.folders }, [file], roster);
+  } catch (error) {
+    console.warn(`Could not check the folder of exec photo ${photoId}`, error);
+  }
+}
+
+// Lists the Drive folders again and saves the list. Photos on the site move into their list's folder, and people
+// whose photo changed in Drive get the new version.
+export async function refreshExecPhotoLibrary(): Promise<ExecPhotoLibrary> {
+  const previous = await execPhotoLibrary();
+  const folders = await execFolders(previous?.folderId, false);
+  if (!folders) return saveLibrary(null, [], previous);
+  const files = await listImages(folders.top, folders.current, folders.alumni);
+  await sortPhotos(folders, files, await execRoster());
+  return saveLibrary(folders, files, previous);
+}
+
+async function saveLibrary(folders: ExecFolders | null, files: DriveImage[], previous: ExecPhotoLibrary | null) {
   const before = new Map((previous?.photos || []).map((p) => [p.id, p]));
   const photos: ExecPhotoLibrary["photos"] = files.map((f) => ({ id: f.id, version: f.version, name: photoName(f.name), createdAt: Date.parse(f.createdTime) }));
   await forEachLimited(photos, 8, async (photo) => {
@@ -238,7 +309,8 @@ async function saveLibrary(folderId: string | null, files: DriveImage[], previou
     photo.placeholder = old?.version === photo.version && old.placeholder ? old.placeholder : await fetchPlaceholder(link);
   });
   const library: ExecPhotoLibrary = {
-    folderId,
+    folderId: folders?.top ?? null,
+    ...(folders ? { folders: { current: folders.current, alumni: folders.alumni } } : {}),
     photos,
     thumbnails: Object.fromEntries(files.filter((f) => f.thumbnailLink).map((f) => [f.id, f.thumbnailLink!])),
     checkedAt: Date.now(),
@@ -261,13 +333,14 @@ async function saveLibrary(folderId: string | null, files: DriveImage[], previou
   return library;
 }
 
-// Saves an image into the Exec Photos folder, making the folder if needed, and returns it.
-export async function uploadExecPhoto(name: string, type: string, bytes: Uint8Array) {
+// Saves an image into the folder for `list` (Exec Photos › Active or Alumni), making the folders if needed, and returns it.
+export async function uploadExecPhoto(name: string, type: string, bytes: Uint8Array, list: RosterList) {
   if (!type.startsWith("image/")) throw new MembershipError("Pick an image file.");
-  const folder = await findPhotoFolder(EXEC_PHOTO_FOLDER_PATH, true);
-  if (!folder) throw new MembershipError("Could not make the Exec Photos folder in Drive.", 502);
-  const file = await uploadImage(name, type, bytes, folder.id);
-  const library = await saveLibrary(folder.id, await listImages(folder.id), await execPhotoLibrary());
+  const previous = await execPhotoLibrary();
+  const folders = await execFolders(previous?.folderId, true);
+  if (!folders) throw new MembershipError("Could not make the Exec Photos folder in Drive.", 502);
+  const file = await uploadImage(name, type, bytes, folders[list]);
+  const library = await saveLibrary(folders, await listImages(folders.top, folders.current, folders.alumni), previous);
   return library.photos.find((p) => p.id === file.id) || { id: file.id, version: file.version, name: photoName(file.name), createdAt: Date.now() };
 }
 

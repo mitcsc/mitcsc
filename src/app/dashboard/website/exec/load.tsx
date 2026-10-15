@@ -3,6 +3,7 @@ import LiveData from "@/components/dashboard/LiveData";
 import { execPhotoLibrary, execRoster, type RosterList } from "@/lib/exec";
 import { localMode } from "@/lib/local-mode";
 import { publicMessage } from "@/lib/membership/errors";
+import { folderUrl } from "@/lib/membership/google/drive";
 
 // After this long, opening the photo picker checks Drive for new photos.
 const REUSE_MS = 60_000;
@@ -23,6 +24,8 @@ export default async function RosterPage({ list }: { list: RosterList }) {
           roles={roster.roles}
           photos={library?.photos || []}
           thumbnails={age < THUMBNAILS_MS ? library?.thumbnails || {} : {}}
+          // The tab's own folder in Drive, or Exec Photos until the Active and Alumni folders exist.
+          folder={library?.folders ? folderUrl(library.folders[list]) : library?.folderId ? folderUrl(library.folderId) : null}
           checkDrive={!localMode() && age >= REUSE_MS}
           local={localMode()}
         />

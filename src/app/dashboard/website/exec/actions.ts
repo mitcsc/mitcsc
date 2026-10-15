@@ -60,13 +60,14 @@ export async function reorderRolesAction(names: string[]) {
 }
 
 // The browser shrinks a photo before sending it, so it stays well under the request size limit.
+// The photo goes into the folder for the list of the person being edited.
 export async function uploadExecPhotoAction(form: FormData) {
   return change(async () => {
     if (localMode()) throw new MembershipError("Local mode has no Google, so photos can’t be uploaded.", 503);
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0) throw new MembershipError("Pick a photo.");
     if (file.size > 4 * 1024 * 1024) throw new MembershipError("This photo is too large. Pick one under 4 MB.");
-    return uploadExecPhoto(file.name || "photo.jpg", file.type, new Uint8Array(await file.arrayBuffer()));
+    return uploadExecPhoto(file.name || "photo.jpg", file.type, new Uint8Array(await file.arrayBuffer()), list(form.get("list")));
   });
 }
 

@@ -78,20 +78,22 @@ export interface DriveImage {
   // Changes whenever the file changes, so it can key cached copies.
   version: string;
   createdTime: string;
+  // The folder the image is in.
+  parents?: string[];
   // A signed link to Google's resized copy. It expires after a few hours.
   thumbnailLink?: string;
 }
 
-const IMAGE_FIELDS = "id,name,mimeType,version,createdTime,thumbnailLink";
+const IMAGE_FIELDS = "id,name,mimeType,version,createdTime,parents,thumbnailLink";
 
-// Image files directly inside a folder, newest first.
-export async function listImages(folderId: string) {
+// Image files directly inside any of the folders, newest first.
+export async function listImages(...folderIds: string[]) {
   const images: DriveImage[] = [];
   let pageToken: string | undefined;
   do {
     const page = await google<{ files: DriveImage[]; nextPageToken?: string }>(`${DRIVE}/files`, {
       query: {
-        q: `${quote(folderId)} in parents and mimeType contains 'image/' and trashed = false`, orderBy: "createdTime desc", pageSize: 1000, pageToken,
+        q: `(${folderIds.map((id) => `${quote(id)} in parents`).join(" or ")}) and mimeType contains 'image/' and trashed = false`, orderBy: "createdTime desc", pageSize: 1000, pageToken,
         fields: `nextPageToken,files(${IMAGE_FIELDS})`, supportsAllDrives: true, includeItemsFromAllDrives: true,
       },
     });
@@ -139,6 +141,13 @@ export async function createSpreadsheetFile(name: string, parentId: string) {
     method: "POST",
     query: { fields: "id,name,mimeType", supportsAllDrives: true },
     body: { name, mimeType: SPREADSHEET, parents: [parentId] },
+  });
+}
+
+// Moves a file from one folder to another. Its id stays the same.
+export async function moveFile(id: string, from: string, to: string) {
+  await google(`${DRIVE}/files/${encodeURIComponent(id)}`, {
+    method: "PATCH", query: { addParents: to, removeParents: from, fields: "id", supportsAllDrives: true }, body: {},
   });
 }
 

@@ -31,13 +31,13 @@ export const DELIB_TABS: NavTab[] = [
   { href: "/dashboard/delibs/history", label: "History", nested: true },
 ];
 
-// Everything that changes the public site.
+// Everything that changes the public site. Links come first: they change most often.
 export const WEBSITE_TABS: NavTab[] = [
+  { href: "/dashboard/website/links", label: "Links" },
   { href: "/dashboard/website/photos", label: "Home" },
   { href: "/dashboard/website/exec", label: "Exec" },
   { href: "/dashboard/website/alumni", label: "Alumni" },
   { href: "/dashboard/website/roles", label: "Roles" },
-  { href: "/dashboard/website/links", label: "Links" },
 ];
 
 // Check-in comes first: it is what exec open the dashboard for at events.
@@ -45,7 +45,7 @@ export const SECTIONS: NavSection[] = [
   { href: "/dashboard/check-in", label: "Check-In", also: "/dashboard/events", tabs: CHECK_IN_TABS },
   { href: "/dashboard/membership", label: "Membership", tabs: MEMBERSHIP_TABS },
   { href: "/dashboard/delibs", label: "Delibs", tabs: DELIB_TABS },
-  { href: "/dashboard/website/photos", label: "Website", also: "/dashboard/website", tabs: WEBSITE_TABS },
+  { href: "/dashboard/website/links", label: "Website", also: "/dashboard/website", tabs: WEBSITE_TABS },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 
