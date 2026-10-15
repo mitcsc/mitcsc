@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { unstable_cache } from "next/cache";
-import { alumni as alumniConfig, directory as alumniDirectory } from "../config/exec/alumni";
-import { current as currentConfig, directory as currentDirectory } from "../config/exec/current";
 import { fetchPlaceholder, findPhotoFolder, forEachLimited, listPhotoFolder, photoName } from "./drive-photos";
 import { execPhotoUrl, type ExecPerson, type ExecPhoto, type ExecRoster, type PersonInput, type RosterList } from "./exec-roster";
 import { MembershipError } from "./membership/errors";
@@ -25,17 +23,15 @@ export interface ExecPhotoLibrary {
   checkedAt: number;
 }
 
-// Null until exec copy the people from the website code into the dashboard.
+const EMPTY_ROSTER: ExecRoster = { current: [], alumni: [], roles: [] };
+
+// A new database (like local mode's) starts with nobody and no roles.
 export async function execRoster() {
-  return getJson<ExecRoster>(keys.execRoster);
+  return (await getJson<ExecRoster>(keys.execRoster)) ?? EMPTY_ROSTER;
 }
 
-const cachedRoster = unstable_cache(execRoster, ["exec-roster"], { tags: [EXEC_TAG], revalidate: 3600 });
-
-// For /exec and /alumni. Null means the pages show the people from the website code.
-export async function publicRoster() {
-  return cachedRoster().catch(() => null);
-}
+// For /exec and /alumni. A failed read throws, so the pages keep their last good copy instead of showing nobody.
+const publicRoster = unstable_cache(execRoster, ["exec-roster"], { tags: [EXEC_TAG], revalidate: 3600 });
 
 export async function execPhotoLibrary() {
   return getJson<ExecPhotoLibrary>(keys.execPhotos);
@@ -44,13 +40,14 @@ export async function execPhotoLibrary() {
 // Whether anyone on /exec or /alumni uses this photo, which makes it public.
 export async function isRosterPhoto(id: string) {
   const roster = await execRoster();
-  return !!roster && [...roster.current, ...roster.alumni].some((p) => p.photo?.id === id);
+  return [...roster.current, ...roster.alumni].some((p) => p.photo?.id === id);
 }
 
-async function changeRoster(change: (roster: ExecRoster) => ExecRoster) {
+async function changeRoster(change: (roster: ExecRoster) => ExecRoster): Promise<ExecRoster> {
   const roster = await updateJson<ExecRoster>(keys.execRoster, change);
-  if (!roster) throw new MembershipError("Copy the exec from the website first.", 409);
-  return roster;
+  if (roster) return roster;
+  await redis("SET", keys.execRoster, JSON.stringify(EMPTY_ROSTER), "NX");
+  return changeRoster(change);
 }
 
 function field(value: unknown, label: string, max: number, required: boolean) {
@@ -71,9 +68,10 @@ function cleanPerson(input: PersonInput) {
   };
 }
 
-// A position must be one of the roles, or the one the person already has (an alumnus's old role, for example).
-function checkRole(roster: ExecRoster, position: string, before: string | undefined) {
-  if (position !== before && !roster.roles.includes(position)) throw new MembershipError(`“${position}” is not a role. Add it on the Roles tab first.`);
+// A current exec's position must be one of the roles, or the one they already have.
+// Alumni keep the title they held, so their position is free text.
+function checkRole(roster: ExecRoster, list: RosterList, position: string, before: string | undefined) {
+  if (list === "current" && position !== before && !roster.roles.includes(position)) throw new MembershipError(`“${position}” is not a role. Add it on the Roles tab first.`);
 }
 
 async function photoFor(photoId: string | null): Promise<ExecPhoto | null> {
@@ -99,12 +97,12 @@ export async function savePerson(list: RosterList, id: string | null, input: Per
   let saved: ExecPerson | null = null;
   await changeRoster((roster) => {
     if (!id) {
-      checkRole(roster, fields.position, undefined);
+      checkRole(roster, list, fields.position, undefined);
       saved = { id: randomUUID().slice(0, 8), ...fields, photo };
       return { ...roster, [list]: [...roster[list], saved] };
     }
     const at = where(roster, id);
-    checkRole(roster, fields.position, roster[at.list][at.index].position);
+    checkRole(roster, at.list, fields.position, roster[at.list][at.index].position);
     return { ...roster, [at.list]: roster[at.list].map((p) => (p.id === id ? (saved = { ...p, ...fields, photo }) : p)) };
   });
   return saved!;
@@ -120,14 +118,38 @@ export async function removePerson(id: string) {
 // Moves a person to the other list: to the top of the alumni (newest first), or to the end of the current exec.
 // `index` puts them at an exact place instead, which is how Undo returns someone to where they were.
 // Returns where they were, for Undo.
+// People moved to alumni within this long count as one group, like the exec who leave at the end of a year.
+const MOVE_GROUP_MS = 60 * 24 * 3600_000;
+
+// Where someone moved to alumni goes: at the top, among the others moved recently, in their current exec order.
+// When A is above B in current exec and A moves first, B's place then is at least A's, since A left from above.
+function alumniPlace(alumni: ExecPerson[], from: number, now: number) {
+  let place = 0;
+  while (place < alumni.length) {
+    const moved = alumni[place].moved;
+    if (!moved || now - moved.at > MOVE_GROUP_MS || moved.from > from) break;
+    place++;
+  }
+  return place;
+}
+
+// Moves someone between current exec and alumni. Without an index, they go to the end of current exec,
+// or to the top of alumni (see alumniPlace). Returns where they were, for Undo.
 export async function movePerson(id: string, to: RosterList, index?: number) {
   let from: { list: RosterList; index: number } | null = null;
   await changeRoster((roster) => {
     const at = (from = where(roster, id));
     if (at.list === to) return roster;
-    const person = roster[at.list][at.index];
+    const now = Date.now();
     const target = roster[to].filter((p) => p.id !== id);
-    const place = index === undefined ? (to === "alumni" ? 0 : target.length) : Math.max(0, Math.min(index, target.length));
+    let person = roster[at.list][at.index];
+    let place = target.length;
+    // An index means Undo, which puts the person back as they were.
+    if (index !== undefined) place = Math.max(0, Math.min(index, target.length));
+    else if (to === "alumni") {
+      person = { ...person, moved: { from: at.index, at: now } };
+      place = alumniPlace(target, at.index, now);
+    }
     target.splice(place, 0, person);
     return { ...roster, [at.list]: roster[at.list].filter((p) => p.id !== id), [to]: target };
   });
@@ -238,63 +260,16 @@ export async function uploadExecPhoto(name: string, type: string, bytes: Uint8Ar
   return library.photos.find((p) => p.id === file.id) || { id: file.id, version: file.version, name: photoName(file.name), createdAt: Date.now() };
 }
 
-const CONFIG_LISTS = [
-  { list: "current" as const, people: currentConfig, directory: currentDirectory },
-  { list: "alumni" as const, people: alumniConfig, directory: alumniDirectory },
-];
-
-// One time: copies the people in src/config/exec into the dashboard, in the same order.
-// With photos, each photo file from the website goes into the Exec Photos folder. A file already there by that name is
-// reused, so a copy that stopped partway can run again. Without photos (local mode has no Google), people get none.
-export async function copyRosterFromWebsite(origin: string, withPhotos: boolean) {
-  if (await execRoster()) throw new MembershipError("The exec are already in the dashboard.", 409);
-  const fileIds = new Map<string, string>();
-  if (withPhotos) {
-    const folder = await findPhotoFolder(EXEC_PHOTO_FOLDER_PATH, true);
-    if (!folder) throw new MembershipError("Could not make the Exec Photos folder in Drive.", 502);
-    const existing = new Map((await listImages(folder.id)).map((f) => [f.name, f.id]));
-    const files = CONFIG_LISTS.flatMap(({ people, directory }) => people.map((p) => ({ file: p.image, path: `/${directory}/${p.image}` })));
-    await forEachLimited(files, 6, async ({ file, path }) => {
-      if (existing.has(file)) return void fileIds.set(path, existing.get(file)!);
-      const response = await fetch(`${origin}${path}`, { cache: "no-store", signal: AbortSignal.timeout(20_000) }).catch(() => null);
-      if (!response?.ok) throw new MembershipError(`Could not read ${file} from the website.`, 502);
-      const type = response.headers.get("content-type") || "image/jpeg";
-      const uploaded = await uploadImage(file, type, new Uint8Array(await response.arrayBuffer()), folder.id);
-      fileIds.set(path, uploaded.id);
-    });
-    await saveLibrary(folder.id, await listImages(folder.id), await execPhotoLibrary());
-  }
-  const library = new Map(((await execPhotoLibrary())?.photos || []).map((p) => [p.id, p]));
-  const roster = Object.fromEntries(CONFIG_LISTS.map(({ list, people, directory }) => [list, people.map((p): ExecPerson => {
-    const photo = library.get(fileIds.get(`/${directory}/${p.image}`) || "");
-    return {
-      id: randomUUID().slice(0, 8), name: p.name, position: p.position, classYear: p.classYear, hometown: p.hometown,
-      photo: photo ? { id: photo.id, version: photo.version, name: photo.name, placeholder: photo.placeholder } : null,
-    };
-  })])) as Pick<ExecRoster, "current" | "alumni">;
-  // The roles start as every position on the website, current exec first, in their order there.
-  const roles = [...new Set([...roster.current, ...roster.alumni].map((p) => p.position))];
-  const full: ExecRoster = { ...roster, roles };
-  if ((await redis<string | null>("SET", keys.execRoster, JSON.stringify(full), "NX")) !== "OK") {
-    throw new MembershipError("The exec are already in the dashboard.", 409);
-  }
-  return { current: full.current.length, alumni: full.alumni.length };
-}
-
 // On Vercel, the pages load photos through Vercel's image optimizer from production's route, so every deploy
 // shares one cached copy of each size (as homePhotoSrc does for the home page).
 const OPTIMIZER_SOURCE = process.env.VERCEL ? "https://csc.mit.edu" : "";
 // The largest size the route serves. The optimizer makes the smaller sizes from it.
 const SOURCE_WIDTH = 1080;
 
-// The cards for /exec or /alumni, in order. Until exec copy the people into the dashboard, they come from src/config/exec.
+// The cards for /exec or /alumni, in order.
 export async function publicCards(list: RosterList) {
   const roster = await publicRoster();
   const alumni = list === "alumni";
-  if (!roster) {
-    const { people, directory } = CONFIG_LISTS.find((c) => c.list === list)!;
-    return people.map((p) => ({ id: p.image, name: p.name, position: p.position, classYear: p.classYear, hometown: p.hometown, src: `/${directory}/${p.image}`, alumni }));
-  }
   return roster[list].map((p) => ({
     id: p.id, name: p.name, position: p.position, classYear: p.classYear, hometown: p.hometown, alumni,
     src: p.photo ? `${OPTIMIZER_SOURCE}${execPhotoUrl(p.photo, SOURCE_WIDTH)}` : null,

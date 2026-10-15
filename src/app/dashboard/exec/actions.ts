@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
-import { headers } from "next/headers";
 import {
-  addRole, copyRosterFromWebsite, EXEC_TAG, movePerson, refreshExecPhotoLibrary, removePerson, removeRole, renameRole, reorderRoles,
+  addRole, EXEC_TAG, movePerson, refreshExecPhotoLibrary, removePerson, removeRole, renameRole, reorderRoles,
   reorderRoster, savePerson, uploadExecPhoto, type ExecPhotoLibrary, type PersonInput, type RosterList,
 } from "@/lib/exec";
 import { localMode } from "@/lib/local-mode";
@@ -25,14 +24,6 @@ async function change<T>(work: () => Promise<T>): Promise<Result<T>> {
     const value = await work();
     revalidateTag(EXEC_TAG);
     return value;
-  });
-}
-
-export async function copyRosterAction() {
-  return change(async () => {
-    const host = (await headers()).get("host") || "csc.mit.edu";
-    const origin = `${host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https"}://${host}`;
-    return copyRosterFromWebsite(origin, !localMode());
   });
 }
 

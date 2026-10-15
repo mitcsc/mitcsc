@@ -1,4 +1,3 @@
-import CopyRoster from "@/components/dashboard/CopyRoster";
 import ExecRosterView from "@/components/dashboard/ExecRosterView";
 import LiveData from "@/components/dashboard/LiveData";
 import { execPhotoLibrary, execRoster, type RosterList } from "@/lib/exec";
@@ -14,7 +13,6 @@ const THUMBNAILS_MS = 3600_000;
 export default async function RosterPage({ list }: { list: RosterList }) {
   try {
     const [roster, library] = await Promise.all([execRoster(), execPhotoLibrary()]);
-    if (!roster) return <CopyRoster local={localMode()} />;
     const age = library ? Date.now() - library.checkedAt : Infinity;
     return (
       <>

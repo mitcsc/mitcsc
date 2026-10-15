@@ -17,6 +17,9 @@ export interface ExecPerson {
   classYear: string;
   hometown: string;
   photo: ExecPhoto | null;
+  // Set when someone moves from current exec to alumni: their place in current exec then, and when.
+  // People moved one at a time keep their current exec order at the top of alumni.
+  moved?: { from: number; at: number };
 }
 
 export type RosterList = "current" | "alumni";

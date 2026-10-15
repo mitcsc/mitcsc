@@ -152,14 +152,14 @@ function PersonDialog({ list, person, roles, photos, thumbnails, checkDrive, loc
   onClose: () => void; onSaved: (message: string) => void; onMove: (person: ExecPerson) => void;
 }) {
   const [name, setName] = useState(person?.name || "");
-  const [position, setPosition] = useState(person?.position || roles[0] || "");
+  const [position, setPosition] = useState(person?.position || (list === "current" ? roles[0] : "") || "");
   const [classYear, setClassYear] = useState(person?.classYear || "");
   const [hometown, setHometown] = useState(person?.hometown || "");
   const [photo, setPhoto] = useState<ExecPhoto | null>(person?.photo || null);
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  // An alumnus can keep a position that is no longer a role.
+  // Someone moved back from alumni keeps their old position until it is changed, even if it is no longer a role.
   const options = person && !roles.includes(person.position) ? [...roles, person.position] : roles;
 
   async function run(work: () => Promise<{ ok: true } | { ok: false; error: string }>, message: string, close: Close) {
@@ -192,30 +192,38 @@ function PersonDialog({ list, person, roles, photos, thumbnails, checkDrive, loc
         />
       ) : (
         <form className="d-dialog-form" onSubmit={(e) => submit(e, close)}>
-          <div className="d-exec-photo-field">
-            <span className="d-exec-photo is-small">
-              {photo ? <PhotoImage photo={photo} thumbnails={thumbnails} sizes="96px" /> : <span className="d-exec-initials">{initials(name) || "?"}</span>}
-            </span>
-            <span className="d-exec-photo-actions">
-              <button type="button" className="d-chip-btn" onClick={() => setPicking(true)}>{photo ? "Change photo" : "Choose photo"}</button>
-              {photo && <span className="d-field-note" title={photo.name}>{photo.name}</span>}
-            </span>
-          </div>
-          <label className="d-field">
-            <span className="m-label">Name</span>
-            <input className="m-input is-compact" value={name} required maxLength={60} data-autofocus={person ? undefined : true} onChange={(e) => setName(e.target.value)} />
-          </label>
-          <label className="d-field">
-            <span className="m-label">Position</span>
-            <span className="m-select-wrap">
-              <select className="m-select is-compact" value={position} required onChange={(e) => setPosition(e.target.value)}>
-                {options.map((role) => <option key={role} value={role}>{role}</option>)}
-              </select>
-              <Icon name="chevron" />
-            </span>
-            <span className="d-field-note">Add or rename positions on the <Link className="d-quiet-link" href="/dashboard/exec/roles">Roles</Link> tab.</span>
-          </label>
-          <div className="d-field-row">
+          <div className="d-exec-form-grid">
+            <div className="d-field">
+              <span className="m-label">Photo</span>
+              <button type="button" className="d-exec-photo is-edit" title={photo?.name} onClick={() => setPicking(true)}>
+                {photo ? <PhotoImage photo={photo} thumbnails={thumbnails} sizes="136px" /> : <span className="d-exec-initials">{initials(name) || "?"}</span>}
+                <span className="d-exec-photo-label">{photo ? "Change photo" : "Choose photo"}</span>
+              </button>
+            </div>
+            <div className="d-exec-form-fields">
+              <label className="d-field">
+                <span className="m-label">Name</span>
+                <input className="m-input is-compact" value={name} required maxLength={60} data-autofocus={person ? undefined : true} onChange={(e) => setName(e.target.value)} />
+              </label>
+              {list === "alumni" ? (
+                <label className="d-field">
+                  <span className="m-label">Position</span>
+                  <input className="m-input is-compact" value={position} required maxLength={60} list="exec-roles" placeholder="Their title on exec" onChange={(e) => setPosition(e.target.value)} />
+                  <datalist id="exec-roles">{roles.map((role) => <option key={role} value={role} />)}</datalist>
+                </label>
+              ) : (
+                <label className="d-field">
+                  <span className="m-label">Position<Link className="d-quiet-link" href="/dashboard/exec/roles">Edit roles</Link></span>
+                  <span className="m-select-wrap">
+                    <select className="m-select is-compact" value={position} required onChange={(e) => setPosition(e.target.value)}>
+                      {options.length === 0 && <option value="">No roles yet</option>}
+                      {options.map((role) => <option key={role} value={role}>{role}</option>)}
+                    </select>
+                    <Icon name="chevron" />
+                  </span>
+                </label>
+              )}
+            </div>
             <label className="d-field">
               <span className="m-label">Class year</span>
               <input className="m-input is-compact" value={classYear} required inputMode="numeric" pattern="\d{4}" maxLength={4} placeholder="2028" onChange={(e) => setClassYear(e.target.value)} />
@@ -228,8 +236,8 @@ function PersonDialog({ list, person, roles, photos, thumbnails, checkDrive, loc
           {error && <p className="m-error" role="alert">{error}</p>}
           <button type="submit" className="m-btn is-medium" disabled={busy}>{busy ? "Saving…" : person ? "Save" : "Add person"}</button>
           {person && (
-            <div className="d-dialog-foot">
-              <button type="button" className="d-chip-btn" disabled={busy} onClick={() => close(() => { onClose(); onMove(person); })}>{NAMES[list].move}</button>
+            <div className="d-dialog-foot is-split">
+              <button type="button" className="d-quiet-btn" disabled={busy} onClick={() => close(() => { onClose(); onMove(person); })}>{NAMES[list].move}</button>
               <button type="button" className="d-danger-link" disabled={busy} onClick={() => remove(close)}>Remove from the site</button>
             </div>
           )}
