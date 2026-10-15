@@ -45,8 +45,8 @@ export const WEBSITE_TABS: NavTab[] = [
 export const SECTIONS: NavSection[] = [
   { base: "/dashboard/check-in", label: "Check-In", tabs: CHECK_IN_TABS },
   { base: "/dashboard/membership", label: "Membership", tabs: MEMBERSHIP_TABS },
-  { base: "/dashboard/delibs", label: "Delibs", tabs: DELIB_TABS },
   { base: "/dashboard/website", label: "Website", tabs: WEBSITE_TABS },
+  { base: "/dashboard/delibs", label: "Delibs", tabs: DELIB_TABS },
   { base: "/dashboard/settings", label: "Settings" },
 ];
 
