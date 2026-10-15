@@ -17,7 +17,7 @@ export default function EventActions({ id, name, hours, count, sheet, today }: {
   const [open, setOpen] = useState(false);
   return (
     <span className="d-row-actions">
-      <Link className={`m-btn is-small${today ? "" : " is-outline"}`} href={`/dashboard/events/${id}`}>Check in</Link>
+      <Link className={`m-btn is-small${today ? "" : " is-outline"}`} href={`/dashboard/check-in/events/${id}`}>Check in</Link>
       <button type="button" className="d-more-btn" aria-label={`More for ${name}`} onClick={() => setOpen(true)}>
         <Icon name="more" size={18} />
       </button>

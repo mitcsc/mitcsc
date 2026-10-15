@@ -12,11 +12,11 @@ export default async function DelibLinkPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const [me, delibs] = await Promise.all([requireExecPerson(), allElections()]);
   const delib = delibs.find((d) => d.sessionId === id);
-  if (delib?.open) redirect("/dashboard/delibs");
+  if (delib?.open) redirect("/dashboard/delibs/live");
   if (delib && delib.host === me.email) redirect(`/dashboard/delibs/history/${id}`);
   return (
     <main className="d-page">
-      <Link className="m-back" href="/dashboard/delibs"><Icon name="back" />Live</Link>
+      <Link className="m-back" href="/dashboard/delibs/live"><Icon name="back" />Live</Link>
       <h1 className="d-h2">{delib ? delib.name : "Delib not found"}</h1>
       <p className="d-section-note">{delib ? `This delib has ended. Only ${delib.hostName}, the host, can see the results.` : "This delib does not exist."}</p>
     </main>

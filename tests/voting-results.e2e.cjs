@@ -17,7 +17,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
     return route.fulfill({json:url.includes('results=')?results:url.includes('/state')?{active:true,isAdmin:true,sessionId:'results-test',phase:'locked',criteria,candidates:results.candidates.map(c=>c.candidate),participants:[],voters:[],currentCandidate:results.candidates[1].candidate}:{me:{name:'Test Host'},election:ended?null:{sessionId:'results-test',name:'Spring delib',hostName:'Test Host',isHost:true}}});
   });
   // The dev server signs in as DASHBOARD_DEV_EMAIL.
-  await page.goto(`${process.env.VOTING_TEST_URL}/api/auth/google/start?next=/dashboard/delibs`);
+  await page.goto(`${process.env.VOTING_TEST_URL}/api/auth/google/start?next=/dashboard/delibs/live`);
   await page.getByRole('button',{name:'Continue to results',exact:false}).click();
   await page.getByRole('heading',{name:'Spring delib',level:1}).waitFor();
   assert.equal(await page.getByRole('link',{name:'Download CSV'}).getAttribute('href'),'/api/voting/delibs/export?id=results-test');

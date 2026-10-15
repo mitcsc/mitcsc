@@ -57,7 +57,7 @@ const baseURL = process.env.VOTING_TEST_URL || 'http://localhost:3020';
   };
   try {
     // The dev server signs in as DASHBOARD_DEV_EMAIL.
-    await page.goto(`${baseURL}/api/auth/google/start?next=/dashboard/delibs`);
+    await page.goto(`${baseURL}/api/auth/google/start?next=/dashboard/delibs/live`);
     await page.getByRole('heading', { name: 'No delib is running' }).waitFor();
     await button('Start a delib').click();
     await page.getByRole('heading', { name: 'New delib' }).waitFor();

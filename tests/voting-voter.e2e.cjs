@@ -67,7 +67,7 @@ async function main() {
   };
   try {
     // The dev server signs in as DASHBOARD_DEV_EMAIL, then a signed-in exec joins without a form.
-    await page.goto(`${baseURL}/api/auth/google/start?next=/dashboard/delibs`);
+    await page.goto(`${baseURL}/api/auth/google/start?next=/dashboard/delibs/live`);
     await page.getByRole('heading', { name: 'You’re in.' }).waitFor();
     await waitText('Hosted by Host Exec');
     await waitText('Joined as Test Voter');

@@ -62,7 +62,7 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
     }
     // On the Check in tab, today's new event opens in place.
     if (variant === "today" && date === today) startOpening(() => router.refresh());
-    else router.push(`/dashboard/events/${result.value}`);
+    else router.push(`/dashboard/check-in/events/${result.value}`);
     setBusy(false);
   }
 
@@ -79,7 +79,7 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
       <EventHoursFields starts={starts} ends={ends} onStarts={setStarts} onEnds={setEnds} invalid={!!clash} />
       {clash && (
         <p id="date-taken" className="m-error" role="alert">
-          {clashNote(clash)} Pick other hours or another date, or <Link href={`/dashboard/events/${clash.id}`}>open “{clash.name}”</Link>.
+          {clashNote(clash)} Pick other hours or another date, or <Link href={`/dashboard/check-in/events/${clash.id}`}>open “{clash.name}”</Link>.
         </p>
       )}
       {folder ? (
@@ -114,7 +114,7 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
       <form className="d-phone-body" onSubmit={submit}>
         {variant === "page" ? (
           <>
-            <Link className="m-back" href="/dashboard/events"><Icon name="back" />Events</Link>
+            <Link className="m-back" href="/dashboard/check-in/events"><Icon name="back" />Events</Link>
             <h1 className="d-phone-title">New event</h1>
           </>
         ) : (
