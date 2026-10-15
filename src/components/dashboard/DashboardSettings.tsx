@@ -84,7 +84,7 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club, walle
         {!connected && <p className="d-field-note is-large">Sign in as {club.email} on the Google screen and allow every permission.</p>}
       </Setting>
 
-      <Setting title="Wallet cards" note="Apple and Google Wallet membership cards, made by WalletWallet. Making or cancelling a card counts toward the monthly limit." center>
+      <Setting title="Wallet cards" note="Apple and Google Wallet membership cards, made by WalletWallet. Making or cancelling a card counts toward the monthly limit.">
         <WalletStatus wallet={wallet} />
       </Setting>
     </main>
@@ -95,20 +95,27 @@ function WalletStatus({ wallet }: { wallet: { usage: WalletUsage | null; pausedU
   if (!wallet) return <p className="d-field-note is-large">Not set up. Add <code>WALLETWALLET_API_KEY</code> in Vercel to turn on Wallet cards.</p>;
   const { usage, pausedUntil } = wallet;
   const full = !!pausedUntil || (!!usage && usage.count >= usage.limit);
-  const close = !full && !!usage && usage.count >= usage.limit * 0.9;
+  const percent = full ? 100 : usage ? (usage.count / usage.limit) * 100 : 0;
+  const level = full ? " is-full" : percent >= 90 ? " is-close" : "";
+  const used = full ? "Limit reached" : percent > 0 && percent < 1 ? "Less than 1% used" : `${Math.round(percent)}% used`;
   const resets = pausedUntil || usage?.resetDate;
   return (
-    <>
-      <div className="d-account-row">
-        <span className="d-account-name">
-          {usage ? `${usage.count.toLocaleString()} of ${usage.limit.toLocaleString()} this month` : "This month’s count is unavailable"}
-          {full && <span className="m-pill is-yellow">Limit reached</span>}
-          {close && <span className="m-pill is-yellow">Almost at the limit</span>}
-          {!full && !close && usage && <span className="m-pill is-green">Working</span>}
-        </span>
+    <div className={`d-usage${level}`}>
+      <div className="d-usage-row">
+        <span>Cards this month</span>
+        <span className="d-usage-count">{usage ? `${usage.count.toLocaleString()} of ${usage.limit.toLocaleString()}` : "Count unavailable"}</span>
       </div>
-      {full && <p className="d-field-note is-large">Members don’t see the Wallet option until {resets ? formatDay(resets) : "the 1st"}. Cards they already have still work, and check-in by name or kerb works as usual.</p>}
-      {!full && resets && <p className="d-field-note is-large">Resets {formatDay(resets)}.</p>}
-    </>
+      <div
+        className="d-usage-bar" role="progressbar" aria-label="Wallet cards made this month"
+        aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)} aria-valuetext={used}
+      >
+        {percent > 0 && <span style={{ width: `${percent}%` }} />}
+      </div>
+      <div className="d-usage-row is-small">
+        <span className="d-usage-used">{used}</span>
+        {resets && <span>Resets {formatDay(resets)}</span>}
+      </div>
+      {full && <p className="d-field-note is-large">Members don’t see the Wallet option until it resets. Cards they already have still work, and check-in by name or kerb works as usual.</p>}
+    </div>
   );
 }

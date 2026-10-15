@@ -285,6 +285,16 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .d-account-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; width: 100%; }
 .d-account-name { flex: 1; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; overflow-wrap: anywhere; }
 
+/* Usage meter, like a plan's usage limits: count, bar, then percent and reset day */
+.d-usage { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.d-usage-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; }
+.d-usage-row.is-small { font-size: 13px; color: var(--muted); }
+.d-usage-count { font-variant-numeric: tabular-nums; color: var(--muted); }
+.d-usage-bar { height: 8px; border-radius: 999px; background: var(--line-strong); overflow: hidden; }
+.d-usage-bar span { display: block; height: 100%; min-width: 4px; border-radius: inherit; background: var(--text); }
+.d-usage.is-close .d-usage-bar span, .d-usage.is-full .d-usage-bar span { background: var(--yellow-text); }
+.d-usage.is-close .d-usage-used, .d-usage.is-full .d-usage-used { color: var(--yellow-text); }
+
 /* Smaller fields for dense editors */
 .m-input.is-small, .m-select.is-small { min-height: 44px; padding: 0 14px; font-size: 15px; }
 .m-select.is-small { padding-right: 40px; }
