@@ -139,7 +139,7 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
           )}
         </div>
         {/* On the Check In tab, today's event may not have started yet or may be over, so offer a way to another event. */}
-        {!back && !state.open && <Link className="m-btn is-outline is-block d-phone-submit" href="/dashboard/events/new">Create a different event</Link>}
+        {!back && !state.open && <Link className="m-btn is-outline is-block d-phone-submit" href="/dashboard/check-in/events/new">Create a different event</Link>}
       </div>
       {scanning && state.open && <Scanner eventId={event.id} eventName={event.name} onClose={() => setScanning(false)} onResult={apply} admit={admit} undo={undo} />}
     </main>

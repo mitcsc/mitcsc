@@ -13,7 +13,7 @@ export default async function PastDelibPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const [me, delibs] = await Promise.all([requireExecPerson(), allElections()]);
   const delib = delibs.find((d) => d.sessionId === id);
-  if (delib?.open) redirect("/dashboard/delibs");
+  if (delib?.open) redirect("/dashboard/delibs/live");
   if (!delib || delib.host !== me.email) {
     return (
       <main className="d-page">

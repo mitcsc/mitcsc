@@ -81,7 +81,7 @@ export default function NewYearForm({ year, previous, prices, pastMembers }: {
         </div>
 
         <div className="d-narrow-actions">
-          <Link className="m-btn is-outline is-medium" href={previous ? "/dashboard/membership/settings" : "/dashboard/membership"}>Back</Link>
+          <Link className="m-btn is-outline is-medium" href={previous ? "/dashboard/membership/settings" : "/dashboard/membership/members"}>Back</Link>
           <button type="submit" className="m-btn is-medium" disabled={busy}>{busy ? "Creating…" : "Create"}</button>
         </div>
       </form>

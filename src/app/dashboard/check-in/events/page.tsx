@@ -17,7 +17,7 @@ export default async function EventsPage() {
       <LiveData renderedAt={Date.now()} />
       <div className="d-section-head">
         <h1 className="d-h2">Events</h1>
-        <Link className="m-btn is-medium" href="/dashboard/events/new">New event</Link>
+        <Link className="m-btn is-medium" href="/dashboard/check-in/events/new">New event</Link>
       </div>
       <p className="d-section-note">Each event saves its attendance to its own Google Sheet. Open an event on your phone to scan cards.</p>
       <div className="d-table-wrap">
@@ -31,7 +31,7 @@ export default async function EventsPage() {
               return (
               <tr key={event.id}>
                 <td>
-                  <Link className="d-event-link" href={`/dashboard/events/${event.id}`}>
+                  <Link className="d-event-link" href={`/dashboard/check-in/events/${event.id}`}>
                     {event.name}
                     {event.date === today && <span className="m-tag">Today</span>}
                   </Link>

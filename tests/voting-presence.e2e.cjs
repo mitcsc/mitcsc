@@ -18,7 +18,7 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
    return route.fulfill({json:{sessionId:session,active:true,phase:'waiting',criteria:[],voter:{id:session+'-voter',name:'Tester'},isAdmin:false,pollIntervalMs:500}});
   });
   // The dev server signs in as DASHBOARD_DEV_EMAIL.
-  await page.goto(`${process.env.VOTING_TEST_URL}/api/auth/google/start?next=/dashboard/delibs`);
+  await page.goto(`${process.env.VOTING_TEST_URL}/api/auth/google/start?next=/dashboard/delibs/live`);
   await page.getByRole('heading',{name:'You’re in.'}).waitFor();
   kicked=true;
   await page.clock.runFor(600);

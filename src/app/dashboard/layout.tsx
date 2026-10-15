@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { MainNav, MobileNav, ProblemBanner, SaveStatus, SaveStatusProvider, SignIn } from "@/components/dashboard/Shell";
-import { SECTIONS } from "@/components/dashboard/nav";
+import { SECTIONS, sectionHref } from "@/components/dashboard/nav";
 import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
 import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google/oauth";
 import { localMode } from "@/lib/local-mode";
@@ -105,7 +105,7 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
       <div className="m-root d-shell">
         <header className="d-header">
           {/* Links to the first section itself. Going through /dashboard would show the menu with no section for a moment before the redirect. */}
-          <Link className="d-brand" href={SECTIONS[0].href} aria-label="Dashboard home"><Image src="/img/logo/logo-with-panda.png" alt="" width={28} height={28} priority /></Link>
+          <Link className="d-brand" href={sectionHref(SECTIONS[0])} aria-label="Dashboard home"><Image src="/img/logo/logo-with-panda.png" alt="" width={28} height={28} priority /></Link>
           <MainNav />
           <span className="d-header-save"><SaveStatus /></span>
           <MobileNav email={email} />

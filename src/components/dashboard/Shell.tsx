@@ -5,14 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Icon } from "@/components/membership/icons";
-import { SECTIONS, sectionActive, tabActive, type NavTab } from "./nav";
+import { SECTIONS, sectionActive, sectionHref, tabActive, type NavTab } from "./nav";
 
 export function MainNav() {
   const pathname = usePathname();
   return (
     <nav aria-label="Dashboard" className="d-main-nav">
       {SECTIONS.map((section) => (
-        <Link key={section.href} href={section.href} aria-current={sectionActive(pathname, section) ? "page" : undefined}>{section.label}</Link>
+        <Link key={section.base} href={sectionHref(section)} aria-current={sectionActive(pathname, section) ? "page" : undefined}>{section.label}</Link>
       ))}
     </nav>
   );
@@ -80,13 +80,13 @@ function menuGroups() {
   const groups: { href: string; label: string; links: MenuLink[]; more?: boolean }[] = [];
   for (const section of SECTIONS) {
     if (section.tabs) {
-      groups.push({ href: section.href, label: section.label, links: section.tabs.map((t) => ({ href: t.href, label: t.label, current: (p) => tabActive(p, t) })) });
+      groups.push({ href: section.base, label: section.label, links: section.tabs.map((t) => ({ href: t.href, label: t.label, current: (p) => tabActive(p, t) })) });
       continue;
     }
-    const link = { href: section.href, label: section.label, current: (p: string) => sectionActive(p, section) };
+    const link = { href: sectionHref(section), label: section.label, current: (p: string) => sectionActive(p, section) };
     const last = groups.at(-1);
     if (last?.more) last.links.push(link);
-    else groups.push({ href: section.href, label: "More", links: [link], more: true });
+    else groups.push({ href: section.base, label: "More", links: [link], more: true });
   }
   return groups;
 }
