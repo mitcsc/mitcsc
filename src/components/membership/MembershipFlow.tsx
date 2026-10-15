@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
@@ -10,6 +9,7 @@ import { CLUB_EMAIL, formTitle, isKerb, money, normalizeKerb, questionOptions, v
 import type { MemberView } from "@/lib/membership/members";
 import type { FormConfig, PaymentMethod, Question } from "@/lib/membership/types";
 import CardButton from "./CardButton";
+import HomeLogo from "./HomeLogo";
 import { Icon } from "./icons";
 import WalletButtons, { type WalletInfo } from "./WalletButtons";
 
@@ -85,7 +85,7 @@ function Closed({ year, cards }: { year?: string; cards: WalletInfo["buttons"] |
   return (
     <main className="m-root mp-center">
       <div className="mp-center-body">
-        <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
+        <HomeLogo />
         <h1 className="mp-title">Signups are closed</h1>
         <p className="mp-muted">{year ? `Membership signups for ${year} are closed right now.` : "Membership signups are not open yet."} Check back soon.</p>
         {cards && <CardButton wallets={cards} />}
@@ -165,7 +165,7 @@ function SignupForm({ year, member, cards, onDone }: {
   return (
     <main className="m-root mp-page">
       <header className="mp-hero">
-        <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
+        <HomeLogo />
         <h1 className="mp-title is-large">{formTitle(year.form, year.year)}</h1>
         {year.form.intro && <p className="mp-muted">{year.form.intro}</p>}
         {cards && <CardButton wallets={cards} />}
@@ -375,12 +375,15 @@ function PayScreen({ year, member, venmo, onBack, onReported }: {
       <div className="mp-pay-inner">
         <div className={`mp-pay-grid${method === "venmo" && venmo ? " has-qr" : ""}`}>
           <div className="mp-pay-main">
-            {onBack && (
-              <button type="button" className="m-back" onClick={onBack}>
-                <Icon name="back" />
-                Back
-              </button>
-            )}
+            <div className="mp-pay-top">
+              {onBack && (
+                <button type="button" className="m-back" onClick={onBack}>
+                  <Icon name="back" />
+                  Back
+                </button>
+              )}
+              <HomeLogo small />
+            </div>
             <PriceHeading year={year} member={member} />
             {methods.length > 1 && (
               <div role="tablist" aria-label="Payment method" className="m-segments">

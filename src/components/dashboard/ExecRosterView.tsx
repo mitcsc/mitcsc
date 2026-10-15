@@ -93,7 +93,7 @@ export default function ExecRosterView({ list, people, roles, photos: initialPho
         <button type="button" className="d-icon-btn" aria-label="Add person" data-tip="Add person" onClick={() => setEditing("new")}><Icon name="plus" size={16} /></button>
       </div>
       <p className="d-section-note">
-        This is the order on <a className="d-quiet-link" href={names.site} target="_blank" rel="noreferrer">csc.mit.edu{names.site}</a>. Drag a card to move it.
+        This is what is displayed on <a className="d-quiet-link" href={names.site} target="_blank" rel="noreferrer">csc.mit.edu{names.site}</a>. Click a card to edit everything. Drag a card to change the display order.
       </p>
       <ul ref={reorder.listRef} className={`d-exec-grid${reorder.sorting ? " is-sorting" : ""}`}>
         {order.map((person, i) => {

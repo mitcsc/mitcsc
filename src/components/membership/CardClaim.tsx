@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { emailMyCard } from "@/app/join/actions";
 import { CLUB_EMAIL } from "@/lib/membership/config";
+import HomeLogo from "./HomeLogo";
 import WalletButtons from "./WalletButtons";
 
 const FAILED = { ok: false as const, error: "Something went wrong. Please try again." };
@@ -36,7 +36,7 @@ export default function CardClaim({ year, link, deadLink, buttons, kerb: initial
   return (
     <main className="m-root mp-center">
       <div className="mp-center-body mp-card">
-        <Image src="/img/logo/logo-with-panda.png" alt="CSC at MIT" width={88} height={88} className="mp-logo" priority />
+        <HomeLogo />
         {showLink ? (
           <>
             <h1 className="mp-title">Add to your digital wallet</h1>
