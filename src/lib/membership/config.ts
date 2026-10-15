@@ -24,9 +24,9 @@ export function nextSchoolYear(year: string) {
   return `${start}-${start + 1}`;
 }
 
-// Exec can start the next school year from May 1, when the new board takes over.
+// Exec can start the next school year from June 1, when the new board takes over.
 export function nextYearOpens(year: string) {
-  return `${year.slice(5)}-05-01`;
+  return `${year.slice(5)}-06-01`;
 }
 
 export function canStartNextYear(year: string, now = new Date()) {

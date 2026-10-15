@@ -179,7 +179,7 @@ Only dig into the code if something is broken or they want a change.
 
 ## 6. Yearly maintenance checklist
 
-- Start the new school year in Dashboard > Membership > Settings (available from May 1), then turn on **Accepting signups** when ready
+- Start the new school year in Dashboard > Membership > Settings (available from June 1), then turn on **Accepting signups** when ready
 - Check where the home page "Join" button goes (`membership` in `src/config/links.ts`)
 - Move graduating exec to alumni in Dashboard > Website > Exec
 - Add the new exec in Dashboard > Website > Exec, in role order (section 3)

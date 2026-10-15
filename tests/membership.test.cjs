@@ -232,10 +232,11 @@ test('The /join title defaults to "Join CSC <year>!" and follows the year forwar
   assert.equal(carryForm(current, '2026-2027', '2027-2028').title, undefined, 'An empty title stays empty and keeps following the year');
 });
 
-test('the next school year opens on May 1 in Boston', () => {
+test('the next school year opens on June 1 in Boston', () => {
   assert.equal(canStartNextYear(YEAR, new Date('2026-10-13T12:00:00Z')), false);
-  assert.equal(canStartNextYear(YEAR, new Date('2027-05-01T03:59:00Z')), false, 'Still April 30 in Boston');
-  assert.equal(canStartNextYear(YEAR, new Date('2027-05-01T04:00:00Z')), true);
+  assert.equal(canStartNextYear(YEAR, new Date('2027-05-15T12:00:00Z')), false);
+  assert.equal(canStartNextYear(YEAR, new Date('2027-06-01T03:59:00Z')), false, 'Still May 31 in Boston');
+  assert.equal(canStartNextYear(YEAR, new Date('2027-06-01T04:00:00Z')), true);
   assert.equal(canStartNextYear(YEAR, new Date('2028-09-01T12:00:00Z')), true);
 });
 
