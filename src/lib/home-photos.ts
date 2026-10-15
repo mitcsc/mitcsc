@@ -1,5 +1,7 @@
 import { unstable_cache } from "next/cache";
-import type { HomePhoto } from "./home-photo-urls";
+import { photoUrl, sizedThumbnail, type HomePhoto } from "./home-photo-urls";
+import { HERO_PHOTO_WIDTHS, optimizerUrl } from "./images";
+import { googleBytes } from "./membership/google/api";
 import { clubFolder, findFolder, listImages } from "./membership/google/drive";
 import { keys } from "./membership/keys";
 import { getJson, redis } from "./membership/redis";
@@ -34,11 +36,42 @@ export function photoName(fileName: string) {
   return fileName.replace(/^(copy of\s+)+/i, "").trim() || fileName;
 }
 
+// Runs `task` on every item, at most `limit` at a time.
+async function forEachLimited<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) await task(items[next++]);
+  }));
+}
+
+// Placeholders are this wide, so 16 of them add about 5 KB to the home page.
+const PLACEHOLDER_WIDTH = 16;
+const PLACEHOLDER_MAX_BYTES = 1024;
+
+// Drive's tiny copy of a photo as a data URL, or undefined if Drive has none yet. The next refresh tries again.
+async function fetchPlaceholder(thumbnailLink: string | undefined) {
+  if (!thumbnailLink) return undefined;
+  try {
+    const image = await googleBytes(sizedThumbnail(thumbnailLink, PLACEHOLDER_WIDTH), { auth: false });
+    if (!image.type.startsWith("image/") || image.bytes.length > PLACEHOLDER_MAX_BYTES) return undefined;
+    return `data:${image.type};base64,${image.bytes.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
+
 // Lists the Drive folder again and saves the list.
 export async function refreshPhotoLibrary(): Promise<PhotoLibrary> {
   const [folder, previous, shown] = await Promise.all([findPhotoFolder(), photoLibrary(), shownPhotoIds()]);
   const files = folder ? await listImages(folder.id) : [];
-  const photos = files.map((f) => ({ id: f.id, name: photoName(f.name), version: f.version, createdAt: Date.parse(f.createdTime) }));
+  const photos: HomePhoto[] = files.map((f) => ({ id: f.id, name: photoName(f.name), version: f.version, createdAt: Date.parse(f.createdTime) }));
+  // A photo keeps its placeholder until the file changes in Drive.
+  const before = new Map((previous?.photos || []).map((p) => [p.id, p]));
+  const links = new Map(files.map((f) => [f.id, f.thumbnailLink]));
+  await forEachLimited(photos, 8, async (photo) => {
+    const old = before.get(photo.id);
+    photo.placeholder = old?.version === photo.version && old.placeholder ? old.placeholder : await fetchPlaceholder(links.get(photo.id));
+  });
   const present = new Set(photos.map((p) => p.id));
   const on = new Set(shown);
   const missing = new Map<string, HomePhoto>();
@@ -99,6 +132,28 @@ export async function photoFailures(photos: HomePhoto[]) {
 
 export async function setPhotosShown(ids: string[], shown: boolean) {
   if (ids.length) await redis(shown ? "SADD" : "SREM", keys.homePhotosShown, ...ids);
+}
+
+// On Vercel, the home page loads photos through Vercel's image optimizer, whose cache outlives deploys.
+// The cache of a route's own responses starts empty after every deploy, so each visit then waited on Drive.
+// Every deploy names the production route as the source, so they all share one cached copy of each size.
+const OPTIMIZER_SOURCE = process.env.VERCEL ? "https://csc.mit.edu" : null;
+// The largest size /api/home-photos serves. The optimizer makes the smaller sizes from it.
+const SOURCE_WIDTH = 1080;
+
+// The URL of a home page photo at `width`.
+export function homePhotoSrc(photo: HomePhoto, width: number) {
+  return OPTIMIZER_SOURCE ? optimizerUrl(`${OPTIMIZER_SOURCE}${photoUrl(photo, SOURCE_WIDTH)}`, width) : photoUrl(photo, width);
+}
+
+// Asks the optimizer for every size of these photos, so the first visitor gets cached copies instead of waiting on Drive.
+export async function warmHomePhotos(photos: HomePhoto[]) {
+  if (!OPTIMIZER_SOURCE) return;
+  const urls = photos.flatMap((photo) => HERO_PHOTO_WIDTHS.map((width) => `${OPTIMIZER_SOURCE}${homePhotoSrc(photo, width)}`));
+  await forEachLimited(urls, 6, async (url) => {
+    // Browsers ask for WebP, so the optimizer caches the WebP copy.
+    await fetch(url, { headers: { Accept: "image/webp,*/*" } }).then((response) => response.arrayBuffer()).catch(() => undefined);
+  });
 }
 
 // The photos turned on for the home page. Cached like the home page, and cleared when exec change the set.

@@ -270,6 +270,20 @@
   height: var(--photo);
 }
 
+/*
+ * A photo stays hidden over its blurred placeholder until it has loaded, then
+ * fades in, so a slow photo never paints in strips. Without scripts nothing
+ * marks a photo as loaded, so the photos then show as they load.
+ */
+.hero-polaroid-frame img {
+  transition: opacity 400ms ease-out;
+}
+@media (scripting: enabled) {
+  .hero-polaroid-frame img:not([data-loaded]) {
+    opacity: 0;
+  }
+}
+
 @keyframes hero-photo-land {
   0% {
     opacity: 0;
@@ -299,7 +313,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-polaroid {
+  .hero-polaroid,
+  .hero-polaroid-frame img {
     animation: none;
     transition: none;
   }
