@@ -110,7 +110,7 @@ test('Moving someone to alumni puts them on top, and Undo puts them back in thei
   roster = await exec.execRoster();
   assert.deepEqual(roster.current.map((p) => p.name), ['Ann', 'Bo', 'Cy']);
   assert.deepEqual(roster.alumni.map((p) => p.name), ['Old']);
-  // Moving back to current exec without a place adds them at the end.
+  // Moving back to active puts them after the last person with their role.
   const old = roster.alumni[0];
   await exec.movePerson(old.id, 'current');
   assert.deepEqual((await exec.execRoster()).current.map((p) => p.name), ['Ann', 'Bo', 'Cy', 'Old']);
@@ -133,6 +133,24 @@ test('People moved to alumni one at a time keep their current exec order, above 
   roster = await exec.execRoster();
   assert.deepEqual(roster.current.map((p) => p.name), ['Cy', 'Ed']);
   assert.deepEqual(roster.alumni.map((p) => p.name), ['Ann', 'Bo', 'Di', 'Fay', 'Old']);
+});
+
+test('People added or moved back to active go after the last person with their role', async () => {
+  db.set(keys.execRoster, JSON.stringify({ current: [], alumni: [], roles: ['President', 'Historian', 'Pub Chair'] }));
+  await exec.savePerson('current', null, person('Pat', 'Pub Chair'));
+  await exec.savePerson('current', null, person('Pia', 'President'));
+  await exec.savePerson('current', null, person('Hal', 'Historian'));
+  await exec.savePerson('current', null, person('Pam', 'President'));
+  let roster = await exec.execRoster();
+  assert.deepEqual(roster.current.map((p) => p.name), ['Pia', 'Pam', 'Hal', 'Pat']);
+  // An alumnus with an active role goes back into its group. One with a role that no longer exists goes last.
+  await exec.savePerson('alumni', null, person('Hil', 'Historian'));
+  await exec.savePerson('alumni', null, person('Old', 'Food Coordinator'));
+  const [hil, old] = (await exec.execRoster()).alumni;
+  await exec.movePerson(old.id, 'current');
+  await exec.movePerson(hil.id, 'current');
+  roster = await exec.execRoster();
+  assert.deepEqual(roster.current.map((p) => p.name), ['Pia', 'Pam', 'Hal', 'Hil', 'Pat', 'Old']);
 });
 
 test('Reordering keeps people added meanwhile, and positions must be roles', async () => {

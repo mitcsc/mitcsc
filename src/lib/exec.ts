@@ -90,7 +90,19 @@ function where(roster: ExecRoster, id: string) {
   throw new MembershipError("This person is no longer on the list.", 404);
 }
 
-// Adds a person at the end of a list, or saves changes to one.
+// Where someone joining the active exec goes: right after the last person whose role comes at or before theirs
+// in the Roles order. A position that is no longer a role goes at the end.
+function activePlace(current: ExecPerson[], roles: string[], position: string) {
+  const rank = roles.indexOf(position);
+  if (rank < 0) return current.length;
+  for (let i = current.length - 1; i >= 0; i--) {
+    const other = roles.indexOf(current[i].position);
+    if (other >= 0 && other <= rank) return i + 1;
+  }
+  return 0;
+}
+
+// Adds a person (active exec by role, alumni at the end), or saves changes to one.
 export async function savePerson(list: RosterList, id: string | null, input: PersonInput) {
   const fields = cleanPerson(input);
   const photo = await photoFor(input.photoId);
@@ -99,7 +111,9 @@ export async function savePerson(list: RosterList, id: string | null, input: Per
     if (!id) {
       checkRole(roster, list, fields.position, undefined);
       saved = { id: randomUUID().slice(0, 8), ...fields, photo };
-      return { ...roster, [list]: [...roster[list], saved] };
+      const people = [...roster[list]];
+      people.splice(list === "current" ? activePlace(people, roster.roles, saved.position) : people.length, 0, saved);
+      return { ...roster, [list]: people };
     }
     const at = where(roster, id);
     checkRole(roster, at.list, fields.position, roster[at.list][at.index].position);
@@ -115,9 +129,6 @@ export async function removePerson(id: string) {
   });
 }
 
-// Moves a person to the other list: to the top of the alumni (newest first), or to the end of the current exec.
-// `index` puts them at an exact place instead, which is how Undo returns someone to where they were.
-// Returns where they were, for Undo.
 // People moved to alumni within this long count as one group, like the exec who leave at the end of a year.
 const MOVE_GROUP_MS = 60 * 24 * 3600_000;
 
@@ -133,8 +144,9 @@ function alumniPlace(alumni: ExecPerson[], from: number, now: number) {
   return place;
 }
 
-// Moves someone between current exec and alumni. Without an index, they go to the end of current exec,
-// or to the top of alumni (see alumniPlace). Returns where they were, for Undo.
+// Moves someone between current exec and alumni. Without an index, they go into the active exec by role
+// (see activePlace), or to the top of alumni (see alumniPlace). An index puts them at an exact place instead,
+// which is how Undo returns someone to where they were. Returns where they were, for Undo.
 export async function movePerson(id: string, to: RosterList, index?: number) {
   let from: { list: RosterList; index: number } | null = null;
   await changeRoster((roster) => {
@@ -143,13 +155,12 @@ export async function movePerson(id: string, to: RosterList, index?: number) {
     const now = Date.now();
     const target = roster[to].filter((p) => p.id !== id);
     let person = roster[at.list][at.index];
-    let place = target.length;
-    // An index means Undo, which puts the person back as they were.
+    let place: number;
     if (index !== undefined) place = Math.max(0, Math.min(index, target.length));
     else if (to === "alumni") {
       person = { ...person, moved: { from: at.index, at: now } };
       place = alumniPlace(target, at.index, now);
-    }
+    } else place = activePlace(target, roster.roles, person.position);
     target.splice(place, 0, person);
     return { ...roster, [at.list]: roster[at.list].filter((p) => p.id !== id), [to]: target };
   });
