@@ -5,6 +5,7 @@
   "scripts": {
     "predev": "node scripts/generate-event-images.mjs",
     "dev": "next dev --turbopack",
+    "dev:local": "node scripts/dev-local.mjs",
     "prebuild": "node scripts/generate-event-images.mjs",
     "build": "next build --turbopack",
     "start": "next start",

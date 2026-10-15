@@ -3,7 +3,8 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { HOME_PHOTOS_TAG, photoLibrary, refreshPhotoLibrary, setPhotosShown, shownPhotoIds, warmHomePhotos } from "@/lib/home-photos";
-import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
+import { localMode } from "@/lib/local-mode";
+import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb, schoolYearOn } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { execAccess, requireExec } from "@/lib/membership/exec-auth";
 import { GoogleApiError } from "@/lib/membership/google/api";
@@ -250,6 +251,15 @@ export async function createSchoolYear(input: { year: string; folderId: string; 
     console.info(`Membership year ${config.year} created by ${by}`);
     return config.year;
   });
+}
+
+// Local mode has no Google Sheet, so its test year starts without one.
+export async function startTestYear() {
+  await requireExec();
+  if (!localMode()) throw new MembershipError("Only local mode can start a year without Google.", 403);
+  const year = schoolYearOn(new Date());
+  if (!(await getYear(year))) await createYear(newYearConfig(year, await currentYear()));
+  revalidatePath("/dashboard", "layout");
 }
 
 // Events

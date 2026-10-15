@@ -162,6 +162,8 @@ export default async function Photos() {
                   loading={index < ALWAYS_VISIBLE ? "eager" : "lazy"}
                   fetchPriority={index < PRIORITY_COUNT ? "high" : "auto"}
                   className="w-full h-full object-cover"
+                  // MARK_LOADED may add data-loaded before React starts. That is expected, so React should not warn.
+                  suppressHydrationWarning
                 />
               </div>
               <span className="block text-neutral-700 text-2xl font-primary font-bold truncate">
