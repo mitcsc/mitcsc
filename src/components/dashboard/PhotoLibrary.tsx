@@ -1,7 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
-import { setHomePhotos } from "@/app/dashboard/actions";
+import { refreshHomePhotos, setHomePhotos } from "@/app/dashboard/actions";
 import { Icon } from "@/components/membership/icons";
 import { photoUrl, sizedThumbnail, type HomePhoto } from "@/lib/home-photo-urls";
 import { Switch, Toast } from "./MembersView";
@@ -15,7 +16,8 @@ const FULL_HERO = 16;
 const THUMB_WIDTHS = [256, 384, 512];
 
 // failures maps a photo id to why the home page could not load it. missing lists active photos that left the folder.
-export default function PhotoLibraryView({ photos, thumbnails, failures, missing, shown: initialShown, folder, folderPath, problem }: {
+// checkDrive: the list is old, so list Drive again and reload the page with the new list.
+export default function PhotoLibraryView({ photos, thumbnails, failures, missing, shown: initialShown, folder, folderPath, checkDrive }: {
   photos: HomePhoto[];
   thumbnails: Record<string, string>;
   failures: Record<string, string>;
@@ -23,8 +25,11 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
   shown: string[];
   folder: string | null;
   folderPath: string[];
-  problem: string | null;
+  checkDrive: boolean;
 }) {
+  const router = useRouter();
+  const [checking, setChecking] = useState(checkDrive);
+  const [problem, setProblem] = useState<string | null>(null);
   const [shown, setShown] = useState(() => new Set(initialShown));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
@@ -34,6 +39,19 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
   // Previews that failed in this browser, with the reason.
   const [broken, setBroken] = useState<Record<string, string>>({});
   const clearNotice = useCallback(() => setNotice(""), []);
+
+  useEffect(() => {
+    if (!checkDrive) return;
+    let current = true;
+    setChecking(true);
+    refreshHomePhotos().catch(() => ({ ok: false as const, error: "Could not read the Drive folder. Check your connection." })).then((result) => {
+      if (!current) return;
+      setChecking(false);
+      setProblem(result.ok ? null : result.error);
+      if (result.ok) router.refresh();
+    });
+    return () => { current = false; };
+  }, [checkDrive, router]);
 
   const failed: Record<string, string> = { ...broken, ...failures };
   const failedCount = photos.filter((p) => failed[p.id]).length;
@@ -115,6 +133,7 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
         Photos are from the <PathText path={["MIT CSC", ...folderPath]} /> folder in Drive. To add more, just upload photos to the folder.
         Photos will only show if you mark them as active (a random set is selected every time you visit the home page).
       </p>
+      {checking && <p className="d-photos-hint" role="status">Checking Drive for new photos…</p>}
       {problem && <p className="m-error" role="alert">{problem}</p>}
       {photos.length > 0 && onCount === 0 && <p className="d-photos-hint">No photos are currently active, so the home page is showing fallback photos.</p>}
       {onCount > 0 && onCount < FULL_HERO && <p className="d-photos-hint">Set at least {FULL_HERO} photos active so the home page fills on every screen size.</p>}
@@ -143,7 +162,7 @@ export default function PhotoLibraryView({ photos, thumbnails, failures, missing
         </div>
       )}
 
-      {!folder && !problem && (
+      {!folder && !problem && !checking && (
         <p className="d-empty-row">No folder found. Create <PathText path={["MIT CSC", ...folderPath]} /> in Drive.</p>
       )}
       {folder && photos.length === 0 && <p className="d-empty-row">No photos in the folder yet. Add some in Drive, then come back to this page.</p>}

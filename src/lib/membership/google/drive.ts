@@ -42,8 +42,8 @@ export async function findFolder(name: string, parentId = "root") {
 }
 
 export async function getItem(id: string) {
-  return google<DriveItem & { parents?: string[] }>(`${DRIVE}/files/${encodeURIComponent(id)}`, {
-    query: { fields: "id,name,mimeType,parents", supportsAllDrives: true },
+  return google<DriveItem & { parents?: string[]; trashed?: boolean }>(`${DRIVE}/files/${encodeURIComponent(id)}`, {
+    query: { fields: "id,name,mimeType,parents,trashed", supportsAllDrives: true },
   });
 }
 
