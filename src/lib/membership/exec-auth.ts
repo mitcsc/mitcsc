@@ -5,24 +5,16 @@ import { findFolder, folderEditors } from "./google/drive";
 import { ClubNotConnected, clubConnection, clubEmail } from "./google/oauth";
 import { keys } from "./keys";
 import { getJson, redis } from "./redis";
-import { sign, verify } from "./signing";
+import { readSession, SESSION_COOKIE } from "./session";
 
-export const SESSION_COOKIE = "csc_dashboard";
-const SESSION_MS = 12 * 3600_000;
+export { SESSION_COOKIE, sessionCookie } from "./session";
+
 const ACCESS_CACHE_SECONDS = 300;
 
 export interface ExecAccess {
   folderId: string | null;
   people: { email: string; role: "Owner" | "Editor" }[];
   checkedAt: number;
-}
-
-export function sessionCookie(email: string, name: string | null = null) {
-  return {
-    name: SESSION_COOKIE,
-    value: sign("dashboard-session", { email, name }, SESSION_MS),
-    options: { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge: SESSION_MS / 1000 },
-  };
 }
 
 // For trying the dashboard locally without Google. `next dev` only.
@@ -64,7 +56,7 @@ export async function hasExecAccess(email: string, stored?: ExecAccess | null) {
 }
 
 async function session() {
-  return verify<{ email: string; name?: string | null }>("dashboard-session", (await cookies()).get(SESSION_COOKIE)?.value);
+  return readSession((await cookies()).get(SESSION_COOKIE)?.value);
 }
 
 export async function signedInEmail() {
