@@ -31,6 +31,12 @@ export const DELIB_TABS: NavTab[] = [
   { href: "/dashboard/delibs/history", label: "History", nested: true },
 ];
 
+export const EXEC_TABS: NavTab[] = [
+  { href: "/dashboard/exec", label: "Current" },
+  { href: "/dashboard/exec/alumni", label: "Alumni" },
+  { href: "/dashboard/exec/roles", label: "Roles" },
+];
+
 // Check-in comes first: it is what exec open the dashboard for at events.
 export const SECTIONS: NavSection[] = [
   { href: "/dashboard/check-in", label: "Check-In", also: "/dashboard/events", tabs: CHECK_IN_TABS },
@@ -38,6 +44,7 @@ export const SECTIONS: NavSection[] = [
   { href: "/dashboard/delibs", label: "Delibs", tabs: DELIB_TABS },
   { href: "/dashboard/links", label: "Links" },
   { href: "/dashboard/photos", label: "Photos" },
+  { href: "/dashboard/exec", label: "Exec", tabs: EXEC_TABS },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 

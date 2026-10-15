@@ -4,27 +4,30 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 
 export interface PeopleCardProps {
-  directory: string;
   name: string;
   position: string;
   classYear: string;
   hometown: string;
-  image: string;
+  // The photo's URL, or null for a person without a photo.
+  src: string | null;
+  // A tiny copy of the photo as a data URL, shown blurred until the photo loads.
+  placeholder?: string;
+  alumni: boolean;
   rotation?: number;
   className?: string;
 }
 
 export default function PeopleCard({
-  directory,
   name,
   position,
   classYear,
   hometown,
-  image,
+  src,
+  placeholder,
+  alumni: isAlumni,
   rotation = 0,
   className = "",
 }: PeopleCardProps) {
-  const isAlumni = directory.includes("alumni");
   return (
     <motion.div
       className={`relative bg-white p-3 pb-6 group drop-shadow-lg transition-transform duration-300 hover:scale-105 ${className}`}
@@ -32,16 +35,19 @@ export default function PeopleCard({
       whileHover={{ scale: 1.01 }}
     >
       <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 overflow-hidden relative bg-black mb-3">
-        <Image
-          src={`/${directory}/${image}`}
-          alt={`${name} - ${position}`}
-          width={256}
-          height={256}
-          quality={75}
-          sizes="(max-width: 640px) 160px, (max-width: 768px) 192px, 224px"
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+        {src && (
+          <Image
+            src={src}
+            alt={`${name} - ${position}`}
+            width={256}
+            height={256}
+            quality={75}
+            sizes="(max-width: 640px) 160px, (max-width: 768px) 192px, 224px"
+            className="w-full h-full object-cover"
+            loading="lazy"
+            {...(placeholder ? { placeholder: "blur" as const, blurDataURL: placeholder } : {})}
+          />
+        )}
         <Image
           src={`/img/logo/${isAlumni ? "alumni-" : ""}panda.png`}
           alt="MIT CSC"

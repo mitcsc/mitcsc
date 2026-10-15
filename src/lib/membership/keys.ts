@@ -29,6 +29,10 @@ export const keys = {
   // Why a photo last failed to load from Drive, by file id. Cleared when it loads again.
   homePhotoFailures: `${PREFIX}:home-photos:failures`,
   execAccess: `${PREFIX}:exec-access`,
+  // The current exec and the alumni shown on /exec and /alumni, in their order on the site.
+  execRoster: `${PREFIX}:exec-roster`,
+  // The image files in Drive's "Exec Photos" folder, as last listed.
+  execPhotos: `${PREFIX}:exec-photos`,
   sync: (target: string) => `${PREFIX}:sync:${target}`,
   rateLimit: (scope: string, id: string) => `${PREFIX}:limit:${scope}:${id}`,
 };

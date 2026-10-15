@@ -1,7 +1,7 @@
 # MIT CSC website
 
 The website of the MIT Chinese Students Club, live at [csc.mit.edu](https://csc.mit.edu).
-Exec manage members, events, links, home page photos, and delibs in the dashboard at [csc.mit.edu/dashboard](https://csc.mit.edu/dashboard).
+Exec manage members, events, links, home page photos, the exec and alumni pages, and delibs in the dashboard at [csc.mit.edu/dashboard](https://csc.mit.edu/dashboard).
 
 The club's maintenance guide (a Google Doc in the club Drive) covers day-to-day changes and the dashboard.
 
@@ -9,7 +9,7 @@ The club's maintenance guide (a Google Doc in the club Drive) covers day-to-day 
 
 - Next.js 15 (App Router), React 19, TypeScript, and Tailwind v4.
 - Hosted on Vercel. Every push to `main` deploys to production.
-- Upstash Redis stores members, events, check-ins, links, photo settings, and delib votes.
+- Upstash Redis stores members, events, check-ins, links, photo settings, the exec roster, and delib votes.
 - The club Google account, connected with OAuth, writes Google Sheets, reads Venmo emails, and sends Wallet card emails.
 
 ## Run it locally
@@ -35,7 +35,8 @@ Use it only when a problem needs real data.
 
 ## Where things are
 
-- Exec roster: `src/config/exec/current.ts` and `src/config/exec/alumni.ts`, with photos in `public/img/exec/`.
+- Exec roster: the dashboard's Exec tab, with photos in the club Drive's "Website/Exec Photos" folder. Code: `src/lib/exec.ts`.
+- The alumni name lists by year: `src/config/exec/alumni.ts` (`pastAlumni`).
 - Footer and menu links: `src/config/links.ts`.
 - Dashboard: `src/app/dashboard/`, `src/components/dashboard/`, and `src/lib/membership/`.
 - Signup and Wallet cards: `src/app/join/` and `src/components/membership/`.
@@ -49,6 +50,7 @@ npx tsc --noEmit
 npm run lint
 npm run test:links
 npm run test:membership
+npm run test:exec
 npm run test:voting
 npm run test:voting:redis
 ```
