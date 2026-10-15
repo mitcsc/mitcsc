@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { HOME_PHOTOS_TAG, photoLibrary, setPhotosShown, shownPhotoIds } from "@/lib/home-photos";
+import { after } from "next/server";
+import { HOME_PHOTOS_TAG, photoLibrary, setPhotosShown, shownPhotoIds, warmHomePhotos } from "@/lib/home-photos";
 import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
 import { execAccess, requireExec } from "@/lib/membership/exec-auth";
@@ -430,9 +431,11 @@ export async function setHomePhotos(ids: string[], shown: boolean): Promise<Resu
     await requireExec();
     const library = await photoLibrary();
     const known = new Set([...(library?.photos || []), ...(library?.missing || [])].map((p) => p.id));
-    await setPhotosShown([...new Set(ids)].filter((id) => known.has(id)), !!shown);
+    const chosen = new Set(ids.filter((id) => known.has(id)));
+    await setPhotosShown([...chosen], !!shown);
     revalidateTag(HOME_PHOTOS_TAG);
     revalidatePath("/");
+    if (shown) after(() => warmHomePhotos((library?.photos || []).filter((p) => chosen.has(p.id))));
     return shownPhotoIds();
   });
 }

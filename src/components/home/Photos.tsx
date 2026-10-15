@@ -1,8 +1,7 @@
 import type { CSSProperties } from "react";
 import PhotoPile from "@/components/home/PhotoPile";
-import { photoUrl } from "@/lib/home-photo-urls";
-import { homePagePhotos } from "@/lib/home-photos";
-import { getEventImages, pickRandom } from "@/lib/images";
+import { homePagePhotos, homePhotoSrc } from "@/lib/home-photos";
+import { getEventImages, HERO_PHOTO_WIDTHS as WIDTHS, optimizerUrl, pickRandom } from "@/lib/images";
 
 /**
  * Polaroid slots rendered into the hero. The CSS grid in globals.css
@@ -36,15 +35,6 @@ const MAX_SPIN_DEG = 25;
 /** Sideways drift while airborne, px. */
 const MAX_DRIFT_PX = 30;
 
-/**
- * Candidate widths for the srcset. Each must be listed in `images.imageSizes`
- * or `images.deviceSizes` in next.config.ts, and the quality in
- * `images.qualities`. The files are 1280px on the long side, so 1080 is the
- * largest useful width.
- */
-const WIDTHS = [256, 384, 512, 640, 828, 1080];
-const QUALITY = 75;
-
 /** Largest square photo per breakpoint, in CSS px. Keep in sync with `--photo-max` in globals.css. */
 const PHOTO_MAX: [minWidth: number, px: number][] = [[1280, 256], [1024, 208], [768, 192], [640, 136], [0, 120]];
 
@@ -60,10 +50,7 @@ const SIZES = PHOTO_MAX.map(([minWidth, px]) => {
   return minWidth ? `(min-width: ${minWidth}px) ${width}` : width;
 }).join(", ");
 
-interface PhotoSlot {
-  key: string;
-  caption: string;
-  src: (width: number) => string;
+interface PhotoSlot extends Source {
   /** Horizontal position inside the grid cell, 0..1. */
   jx: number;
   /** Vertical position inside the grid cell, 0..1. */
@@ -85,13 +72,15 @@ interface Source {
   key: string;
   caption: string;
   src: (width: number) => string;
+  /** A tiny copy of the photo as a data URL, shown blurred until the photo loads. */
+  placeholder?: string;
 }
 
 // Photos turned on in the dashboard, from Drive. While none are on, the photos in public/img/event.
 async function photoSources(): Promise<Source[]> {
   const drive = await homePagePhotos().catch(() => []);
-  if (drive.length) return drive.map((photo) => ({ key: photo.id, caption: photo.name, src: (width) => photoUrl(photo, width) }));
-  return getEventImages().map((file) => ({ key: file, caption: file, src: (width) => optimizedUrl(file, width) }));
+  if (drive.length) return drive.map((photo) => ({ key: photo.id, caption: photo.name, src: (width) => homePhotoSrc(photo, width), placeholder: photo.placeholder }));
+  return getEventImages().map((file) => ({ key: file, caption: file, src: (width) => optimizerUrl(`/img/event/${file}`, width) }));
 }
 
 function buildSlots(sources: Source[]): PhotoSlot[] {
@@ -110,15 +99,23 @@ function buildSlots(sources: Source[]): PhotoSlot[] {
 }
 
 /**
- * URL served by the Next.js image optimizer (Vercel Image Optimization in
- * production). Building it by hand keeps the markup to three candidates
- * instead of the seventeen `next/image` emits, and avoids shipping fifteen
- * client components for static photos.
+ * The placeholder blurred and cropped to fill the square frame, as a CSS
+ * background. The filter sets every pixel fully opaque, so the blur does not
+ * fade out at the edges. next/image's placeholder="blur" draws it the same way.
  */
-function optimizedUrl(file: string, width: number): string {
-  const src = encodeURIComponent(`/img/event/${file}`);
-  return `/_next/image?url=${src}&w=${width}&q=${QUALITY}`;
+function blurredBackground(placeholder: string) {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><filter id='b' color-interpolation-filters='sRGB'><feGaussianBlur stdDeviation='6'/><feComponentTransfer><feFuncA type='discrete' tableValues='1 1'/></feComponentTransfer></filter><image width='100' height='100' preserveAspectRatio='xMidYMid slice' filter='url(#b)' href='${placeholder}'/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
+
+/**
+ * Marks each photo once it loads, so it fades in over its placeholder (see
+ * `.hero-polaroid-frame img` in globals.css). It runs before the photos are in
+ * the page, so it sees every load, even one that ends before React starts.
+ * PhotoPile does the same after a client-side navigation, where this script
+ * does not run.
+ */
+const MARK_LOADED = `document.addEventListener("load",function(e){var t=e.target;if(t.matches&&t.matches(".hero-polaroid-frame img"))t.setAttribute("data-loaded","")},true)`;
 
 export default async function Photos() {
   const slots = buildSlots(await photoSources());
@@ -128,6 +125,7 @@ export default async function Photos() {
       aria-label="Photos from past CSC events"
       className="relative w-full h-full flex-1 flex items-center justify-center overflow-x-clip max-h-[min(65vh,800px)] sm:max-h-none"
     >
+      <script dangerouslySetInnerHTML={{ __html: MARK_LOADED }} />
       <PhotoPile className="hero-photos relative w-full h-full xl:max-w-7xl list-none m-0 p-0">
         {slots.map((slot, index) => (
           <li
@@ -148,8 +146,11 @@ export default async function Photos() {
             }
           >
             <div className="hero-polaroid bg-white p-2 pb-8">
-              <div className="hero-polaroid-frame relative overflow-hidden bg-gray-200">
-                {/* eslint-disable-next-line @next/next/no-img-element -- see optimizedUrl */}
+              <div
+                className="hero-polaroid-frame relative overflow-hidden bg-gray-200 bg-cover"
+                style={slot.placeholder ? { backgroundImage: blurredBackground(slot.placeholder) } : undefined}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- a srcset built by hand has 6 candidates instead of 17, and ships no client component per photo */}
                 <img
                   src={slot.src(WIDTHS[WIDTHS.length - 1])}
                   srcSet={WIDTHS.map((w) => `${slot.src(w)} ${w}w`).join(", ")}

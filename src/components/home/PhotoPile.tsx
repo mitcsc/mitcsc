@@ -153,8 +153,15 @@ export default function PhotoPile({ className, children }: { className: string; 
       const polaroid = img.closest<HTMLElement>(".hero-polaroid");
       if (polaroid) polaroid.style.visibility = "hidden";
     }
-    for (const img of root.querySelectorAll("img")) if (img.complete && !img.naturalWidth) hideBroken(img);
+    // A loaded photo fades in over its placeholder. The page's inline script marks photos too, but it does not run after a client-side navigation.
+    const markLoaded = (img: HTMLImageElement) => img.setAttribute("data-loaded", "");
+    for (const img of root.querySelectorAll("img")) {
+      if (img.complete && img.naturalWidth) markLoaded(img);
+      else if (img.complete) hideBroken(img);
+    }
+    const onLoad = (event: Event) => { if (event.target instanceof HTMLImageElement) markLoaded(event.target); };
     const onError = (event: Event) => { if (event.target instanceof HTMLImageElement) hideBroken(event.target); };
+    root.addEventListener("load", onLoad, true);
     root.addEventListener("error", onError, true);
     resize.observe(root);
 
@@ -223,6 +230,7 @@ export default function PhotoPile({ className, children }: { className: string; 
     root.addEventListener("touchmove", onTouchMove, { passive: false });
     return () => {
       resize.disconnect();
+      root.removeEventListener("load", onLoad, true);
       root.removeEventListener("error", onError, true);
       glides.forEach((_, polaroid) => stopGlide(polaroid));
       root.removeEventListener("pointerdown", onDown);

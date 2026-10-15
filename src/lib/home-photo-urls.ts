@@ -5,6 +5,8 @@ export interface HomePhoto {
   name: string;
   version: string;
   createdAt: number;
+  // A tiny copy of the photo as a data URL. The home page shows it blurred until the photo loads.
+  placeholder?: string;
 }
 
 // Widths /api/home-photos serves. The home page srcset and the dashboard pick from these.
