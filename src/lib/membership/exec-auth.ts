@@ -17,7 +17,7 @@ export interface ExecAccess {
   checkedAt: number;
 }
 
-// For trying the dashboard locally without Google. `next dev` only.
+// For trying the dashboard locally without Google. Local mode (`npm run dev`) sets it. Development only.
 export function devEmail() {
   return process.env.NODE_ENV === "development" ? process.env.DASHBOARD_DEV_EMAIL?.toLowerCase() || null : null;
 }

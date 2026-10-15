@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Standalone CommonJS browser test runner. */
-/* Run against a local dev server started with DASHBOARD_DEV_EMAIL set:
+/* Run against a local mode server (PORT=3020 npm run dev):
  * PLAYWRIGHT_MODULE_PATH=/path/to/node_modules/playwright VOTING_TEST_URL=http://localhost:3020 node tests/voting-admin.e2e.cjs
  * All voting API calls are intercepted. The test never writes to Redis or Google.
  */

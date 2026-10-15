@@ -1,6 +1,7 @@
-// `npm run dev:local`: runs the site against a private Redis on this computer instead of the live database.
+// `npm run dev` (local mode): runs the site against a private Redis on this computer instead of the live database.
 // Google, Wallet cards, and emails are turned off, so nothing here can reach real members or club files.
 // Data stays in .local-data/ between runs. Delete that folder to start over.
+// PORT=3020 npm run dev picks the port. `npm run dev:live` uses the live database instead.
 // Needs redis-server (macOS: `brew install redis`).
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -163,7 +164,7 @@ await new Promise((resolve) => rest.listen(restPort, "127.0.0.1", resolve));
 
 spawnSync(process.execPath, ["scripts/generate-event-images.mjs"], { stdio: "inherit" });
 
-const sitePort = await freePort(3000);
+const sitePort = Number(process.env.PORT) || (await freePort(3000));
 // Next.js does not replace a variable that is already set, even to "", so these win over .env.local.
 const env = {
   ...process.env,

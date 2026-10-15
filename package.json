@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/generate-event-images.mjs",
-    "dev": "next dev --turbopack",
-    "dev:local": "node scripts/dev-local.mjs",
+    "dev": "node scripts/dev-local.mjs",
+    "dev:live": "node scripts/dev-live.mjs",
     "prebuild": "node scripts/generate-event-images.mjs",
     "build": "next build --turbopack",
     "start": "next start",

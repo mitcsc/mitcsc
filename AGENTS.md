@@ -31,6 +31,15 @@ This file tells you how the site is wired and how to make the common changes cor
   Do not try to work around it.
 - Make edits in the club's own repo: commit directly to `main` or open a branch in that repo.
   If the user is on a personal account or a fork, stop and tell them to sign in to the club account first.
+- The repo is private, and Vercel Hobby deploys only commits whose author is the club account.
+  Before the first commit, set the author in the repo:
+
+  ```bash
+  git config user.name mitcsc
+  git config user.email mitcsc@gmail.com
+  ```
+
+  With any other author, Vercel fails with "Git author ... must have access to the project on Vercel".
 - Dashboard sign-in is separate: exec use their own Google account. Section 7 covers who has access.
 
 ## Golden rules
@@ -45,16 +54,17 @@ This file tells you how the site is wired and how to make the common changes cor
    Dashboard changes do not need a deployment.
 6. **Protect live data.** Redis holds real member, payment, and vote records.
    Never clear Redis, delete records, or reset a live delib as a troubleshooting shortcut.
-   The values from `vercel env pull` connect to the live database. A local `npm run dev` with them reads and writes real records.
-   Through that database, a local run also acts as the club Google account.
+   `npm run dev` is local mode: a private database on this computer, with Google, Wallet cards, and emails off.
+   `npm run dev:live` uses the values from `vercel env pull`. It reads and writes the live database and acts as the club Google account.
    It can change Drive files and Sheets, and it can send real emails to members.
-   Before any local action that writes data or sends email, tell the user it affects the real site and wait for a yes.
+   `npm run dev:live` asks for `y` before it starts. Never start it or answer `y` without the user's yes, and say why local mode is not enough.
+   In live mode, before any action that writes data or sends email, tell the user it affects the real site and wait for a yes.
    Avoid deployment or credential changes during an election.
 7. **Preserve exec order.** The order on the Exec and Alumni pages is the order in Dashboard > Website, and it follows the role hierarchy in the Roles tab (section 3).
    Change the order by dragging in the dashboard. Never re-sort (alphabetically, by year, etc.).
-8. **Fix bugs without touching live data.** First reproduce the bug in local mode (`npm run dev:local`, a private database on this computer) or with the tests (`npm run test:membership`, `npm run test:links`, `npm run test:exec`, `npm run test:voting`).
+8. **Fix bugs without touching live data.** First reproduce the bug in local mode (`npm run dev`, a private database on this computer) or with the tests (`npm run test:membership`, `npm run test:links`, `npm run test:exec`, `npm run test:voting`).
    Neither touches live data.
-   Use the live database only when the bug depends on real records that the tests cannot copy, for example one member's payment status looks wrong.
+   Use live mode (`npm run dev:live`) only when the bug depends on real records that the tests cannot copy, for example one member's payment status looks wrong.
    In that case, ask the user first. Say which records you will read or change, and why.
    Read before you change anything. Change only the records the bug involves, and tell the user exactly what you changed.
    Never delete records, clear Redis, or run a script that changes many records at once.
@@ -64,8 +74,8 @@ This file tells you how the site is wired and how to make the common changes cor
 
 - **GitHub / Vercel login**: the shared club account (mitcsc@gmail.com). Credentials are in the **README Google Sheet** in the club Google Drive.
   Sign in to Gmail first, then GitHub. For any verification issues with the account, contact the presidents. See "Access" above.
-- **Credentials / env vars**: they live in Vercel (Settings > Environment Variables). Most work needs none: `npm run dev:local` runs without them.
-  When a task needs the real values locally, pull them into `.env.local` (gitignored) while signed in to Vercel as the club account:
+- **Credentials / env vars**: they live in Vercel (Settings > Environment Variables). Most work needs none: `npm run dev` (local mode) runs without them.
+  Only `npm run dev:live` needs the real values. Pull them into `.env.local` (gitignored) while signed in to Vercel as the club account:
 
   ```bash
   npx vercel login                 # Continue with GitHub, as the club account
@@ -116,7 +126,7 @@ The Exec and Alumni pages come from the dashboard, not code. Send the user to Da
 - The older alumni name lists by year are in `src/config/past-alumni.ts` (`{ year, names: [...] }`).
   Low priority; do not push the user to fill them out.
 - Do not edit the roster in Redis by hand. If the dashboard cannot do something, change the dashboard code.
-  Try roster changes in `npm run dev:local` first.
+  Try roster changes in `npm run dev` (local mode) first.
 
 ## 4. Changing links
 
@@ -157,7 +167,7 @@ Only dig into the code if something is broken or they want a change.
 - **Sign-in**: Google sign-in. Access = Owner/Editor on the club Drive's "MIT CSC" folder (individual emails only), cached 5 minutes.
   The club account can always sign in.
   A sign-in lasts 30 days from the last visit (`src/lib/membership/session.ts`, renewed by `src/middleware.ts`).
-  `DASHBOARD_DEV_EMAIL` signs in locally without Google (development only).
+  Local mode (`npm run dev`) signs in as `exec@mit.edu` without Google.
 - **Sections**: Check-In (Check-In, Events), Membership (Members, Edit Form, Settings), Delibs (Live, History), Website (Links, Home, Exec, Alumni, Roles), Settings.
   Each tab's URL ends with its name, like `/dashboard/website/home` or `/dashboard/membership/edit-form`.
   The tabs are listed in `src/components/dashboard/nav.ts`.
@@ -244,7 +254,6 @@ For local values, see "Credentials / env vars" above.
 - `CLUB_GOOGLE_EMAIL` - the club account (defaults to mitcsc@gmail.com).
 - `CRON_SECRET` - random secret of at least 32 characters. Vercel sends it to both cron jobs.
 - `WALLETWALLET_API_KEY` (+ optional `WALLETWALLET_PLAN=pro`) - Wallet cards. Without it, Wallet buttons are off.
-- `DASHBOARD_DEV_EMAIL` - local development only.
 
 ### Keeping it hands-off and free
 
@@ -276,7 +285,7 @@ Avoid duplicate requests, per-voter host reads, or cached authorization that wou
 
 For code changes, run `npx tsc --noEmit`, `npm run lint`, and the relevant tests: `npm run test:voting`, `npm run test:voting:redis`, `npm run test:membership`, `npm run test:links`, `npm run test:exec`.
 Redis tests need `redis-server` and `redis-cli`; they use an isolated local database.
-Browser tests under `tests/voting-*.e2e.cjs` run against a local dev server started with `DASHBOARD_DEV_EMAIL` and `VOTING_TEST_URL` (see `docs/deliberations.md`).
+Browser tests under `tests/voting-*.e2e.cjs` run against a local mode server (`PORT=3020 npm run dev`) with `VOTING_TEST_URL` set (see `docs/deliberations.md`).
 Passing tests is not proof that production credentials, Google access, or cron jobs work.
 Never point automated tests at the live database or use real member data as fixtures.
 
@@ -295,6 +304,6 @@ The maintenance guide (Google Doc) covers only how exec use the site and the das
 - Show them the exact before/after of any code-file edit. For exec order changes, also show the final order.
 - Explain deployment only when it applies. Code changes need a push to `main`; dashboard changes do not.
   A local code change is not live until it is pushed.
-  With values from `vercel env pull`, a local dashboard action (adding a member, editing a link) is live right away, because the local site uses the live database.
-  `npm run dev:local` uses a private database instead.
+  `npm run dev` uses a private database, so nothing done there reaches the real site.
+  In `npm run dev:live`, a dashboard action (adding a member, editing a link) is live right away, because it uses the live database.
 - If a request needs touching real code (`src/app`, `src/components`, `src/lib`), say so explicitly and proceed carefully - these can break the build in ways the data files can't.
