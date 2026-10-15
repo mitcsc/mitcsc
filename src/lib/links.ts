@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { GoogleAuth } from "google-auth-library";
 import { unstable_cache } from "next/cache";
 import { isActive, normalizeSlug, normalizeUrl, slugProblem, type ShortLink } from "./link-rules";
 import { localDate } from "./membership/config";
@@ -25,15 +24,10 @@ export const LINKS_TAG = "links";
 
 type LinkList = { links: ShortLink[] };
 
-// All links in their order on the Links page. The first read copies the old Google Sheet in.
+// All links in their order on the Links page.
 export async function allLinks(): Promise<ShortLink[]> {
   const raw = await redis<string | null>("GET", LIST_KEY);
-  if (raw) return (JSON.parse(raw) as LinkList).links;
-  // A failed sheet read throws, so nothing is stored and the next read tries again.
-  const links = await sheetLinks();
-  // NX: if two first reads race, the first copy wins and both return it.
-  await redis("SET", LIST_KEY, JSON.stringify({ links }), "NX");
-  return allLinks();
+  return raw ? (JSON.parse(raw) as LinkList).links : [];
 }
 
 const cachedLinks = unstable_cache(allLinks, ["links"], { tags: [LINKS_TAG], revalidate: 3600 });
@@ -90,7 +84,8 @@ function cleanLink(input: LinkInput, others: ShortLink[]) {
 }
 
 async function changeLinks(change: (links: ShortLink[]) => ShortLink[]) {
-  await allLinks();
+  // A new database has no list yet. NX keeps an existing one.
+  await redis("SET", LIST_KEY, JSON.stringify({ links: [] }), "NX");
   const list = await updateJson<LinkList>(LIST_KEY, ({ links }) => ({ links: change(links) }));
   if (!list) throw new MembershipError("Links storage is missing. Please try again.", 503);
   return list.links;
@@ -124,45 +119,4 @@ export async function reorderLinks(ids: string[]) {
     const place = new Map(ids.map((id, i) => [id, i]));
     return [...links].sort((a, b) => (place.get(a.id) ?? -1) - (place.get(b.id) ?? -1));
   });
-}
-
-// The links from the old Google Sheet (Title, Shortlink, URL, Expiry), read once when Redis has none.
-// A row whose short link is invalid or repeated keeps its link but loses the short link.
-async function sheetLinks(): Promise<ShortLink[]> {
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  const sheetId = process.env.GOOGLE_SHEET_ID;
-  if (!clientEmail || !privateKey || !sheetId) return [];
-  const auth = new GoogleAuth({ credentials: { client_email: clientEmail, private_key: privateKey }, scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"] });
-  const token = await (await auth.getClient()).getAccessToken();
-  const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A:D`, { headers: { Authorization: `Bearer ${token.token}` }, cache: "no-store" });
-  if (!response.ok) throw new Error(`Could not read the links sheet (${response.status}).`);
-  const rows = ((await response.json()).values ?? []) as string[][];
-  return linksFromRows(rows, Date.now());
-}
-
-export function linksFromRows(rows: string[][], now: number): ShortLink[] {
-  const links: ShortLink[] = [];
-  rows.slice(1).forEach((row, i) => {
-    const title = (row[0] || "").replace(/\s+/g, " ").trim().slice(0, 100);
-    const url = normalizeUrl(row[2] || "");
-    if (!title || !url) return;
-    const slug = normalizeSlug(row[1] || "");
-    const day = sheetDay((row[3] || "").trim());
-    links.push({
-      id: randomUUID().slice(0, 8), title, url, expiresOn: day, shown: true, createdAt: now + i,
-      slug: slug && !slugProblem(slug, links.flatMap((l) => (l.slug ? [l.slug] : []))) ? slug : null,
-    });
-  });
-  return links;
-}
-
-// The day written in the sheet's Expiry cell, as "YYYY-MM-DD". "2026-10-20" and "10/20/2026" both give 2026-10-20.
-function sheetDay(cell: string) {
-  if (/^\d{4}-\d{2}-\d{2}/.test(cell)) return cell.slice(0, 10);
-  const date = new Date(cell);
-  if (!cell || Number.isNaN(date.getTime())) return null;
-  // A date without a time parses as midnight on this machine, so its local parts are the written day.
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

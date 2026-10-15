@@ -41,24 +41,3 @@ test('a link works through the end of its last day', () => {
   assert.equal(isActive({ expiresOn: '2026-10-14' }, '2026-10-14'), true);
   assert.equal(isActive({ expiresOn: '2026-10-13' }, '2026-10-14'), false);
 });
-
-test('sheet rows import once, keeping order and dropping bad short links', () => {
-  const { linksFromRows } = require('../src/lib/links.ts');
-  const links = linksFromRows([
-    ['Title', 'Shortlink', 'URL', 'Expiry'],
-    ['Donate', 'Donate', 'giving.mit.edu/x', ''],
-    ['Join', 'join', 'https://forms.gle/a', ''],
-    ['Copy', 'donate', 'https://example.com', ''],
-    ['', 'empty', 'https://example.com', ''],
-    ['Bad url', 'bad', 'not a url', ''],
-    ['Old', 'old', 'https://example.com/old', '2020-01-01'],
-    ['Us date', '', 'example.com/us', '10/20/2026'],
-  ], 1000);
-  assert.deepEqual(links.map((l) => [l.title, l.slug, l.url, l.expiresOn, l.shown]), [
-    ['Donate', 'donate', 'https://giving.mit.edu/x', null, true],
-    ['Join', null, 'https://forms.gle/a', null, true],
-    ['Copy', null, 'https://example.com/', null, true],
-    ['Old', 'old', 'https://example.com/old', '2020-01-01', true],
-    ['Us date', null, 'https://example.com/us', '2026-10-20', true],
-  ]);
-});
