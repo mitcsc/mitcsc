@@ -70,6 +70,8 @@
 .d-toast { position: fixed; left: 50%; bottom: 24px; z-index: 60; max-width: min(520px, calc(100vw - 32px)); padding: 12px 18px; border: 1px solid var(--line-strong); border-radius: 12px; background: #1c1c1e; box-shadow: 0 8px 32px #0009; font-size: 14px; color: var(--text); transform: translate(-50%, 16px); opacity: 0; pointer-events: none; transition: opacity 240ms var(--ease), transform 320ms var(--ease); }
 .d-toast.is-shown { transform: translate(-50%, 0); opacity: 1; }
 .d-toast:empty { visibility: hidden; }
+.d-toast.has-action { display: flex; align-items: center; gap: 16px; pointer-events: auto; }
+.d-toast-action { flex: none; padding: 0; border: 0; background: none; color: var(--text); font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
 .d-success { font-size: 13px; color: var(--green-text); }
 
 /* Members: side panel and main column */
@@ -199,7 +201,7 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
   /* Members: name, kerb, and payment fit without scrolling sideways. */
   .d-members { min-width: 0; }
   .d-members .is-wide { display: none; }
-  .d-members .d-member-meta { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
+  .d-members .d-member-meta, .d-roles .d-member-meta { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
 }
 
 .d-switch { position: relative; flex: none; width: 40px; height: 24px; padding: 0; border: 0; border-radius: 999px; background: #ffffff26; transition: background 0.15s; }
@@ -576,3 +578,35 @@ tr[data-reorder].is-dragging > td { background: #1a1a1c; }
 /* For one frame after a move the rows jump to their new places without sliding, then the moved rows glide in. */
 [data-settling] > [data-reorder] { transition: none; }
 @media (prefers-reduced-motion: reduce) { [data-reorder], [data-reorder]::before { transition: none; } }
+
+/* Exec: a grid of cards in the order of /exec or /alumni. A mouse drags a card from anywhere on it; touch uses the handle. */
+.d-exec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 24px 16px; margin: 12px 0 0; padding: 0; list-style: none; }
+.d-exec-card { min-width: 0; border-radius: 14px; touch-action: manipulation; }
+.d-exec-card[data-reorder]::before { inset: -8px; border-radius: 16px; }
+.d-exec-card.is-dragging { cursor: grabbing; }
+.d-exec-open { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 0; border: 0; background: none; color: var(--text); text-align: left; cursor: pointer; }
+.d-exec-grid.is-sorting .d-exec-open { cursor: grabbing; }
+.d-exec-photo { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1; margin-bottom: 10px; border-radius: 12px; overflow: hidden; background: #ffffff0d; }
+.d-exec-photo img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s var(--ease); -webkit-user-drag: none; }
+.d-exec-open:hover .d-exec-photo img { transform: scale(1.03); }
+.d-exec-grid.is-sorting .d-exec-open:hover .d-exec-photo img { transform: none; }
+.d-exec-initials { font-size: 28px; font-weight: 500; color: var(--faint); letter-spacing: 0.02em; }
+.d-exec-name { max-width: 100%; overflow: hidden; font-size: 15px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.d-exec-role { max-width: 100%; margin-top: 2px; overflow: hidden; font-size: 13px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.d-exec-meta { max-width: 100%; margin-top: 2px; overflow: hidden; font-size: 12px; color: var(--faint); text-overflow: ellipsis; white-space: nowrap; }
+.d-exec-handle { position: absolute; top: 8px; left: 8px; margin: 0; background: #000000a6; color: #ffffffb3; opacity: 0; transition: opacity 150ms, color 150ms, background-color 150ms; }
+.d-exec-handle:hover:not(:disabled) { background: #000000cc; color: #fff; }
+.d-exec-card:hover .d-exec-handle, .d-exec-handle:focus-visible, .d-exec-card.is-dragging .d-exec-handle { opacity: 1; }
+@media (hover: none) { .d-exec-handle { opacity: 1; } }
+@media (max-width: 640px) { .d-exec-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; } }
+.d-exec-photo-field { display: flex; align-items: center; gap: 16px; }
+.d-exec-photo.is-small { flex: none; width: 88px; margin: 0; }
+.d-exec-photo.is-small .d-exec-initials { font-size: 22px; }
+.d-exec-photo-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.d-exec-photo-actions .d-field-note { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-picker-note { font-size: 13px; }
+.d-picker-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.d-picker-bar .m-btn { display: inline-flex; align-items: center; gap: 8px; }
+.d-photo-grid.is-picker { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 14px 10px; max-height: min(52svh, 520px); margin: 0 -4px; padding: 4px; overflow-y: auto; }
+.d-photo-none { display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+.d-dialog-foot .d-danger-link { align-self: center; }

@@ -13,7 +13,15 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: ONE_YEAR_SECONDS,
     // Home page photos from Drive. Production's route is the source for every
     // deploy, so they share one cache (see homePhotoSrc in src/lib/home-photos.ts).
-    remotePatterns: [{ protocol: "https", hostname: "csc.mit.edu", pathname: "/api/home-photos/**", search: "" }],
+    // Exec photos from Drive work the same way (see publicCards in src/lib/exec.ts).
+    remotePatterns: [
+      { protocol: "https", hostname: "csc.mit.edu", pathname: "/api/home-photos/**", search: "" },
+      { protocol: "https", hostname: "csc.mit.edu", pathname: "/api/exec-photos/**", search: "" },
+    ],
+  },
+  experimental: {
+    // Exec photo uploads. The browser shrinks photos first, so they stay far below this.
+    serverActions: { bodySizeLimit: "4mb" },
   },
   async headers() {
     return [

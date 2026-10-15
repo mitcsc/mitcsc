@@ -1,7 +1,7 @@
 import { CLUB_DRIVE_FOLDER } from "../config";
 import { MembershipError } from "../errors";
 import { sizedThumbnail } from "../../home-photo-urls";
-import { DRIVE, google, googleBytes, GoogleApiError } from "./api";
+import { DRIVE, DRIVE_UPLOAD, google, googleBytes, GoogleApiError } from "./api";
 import { clubEmail } from "./oauth";
 
 export const FOLDER = "application/vnd.google-apps.folder";
@@ -82,6 +82,8 @@ export interface DriveImage {
   thumbnailLink?: string;
 }
 
+const IMAGE_FIELDS = "id,name,mimeType,version,createdTime,thumbnailLink";
+
 // Image files directly inside a folder, newest first.
 export async function listImages(folderId: string) {
   const images: DriveImage[] = [];
@@ -90,7 +92,7 @@ export async function listImages(folderId: string) {
     const page = await google<{ files: DriveImage[]; nextPageToken?: string }>(`${DRIVE}/files`, {
       query: {
         q: `${quote(folderId)} in parents and mimeType contains 'image/' and trashed = false`, orderBy: "createdTime desc", pageSize: 1000, pageToken,
-        fields: "nextPageToken,files(id,name,mimeType,version,createdTime,thumbnailLink)", supportsAllDrives: true, includeItemsFromAllDrives: true,
+        fields: `nextPageToken,files(${IMAGE_FIELDS})`, supportsAllDrives: true, includeItemsFromAllDrives: true,
       },
     });
     images.push(...page.files);
@@ -109,6 +111,19 @@ export async function imageThumbnail(id: string, width: number) {
   const image = await googleBytes(sizedThumbnail(thumbnailLink, width), { auth: false });
   if (!image.type.startsWith("image/")) throw new GoogleApiError(502, "Drive did not return an image.");
   return image;
+}
+
+// Uploads an image file into a folder, in one request with its name and its bytes (a Drive "multipart" upload).
+export async function uploadImage(name: string, type: string, bytes: Uint8Array, parentId: string) {
+  const boundary = `csc-${crypto.randomUUID()}`;
+  const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name, parents: [parentId] })}\r\n--${boundary}\r\nContent-Type: ${type}\r\n\r\n`;
+  const body = Buffer.concat([Buffer.from(head), bytes, Buffer.from(`\r\n--${boundary}--`)]);
+  return google<DriveImage>(`${DRIVE_UPLOAD}/files`, {
+    method: "POST",
+    query: { uploadType: "multipart", fields: IMAGE_FIELDS, supportsAllDrives: true },
+    upload: { bytes: body, type: `multipart/related; boundary=${boundary}` },
+    timeoutMs: 60_000,
+  });
 }
 
 export async function createFolder(name: string, parentId: string) {

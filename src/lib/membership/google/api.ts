@@ -24,19 +24,22 @@ function retryDelay(response: Response, attempt: number) {
 
 // Sends a request to a Google API as the club account. Never logs URLs, payloads, or tokens.
 // Reads that hit a rate limit or a Google server error are retried with backoff.
-async function send(url: string, init: { method?: string; body?: unknown; query?: Query; timeoutMs?: number; auth?: boolean }) {
+// `upload` sends raw bytes with their own content type, for a Drive upload, instead of a JSON body.
+type Upload = { bytes: Uint8Array; type: string };
+
+async function send(url: string, init: { method?: string; body?: unknown; upload?: Upload; query?: Query; timeoutMs?: number; auth?: boolean }) {
   const method = init.method || "GET";
   const target = new URL(url);
   for (const [name, value] of Object.entries(init.query || {})) if (value !== undefined) target.searchParams.set(name, String(value));
   for (let attempt = 0; ; attempt++) {
-    const headers: Record<string, string> = init.body === undefined ? {} : { "Content-Type": "application/json" };
+    const headers: Record<string, string> = init.upload ? { "Content-Type": init.upload.type } : init.body === undefined ? {} : { "Content-Type": "application/json" };
     if (init.auth !== false) headers.Authorization = `Bearer ${await clubAccessToken()}`;
     let response: Response;
     try {
       response = await fetch(target, {
         method,
         headers,
-        ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+        ...(init.upload ? { body: new Uint8Array(init.upload.bytes) } : init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
         cache: "no-store",
         signal: AbortSignal.timeout(init.timeoutMs || 20_000),
       });
@@ -60,7 +63,7 @@ async function send(url: string, init: { method?: string; body?: unknown; query?
 }
 
 // Calls a Google API as the club account and returns its JSON reply.
-export async function google<T>(url: string, init: { method?: string; body?: unknown; query?: Query } = {}): Promise<T> {
+export async function google<T>(url: string, init: { method?: string; body?: unknown; upload?: Upload; query?: Query; timeoutMs?: number } = {}): Promise<T> {
   const response = await send(url, init);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
@@ -73,5 +76,6 @@ export async function googleBytes(url: string, init: { query?: Query; auth?: boo
 }
 
 export const DRIVE = "https://www.googleapis.com/drive/v3";
+export const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 export const SHEETS = "https://sheets.googleapis.com/v4/spreadsheets";
 export const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";

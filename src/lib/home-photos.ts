@@ -1,8 +1,7 @@
 import { unstable_cache } from "next/cache";
-import { photoUrl, sizedThumbnail, type HomePhoto } from "./home-photo-urls";
+import { fetchPlaceholder, forEachLimited, listPhotoFolder, photoName } from "./drive-photos";
+import { photoUrl, type HomePhoto } from "./home-photo-urls";
 import { HERO_PHOTO_WIDTHS, optimizerUrl } from "./images";
-import { googleBytes } from "./membership/google/api";
-import { clubFolder, findFolder, getItem, listImages } from "./membership/google/drive";
 import { keys } from "./membership/keys";
 import { getJson, redis } from "./membership/redis";
 
@@ -21,60 +20,10 @@ export interface PhotoLibrary {
   checkedAt: number;
 }
 
-async function findPhotoFolder() {
-  let folder = await clubFolder();
-  for (const name of PHOTO_FOLDER_PATH) {
-    const child = await findFolder(name, folder.id);
-    if (!child) return null;
-    folder = child;
-  }
-  return folder;
-}
-
-// The folder and its photos. The saved folder id skips the lookups from "MIT CSC" down, which run one after another,
-// and the folder is checked in the same round trip as the listing. A renamed, moved to trash, or deleted folder is looked up again.
-async function listPhotoFolder(savedId: string | null | undefined) {
-  if (savedId) {
-    const [item, files] = await Promise.all([getItem(savedId).catch(() => null), listImages(savedId).catch(() => null)]);
-    if (item && files && !item.trashed && item.name === PHOTO_FOLDER_PATH.at(-1)) return { folder: item, files };
-  }
-  const folder = await findPhotoFolder();
-  return { folder, files: folder ? await listImages(folder.id) : [] };
-}
-
-// Drive names a copied file "Copy of IMG_5946.jpeg". Show just the original file name.
-export function photoName(fileName: string) {
-  return fileName.replace(/^(copy of\s+)+/i, "").trim() || fileName;
-}
-
-// Runs `task` on every item, at most `limit` at a time.
-async function forEachLimited<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) await task(items[next++]);
-  }));
-}
-
-// Placeholders are this wide, so 16 of them add about 5 KB to the home page.
-const PLACEHOLDER_WIDTH = 16;
-const PLACEHOLDER_MAX_BYTES = 1024;
-
-// Drive's tiny copy of a photo as a data URL, or undefined if Drive has none yet. The next refresh tries again.
-async function fetchPlaceholder(thumbnailLink: string | undefined) {
-  if (!thumbnailLink) return undefined;
-  try {
-    const image = await googleBytes(sizedThumbnail(thumbnailLink, PLACEHOLDER_WIDTH), { auth: false });
-    if (!image.type.startsWith("image/") || image.bytes.length > PLACEHOLDER_MAX_BYTES) return undefined;
-    return `data:${image.type};base64,${image.bytes.toString("base64")}`;
-  } catch {
-    return undefined;
-  }
-}
-
 // Lists the Drive folder again and saves the list.
 export async function refreshPhotoLibrary(): Promise<PhotoLibrary> {
   const [previous, shown] = await Promise.all([photoLibrary(), shownPhotoIds()]);
-  const { folder, files } = await listPhotoFolder(previous?.folderId);
+  const { folder, files } = await listPhotoFolder(PHOTO_FOLDER_PATH, previous?.folderId);
   const photos: HomePhoto[] = files.map((f) => ({ id: f.id, name: photoName(f.name), version: f.version, createdAt: Date.parse(f.createdTime) }));
   // A photo keeps its placeholder until the file changes in Drive.
   const before = new Map((previous?.photos || []).map((p) => [p.id, p]));
