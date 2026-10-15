@@ -20,7 +20,7 @@ function stamp(ms: number) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: TIME_ZONE }).format(ms);
 }
 
-export function memberRows(config: YearConfig, members: Member[]) {
+function memberRows(config: YearConfig, members: Member[]) {
   const extra = config.form.questions.filter((q) => !q.builtin);
   const header = ["Signed up", "Kerberos", "Name", "Class year", "Where they live", ...extra.map((q) => q.label), "Type", "Price", "Payment", "Status", "Paid on", "Confirmed by"];
   const rows = [...members].sort((a, b) => a.createdAt - b.createdAt).map((m) => [

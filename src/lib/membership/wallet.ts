@@ -50,7 +50,7 @@ function expiration(isoDate: string) {
   return `${isoDate}T23:59:00${offset}`;
 }
 
-export function passSpec(config: YearConfig, member: Member, siteOrigin: string) {
+function passSpec(config: YearConfig, member: Member, siteOrigin: string) {
   return {
     barcodeValue: cardToken(config.year, member.kerb),
     barcodeFormat: "QR",
@@ -97,7 +97,7 @@ async function createPass(config: YearConfig, member: Member, siteOrigin: string
   return { wallet: { serial: pass.serialNumber, shareUrl: pass.shareUrl, googleUrl: pass.googleSaveUrl }, applePass: pass.applePass };
 }
 
-export interface MemberPass {
+interface MemberPass {
   // The signed .pkpass file for Apple Wallet.
   apple: Buffer;
   // The "Save to Google Wallet" page.

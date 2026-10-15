@@ -150,12 +150,6 @@ export async function getAttendance(eventId: string, kerb: string) {
   return raw ? (JSON.parse(raw) as Attendance) : null;
 }
 
-export async function updateAttendance(eventId: string, kerb: string, change: (record: Attendance) => Attendance) {
-  const raw = await redis<string | null>("HGET", keys.attendance(eventId), kerb);
-  if (!raw) return;
-  await redis("HSET", keys.attendance(eventId), kerb, JSON.stringify(change(JSON.parse(raw) as Attendance)));
-}
-
 // Oldest first.
 export async function listAttendance(eventId: string) {
   const flat = await redis<string[]>("HGETALL", keys.attendance(eventId));

@@ -5,9 +5,9 @@ import { DRIVE, DRIVE_UPLOAD, google, googleBytes, GoogleApiError } from "./api"
 import { clubEmail } from "./oauth";
 
 export const FOLDER = "application/vnd.google-apps.folder";
-export const SPREADSHEET = "application/vnd.google-apps.spreadsheet";
+const SPREADSHEET = "application/vnd.google-apps.spreadsheet";
 
-export interface DriveItem {
+interface DriveItem {
   id: string;
   name: string;
   mimeType: string;

@@ -31,7 +31,7 @@ const activeElectionKey = () => redisKey("delibs-active");
 const historyKey = () => redisKey("delibs-history");
 
 // The same exec always gets the same ID in a delib, on any device. It never reveals the email.
-export function memberId(sessionId: string, email: string) {
+function memberId(sessionId: string, email: string) {
   return createHash("sha256").update(JSON.stringify(["delib-member", sessionId, email])).digest("hex").slice(0, 32);
 }
 export function identityFor(config: Settings, person: Person): Identity {

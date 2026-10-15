@@ -30,7 +30,7 @@ function Lock() {
 
 // Text fields save shortly after typing stops; question changes save when you press Done.
 // What the payment preview needs from the year's settings.
-export interface PayPreview {
+interface PayPreview {
   price: number;
   venmo: string;
   zelle: boolean;

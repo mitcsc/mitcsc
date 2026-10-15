@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { deleteLinkAction, reorderLinksAction, saveLinkAction } from "@/app/dashboard/links/actions";
+import { deleteLinkAction, reorderLinksAction, saveLinkAction } from "@/app/dashboard/website/links/actions";
 import { isActive, normalizeSlug, slugProblem, type ShortLink } from "@/lib/link-rules";
 import { formatDay } from "@/lib/membership/config";
 import { Icon } from "@/components/membership/icons";

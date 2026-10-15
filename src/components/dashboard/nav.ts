@@ -7,7 +7,7 @@ export interface NavTab {
   nested?: boolean;
 }
 
-export interface NavSection {
+interface NavSection {
   href: string;
   label: string;
   // Another path that belongs to this section.
@@ -31,10 +31,13 @@ export const DELIB_TABS: NavTab[] = [
   { href: "/dashboard/delibs/history", label: "History", nested: true },
 ];
 
-export const EXEC_TABS: NavTab[] = [
-  { href: "/dashboard/exec", label: "Current" },
-  { href: "/dashboard/exec/alumni", label: "Alumni" },
-  { href: "/dashboard/exec/roles", label: "Roles" },
+// Everything that changes the public site.
+export const WEBSITE_TABS: NavTab[] = [
+  { href: "/dashboard/website/photos", label: "Home Photos" },
+  { href: "/dashboard/website/exec", label: "Exec" },
+  { href: "/dashboard/website/alumni", label: "Alumni" },
+  { href: "/dashboard/website/roles", label: "Roles" },
+  { href: "/dashboard/website/links", label: "Links" },
 ];
 
 // Check-in comes first: it is what exec open the dashboard for at events.
@@ -42,13 +45,11 @@ export const SECTIONS: NavSection[] = [
   { href: "/dashboard/check-in", label: "Check-In", also: "/dashboard/events", tabs: CHECK_IN_TABS },
   { href: "/dashboard/membership", label: "Membership", tabs: MEMBERSHIP_TABS },
   { href: "/dashboard/delibs", label: "Delibs", tabs: DELIB_TABS },
-  { href: "/dashboard/links", label: "Links" },
-  { href: "/dashboard/photos", label: "Photos" },
-  { href: "/dashboard/exec", label: "Exec", tabs: EXEC_TABS },
+  { href: "/dashboard/website/photos", label: "Website", also: "/dashboard/website", tabs: WEBSITE_TABS },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 
-export function within(pathname: string, href: string) {
+function within(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

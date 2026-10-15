@@ -52,10 +52,14 @@ export function MobileNav({ email }: { email: string }) {
         {/* Every page is a link of the same size. A section with tabs shows its name as a small
             label above them, so the label never reads as one more page. Other sections follow
             after a divider. */}
-        {menuGroups().map((group) => (
-          <div key={group.href} role="group" aria-label={group.label} className="d-mobile-group">
-            <span className="d-mobile-label" aria-hidden="true">{group.label}</span>
-            {group.links.map((link) => <Link key={link.href} href={link.href} className="d-mobile-link" aria-current={link.current(pathname) ? "page" : undefined}>{link.label}</Link>)}
+        {menuColumns().map((column, i) => (
+          <div key={i} className="d-mobile-column">
+            {column.map((group) => (
+              <div key={group.href} role="group" aria-label={group.label} className="d-mobile-group">
+                <span className="d-mobile-label" aria-hidden="true">{group.label}</span>
+                {group.links.map((link) => <Link key={link.href} href={link.href} className="d-mobile-link" aria-current={link.current(pathname) ? "page" : undefined}>{link.label}</Link>)}
+              </div>
+            ))}
           </div>
         ))}
         <div className="d-mobile-account">
@@ -85,6 +89,21 @@ function menuGroups() {
     else groups.push({ href: section.href, label: "More", links: [link], more: true });
   }
   return groups;
+}
+
+// The phone menu's two columns: the groups in order, split where the columns come out closest in height.
+// A group's height is about one row for its label plus one per link.
+function menuColumns() {
+  const groups = menuGroups();
+  const rows = groups.map((g) => g.links.length + 1);
+  const total = rows.reduce((a, b) => a + b, 0);
+  let split = 1;
+  let left = rows[0];
+  for (let i = 1, sum = rows[0]; i < groups.length - 1; i++) {
+    sum += rows[i];
+    if (Math.abs(total - 2 * sum) < Math.abs(total - 2 * left)) { split = i + 1; left = sum; }
+  }
+  return [groups.slice(0, split), groups.slice(split)];
 }
 
 // The autosave status, for the header on phones. Desktop shows it in the sub-tab row.

@@ -14,7 +14,7 @@ import { attempt, type Result } from "@/lib/membership/result";
 
 const LISTS: RosterList[] = ["current", "alumni"];
 const list = (value: unknown) => {
-  if (!LISTS.includes(value as RosterList)) throw new MembershipError("Pick current exec or alumni.");
+  if (!LISTS.includes(value as RosterList)) throw new MembershipError("Pick active or alumni.");
   return value as RosterList;
 };
 

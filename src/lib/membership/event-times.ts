@@ -18,7 +18,7 @@ export function takenEvent(e: TakenEvent): TakenEvent {
 export const CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // The date and "HH:MM" time now, in the club's time zone.
-export function localNow(now: Date) {
+function localNow(now: Date) {
   const time = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
   return { date: localDate(now), time };
 }
@@ -31,7 +31,7 @@ export function clashes(a: EventHours, b: EventHours) {
 }
 
 // "19:00" → "7:00 PM".
-export function formatClock(time: string) {
+function formatClock(time: string) {
   const [h, m] = time.split(":").map(Number);
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
@@ -52,7 +52,7 @@ export function clashNote(other: EventHours & { name: string }) {
 }
 
 // toggle names the button that flips it: check-in that has not opened yet is opened, not reopened.
-export type CheckInState = { open: boolean; note: string; toggle: "Close check-in" | "Open check-in now" | "Reopen check-in" };
+type CheckInState = { open: boolean; note: string; toggle: "Close check-in" | "Open check-in now" | "Reopen check-in" };
 
 // Whether check-in is open now, and a short note for the check-in page.
 export function checkInState(e: EventHours, now: Date): CheckInState {
@@ -87,7 +87,7 @@ function zoneOffset(at: number) {
 }
 
 // An event "starts soon" when its check-in opens on its own within this time.
-export const SOON_MS = 24 * 60 * 60 * 1000;
+const SOON_MS = 24 * 60 * 60 * 1000;
 
 export function startsSoon(e: EventHours, now: number) {
   const at = opensAt(e);

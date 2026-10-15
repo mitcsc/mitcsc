@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { addRoleAction, removeRoleAction, renameRoleAction, reorderRolesAction } from "@/app/dashboard/exec/actions";
+import { addRoleAction, removeRoleAction, renameRoleAction, reorderRolesAction } from "@/app/dashboard/website/exec/actions";
 import { Icon } from "@/components/membership/icons";
 import Dialog from "./Dialog";
 import { Toast } from "./MembersView";
@@ -38,11 +38,11 @@ export default function RolesView({ roles, holders }: { roles: string[]; holders
         <h1 className="d-h2">Roles <span className="d-count">{order.length}</span></h1>
         <button type="button" className="d-icon-btn" aria-label="Add role" data-tip="Add role" onClick={() => setEditing("new")}><Icon name="plus" size={16} /></button>
       </div>
-      <p className="d-section-note">The positions current exec can have. Renaming a role renames it for the current exec who have it. Alumni keep the title they held.</p>
+      <p className="d-section-note">The positions active exec can have. Renaming a role renames it for the active exec who have it. Alumni keep the title they held.</p>
       <div className="d-table-wrap">
         <table className={`d-table is-roomy d-links d-roles${reorder.sorting ? " is-sorting" : ""}`}>
           <thead>
-            <tr><th className="d-drag-cell" aria-hidden="true" /><th>Role</th><th className="is-wide">Current exec</th><th className="is-end"><span className="d-sr">Actions</span></th></tr>
+            <tr><th className="d-drag-cell" aria-hidden="true" /><th>Role</th><th className="is-wide">Active</th><th className="is-end"><span className="d-sr">Actions</span></th></tr>
           </thead>
           <tbody ref={reorder.listRef}>
             {order.map((role, i) => {

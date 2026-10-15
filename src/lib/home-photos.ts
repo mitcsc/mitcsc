@@ -10,7 +10,7 @@ export const PHOTO_FOLDER_PATH = ["Website", "Front Page Photos"];
 
 export const HOME_PHOTOS_TAG = "home-photos";
 
-export interface PhotoLibrary {
+interface PhotoLibrary {
   folderId: string | null;
   photos: HomePhoto[];
   // Photos that are on but are no longer in the folder, for example deleted in Drive. The home page skips them.
@@ -63,7 +63,7 @@ export async function isPhotoShown(id: string) {
   return (await redis<number>("SISMEMBER", keys.homePhotosShown, id)) === 1;
 }
 
-export interface PhotoFailure {
+interface PhotoFailure {
   // The file version that failed. A new version gets a fresh try.
   version: string;
   message: string;

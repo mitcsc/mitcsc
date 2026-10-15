@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { Fragment } from "react";
 
 export interface PeopleCardProps {
   name: string;
@@ -13,8 +14,6 @@ export interface PeopleCardProps {
   // A tiny copy of the photo as a data URL, shown blurred until the photo loads.
   placeholder?: string;
   alumni: boolean;
-  rotation?: number;
-  className?: string;
 }
 
 export default function PeopleCard({
@@ -25,13 +24,10 @@ export default function PeopleCard({
   src,
   placeholder,
   alumni: isAlumni,
-  rotation = 0,
-  className = "",
 }: PeopleCardProps) {
   return (
     <motion.div
-      className={`relative bg-white p-3 pb-6 group drop-shadow-lg transition-transform duration-300 hover:scale-105 ${className}`}
-      style={{ rotate: rotation }}
+      className="relative bg-white p-3 pb-4 group drop-shadow-lg transition-transform duration-300 hover:scale-105"
       whileHover={{ scale: 1.01 }}
     >
       <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 overflow-hidden relative bg-black mb-3">
@@ -61,22 +57,19 @@ export default function PeopleCard({
           }
         />
       </div>
-      <div className="flex flex-col gap-8 w-full">
-        <div className="text-center font-bold">
-          <h3 className="text-3xl text-black leading-tightest tracking-wide">
-            {name}
-          </h3>
-          <p className="text-sm text-primary leading-tightest tracking-tightest uppercase font-secondary font-normal">
-            {position}
-          </p>
-        </div>
-        <div className="flex justify-between">
-          <p className="absolute bottom-4 left-4 text-lg text-black leading-tight tracking-wide">
-            Class of {classYear}
-          </p>
-          <p className="absolute bottom-4 right-4 text-lg text-black leading-tight tracking-wide">
-            {hometown}
-          </p>
+      {/* Every card has the same size: the photo sets the width (w-0 min-w-full keeps the text from widening it),
+          the name takes one line, the position two, and the class year and hometown one. */}
+      <div className="w-0 min-w-full text-center text-black">
+        <h3 className="text-3xl font-bold leading-tightest tracking-wide whitespace-nowrap">{name}</h3>
+        <p className="min-h-[2lh] text-sm text-primary leading-tightest tracking-tightest uppercase font-secondary font-normal [overflow-wrap:anywhere]">
+          {/* "Treasurer/Merch Chair" may break after the slash. */}
+          {position.split("/").map((part, i) => (
+            <Fragment key={i}>{i > 0 && <>/<wbr /></>}{part}</Fragment>
+          ))}
+        </p>
+        <div className="mt-3 flex justify-between gap-2 px-1 text-lg leading-tight tracking-wide whitespace-nowrap">
+          <p className="shrink-0">Class of {classYear}</p>
+          <p className="min-w-0 truncate" title={hometown}>{hometown}</p>
         </div>
       </div>
     </motion.div>

@@ -26,7 +26,7 @@ const paths = {
   qr: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><path d="M14 14h2v2h-2zM20 14v.01M14 20h.01M17 17h3v3h-3z" /></>,
 };
 
-export type IconName = keyof typeof paths;
+type IconName = keyof typeof paths;
 
 export function Icon({ name, size = 16, ...props }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
   return (
