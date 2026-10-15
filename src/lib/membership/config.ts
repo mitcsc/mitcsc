@@ -133,6 +133,11 @@ export function formatStamp(ms: number) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: TIME_ZONE }).format(ms);
 }
 
+// The full time for a tooltip, like "Wed, Oct 14, 2026, 9:22:07 AM".
+export function formatFullStamp(ms: number) {
+  return new Intl.DateTimeFormat("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: TIME_ZONE }).format(ms);
+}
+
 export function money(amount: number) {
   return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
 }

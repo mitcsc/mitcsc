@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { addMember, checkVenmoNow, confirmPayment, lookUpNewMember, markUnpaid, removeSignup, syncSheetNow, updateSettings, type NewMemberKerb } from "@/app/dashboard/actions";
-import { formatDay, formatStamp, money, venmoNote } from "@/lib/membership/config";
+import { formatDay, formatFullStamp, formatStamp, money, venmoNote } from "@/lib/membership/config";
 import type { SyncStatus } from "@/lib/membership/sync";
 import type { Member, PaymentMethod, Question } from "@/lib/membership/types";
 import { Icon } from "@/components/membership/icons";
@@ -41,6 +41,11 @@ export function Toast({ message, onDone }: { message: string; onDone: () => void
     return () => window.clearTimeout(timer);
   }, [message, onDone]);
   return <p className={`d-toast${message ? " is-shown" : ""}`} role="status" aria-live="polite">{message}</p>;
+}
+
+// A short date, with the full time on hover.
+function Stamp({ ms }: { ms: number }) {
+  return <span data-tip={formatFullStamp(ms)}>{formatStamp(ms)}</span>;
 }
 
 function StatusPill({ member }: { member: MemberRow }) {
@@ -266,7 +271,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                     <td className="is-soft is-wide">{m.classYear}</td>
                     <td className="is-soft is-wide">{m.type === "returning" ? "Returning" : "New"}</td>
                     <td><StatusPill member={m} /></td>
-                    <td className="is-faint is-wide">{formatStamp(m.createdAt)}</td>
+                    <td className="is-faint is-wide"><Stamp ms={m.createdAt} /></td>
                     <td className="is-action"><MoreButton name={m.name} onClick={() => setOpen(m.kerb)} /></td>
                   </tr>
                 ))}
@@ -316,8 +321,8 @@ function MemberDialog({ member: m, year, onClose, run, remove, busy }: {
             {m.dorm && <div><dt>Lives in</dt><dd>{m.dorm}</dd></div>}
             {answers.map((a) => <div key={a.label}><dt>{a.label}</dt><dd>{a.value}</dd></div>)}
             <div><dt>Price</dt><dd>{money(m.price)}</dd></div>
-            <div><dt>Signed up</dt><dd>{formatStamp(m.createdAt)}</dd></div>
-            {m.paidAt && <div><dt>Paid on</dt><dd>{formatStamp(m.paidAt)}</dd></div>}
+            <div><dt>Signed up</dt><dd><Stamp ms={m.createdAt} /></dd></div>
+            {m.paidAt && <div><dt>Paid on</dt><dd><Stamp ms={m.paidAt} /></dd></div>}
             {m.confirmedBy && <div><dt>Confirmed by</dt><dd>{m.confirmedBy.includes("@") ? shortEmail(m.confirmedBy) : m.confirmedBy}</dd></div>}
           </dl>
           {m.status === "unpaid" ? (
