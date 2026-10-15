@@ -4,8 +4,8 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEve
 import { Icon } from "@/components/membership/icons";
 
 // A row being dragged: where it started and where it would land, the pointer's travel,
-// every row's middle on screen, and how far the other rows slide to make room.
-type Drag = { from: number; to: number; dy: number; startY: number; min: number; max: number; mids: number[]; step: number };
+// its edges and every row's middle on screen, and how far the other rows slide to make room.
+type Drag = { from: number; to: number; dy: number; startY: number; min: number; max: number; top: number; bottom: number; mids: number[]; step: number };
 
 const MOVABLE = ":scope > [data-reorder]";
 
@@ -66,7 +66,7 @@ export function useReorder<T extends HTMLElement>({ count, onMove, disabled = fa
     const d: Drag = {
       from, to: from, dy: 0, startY: event.clientY,
       min: rects[0].top - rects[from].top, max: rects[rects.length - 1].bottom - rects[from].bottom,
-      mids: rects.map((r) => r.top + r.height / 2), step: rects[from].height + gap,
+      top: rects[from].top, bottom: rects[from].bottom, mids: rects.map((r) => r.top + r.height / 2), step: rects[from].height + gap,
     };
     dragRef.current = d;
     setDrag(d);
@@ -76,8 +76,11 @@ export function useReorder<T extends HTMLElement>({ count, onMove, disabled = fa
     const d = dragRef.current;
     if (!d) return;
     const dy = Math.min(Math.max(event.clientY - d.startY, d.min), d.max);
-    const center = d.mids[d.from] + dy;
-    const to = d.mids.filter((mid, i) => i !== d.from && mid < center).length;
+    // A row makes way once the dragged row's leading edge passes its middle.
+    // The dragged row can reach the ends of the list, so it can always pass the first and last rows.
+    let to = d.from;
+    for (let i = d.from + 1; i < d.mids.length; i++) if (d.bottom + dy > d.mids[i]) to = i;
+    for (let i = d.from - 1; i >= 0; i--) if (d.top + dy < d.mids[i]) to = i;
     dragRef.current = { ...d, dy, to };
     setDrag(dragRef.current);
   }
