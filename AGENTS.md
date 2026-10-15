@@ -31,6 +31,15 @@ This file tells you how the site is wired and how to make the common changes cor
   Do not try to work around it.
 - Make edits in the club's own repo: commit directly to `main` or open a branch in that repo.
   If the user is on a personal account or a fork, stop and tell them to sign in to the club account first.
+- The repo is private, and Vercel Hobby deploys only commits whose author is the club account.
+  Before the first commit, set the author in the repo:
+
+  ```bash
+  git config user.name mitcsc
+  git config user.email mitcsc@gmail.com
+  ```
+
+  With any other author, Vercel fails with "Git author ... must have access to the project on Vercel".
 - Dashboard sign-in is separate: exec use their own Google account. Section 7 covers who has access.
 
 ## Golden rules
