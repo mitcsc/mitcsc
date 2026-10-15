@@ -3,16 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { refreshExecAccess } from "@/app/dashboard/actions";
-import { CLUB_DRIVE_FOLDER } from "@/lib/membership/config";
+import { CLUB_DRIVE_FOLDER, formatDay } from "@/lib/membership/config";
+import type { WalletUsage } from "@/lib/membership/wallet";
 import { ago } from "./format";
 import { Setting } from "./YearSettings";
 
-export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
+export function DashboardSettings({ folder, people, accessCheckedAt, club, wallet }: {
   folder: string | null;
   people: { email: string; role: "Owner" | "Editor" }[];
   accessCheckedAt: number | null;
   // "no-email": connected before card emails existed, so it can't send them yet.
   club: { email: string; state: "missing" | "broken" | "no-email" | "connected" };
+  // null when WALLETWALLET_API_KEY isn't set. usage is null when WalletWallet can't be reached.
+  wallet: { usage: WalletUsage | null; pausedUntil: string | null } | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"access" | null>(null);
@@ -80,6 +83,32 @@ export function DashboardSettings({ folder, people, accessCheckedAt, club }: {
         </div>
         {!connected && <p className="d-field-note is-large">Sign in as {club.email} on the Google screen and allow every permission.</p>}
       </Setting>
+
+      <Setting title="Wallet cards" note="Apple and Google Wallet membership cards, made by WalletWallet. Making or cancelling a card counts toward the monthly limit." center>
+        <WalletStatus wallet={wallet} />
+      </Setting>
     </main>
+  );
+}
+
+function WalletStatus({ wallet }: { wallet: { usage: WalletUsage | null; pausedUntil: string | null } | null }) {
+  if (!wallet) return <p className="d-field-note is-large">Not set up. Add <code>WALLETWALLET_API_KEY</code> in Vercel to turn on Wallet cards.</p>;
+  const { usage, pausedUntil } = wallet;
+  const full = !!pausedUntil || (!!usage && usage.count >= usage.limit);
+  const close = !full && !!usage && usage.count >= usage.limit * 0.9;
+  const resets = pausedUntil || usage?.resetDate;
+  return (
+    <>
+      <div className="d-account-row">
+        <span className="d-account-name">
+          {usage ? `${usage.count.toLocaleString()} of ${usage.limit.toLocaleString()} this month` : "This month’s count is unavailable"}
+          {full && <span className="m-pill is-yellow">Limit reached</span>}
+          {close && <span className="m-pill is-yellow">Almost at the limit</span>}
+          {!full && !close && usage && <span className="m-pill is-green">Working</span>}
+        </span>
+      </div>
+      {full && <p className="d-field-note is-large">Members don’t see the Wallet option until {resets ? formatDay(resets) : "the 1st"}. Cards they already have still work, and check-in by name or kerb works as usual.</p>}
+      {!full && resets && <p className="d-field-note is-large">Resets {formatDay(resets)}.</p>}
+    </>
   );
 }

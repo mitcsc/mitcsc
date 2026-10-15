@@ -6,6 +6,8 @@ import { MainNav, MobileNav, ProblemBanner, SaveStatus, SaveStatusProvider, Sign
 import { SECTIONS } from "@/components/dashboard/nav";
 import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
 import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google/oauth";
+import { formatDay } from "@/lib/membership/config";
+import { walletPausedUntil } from "@/lib/membership/wallet";
 import { instrumentSans } from "@/components/membership/font";
 import { Icon } from "@/components/membership/icons";
 import { HoverTips } from "@/components/ui/useTooltip";
@@ -33,6 +35,18 @@ async function ConnectionBanner() {
         <input type="hidden" name="next" value="/dashboard/settings" />
         <button type="submit" className="d-banner-action">Reconnect</button>
       </form>
+    </div>
+  );
+}
+
+// Members see no Wallet option while WalletWallet's monthly limit is used up, so exec hear about it here.
+async function WalletBanner() {
+  const until = await walletPausedUntil().catch(() => null);
+  if (!until) return null;
+  return (
+    <div className="d-banner" role="status">
+      <span>Wallet cards reached this month’s free limit. Members won’t see the Wallet option until {formatDay(until)}. Check-in by name or kerb still works.</span>
+      <Link className="d-banner-action" href="/dashboard/settings">Details</Link>
     </div>
   );
 }
@@ -90,6 +104,7 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
           </span>
         </header>
         <ConnectionBanner />
+        <WalletBanner />
         <Suspense>
           <ProblemBanner />
         </Suspense>

@@ -11,6 +11,29 @@ import type { Member, YearConfig } from "./types";
 // (https://www.walletwallet.dev/docs). Everything about the card's look lives in passSpec(),
 // so moving to a paid plan means adding the Pro fields there and setting WALLETWALLET_PLAN=pro.
 const API = "https://api.walletwallet.dev/api/passes";
+const USAGE = "https://api.walletwallet.dev/api/auth/usage";
+
+// The free plan makes 1,000 passes a month, and cancelling a card counts too. Past the limit,
+// WalletWallet answers 429 with the day it resets (the 1st, UTC). Until then members see no
+// Wallet option at all, and exec see a warning in the dashboard.
+export async function walletPausedUntil() {
+  const until = await redis<string | null>("GET", keys.walletPaused);
+  return until && until > new Date().toISOString().slice(0, 10) ? until : null;
+}
+
+// Whether members get the Wallet buttons and the "email me my card" page.
+export async function walletAvailable() {
+  return walletEnabled() && !(await walletPausedUntil());
+}
+
+async function pauseWallet(response: Response) {
+  const body = await response.json().catch(() => null) as { resetDate?: unknown } | null;
+  const now = new Date();
+  const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+  const until = typeof body?.resetDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.resetDate) ? body.resetDate : nextMonth;
+  await redis("SET", keys.walletPaused, until, "EXAT", String(Date.parse(`${until}T00:00:00Z`) / 1000));
+  console.error(JSON.stringify({ event: "membership_wallet_limit", until }));
+}
 
 export function walletEnabled() {
   return !!process.env.WALLETWALLET_API_KEY;
@@ -57,14 +80,13 @@ async function call<T>(url: string, init: RequestInit): Promise<T> {
   if (!key) throw new MembershipError("Wallet cards are not set up yet.", 503);
   let response: Response;
   try {
-    response = await fetch(url, { ...init, headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, cache: "no-store", signal: AbortSignal.timeout(20_000) });
+    response = await fetch(url, { signal: AbortSignal.timeout(20_000), ...init, headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, cache: "no-store" });
   } catch {
     throw new MembershipError("Wallet cards are unavailable right now. Please try again.", 503);
   }
-  if (!response.ok) {
-    console.error(JSON.stringify({ event: "membership_wallet_error", status: response.status }));
-    throw new MembershipError(response.status === 429 ? "Wallet cards are paused until next month. Show your kerb at check-in instead." : "Wallet cards are unavailable right now. Please try again.", 503);
-  }
+  if (response.status === 429) await pauseWallet(response);
+  else if (!response.ok) console.error(JSON.stringify({ event: "membership_wallet_error", status: response.status }));
+  if (!response.ok) throw new MembershipError("Wallet cards are unavailable right now. Please try again.", 503);
   return (await response.json()) as T;
 }
 
@@ -90,7 +112,7 @@ export async function memberPass(config: YearConfig, member: Member, siteOrigin:
     const apple = await redis<string | null>("GET", key);
     if (apple) return { apple: Buffer.from(apple, "base64"), google: member.wallet.googleUrl };
   }
-  if (!walletEnabled()) throw new MembershipError("Wallet cards are not set up yet.", 503);
+  if (!(await walletAvailable())) throw new MembershipError("Wallet cards are unavailable right now. Please try again later.", 503);
   await limit("wallet", member.kerb, 5, 3600);
   const old = member.wallet;
   const made = await createPass(config, member, siteOrigin);
@@ -114,6 +136,21 @@ export function walletButtons(userAgent: string | null): ("apple" | "google")[] 
   if (/android/i.test(agent)) return ["google"];
   if (/iphone|ipad|ipod|macintosh/i.test(agent)) return ["apple"];
   return ["apple", "google"];
+}
+
+export interface WalletUsage {
+  count: number;
+  limit: number;
+  resetDate: string;
+}
+
+// This month's count for the dashboard, or null when WalletWallet can't be reached.
+export async function walletUsage(): Promise<WalletUsage | null> {
+  if (!walletEnabled()) return null;
+  const usage = await call<Partial<WalletUsage>>(USAGE, { method: "GET", signal: AbortSignal.timeout(5000) }).catch(() => null);
+  return usage && typeof usage.count === "number" && typeof usage.limit === "number" && typeof usage.resetDate === "string"
+    ? { count: usage.count, limit: usage.limit, resetDate: usage.resetDate }
+    : null;
 }
 
 export async function revokePass(serial: string) {
