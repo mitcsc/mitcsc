@@ -14,14 +14,24 @@ The club's maintenance guide (a Google Doc in the club Drive) covers day-to-day 
 
 ## Run it locally
 
+Use local mode to try changes or fix bugs.
+It runs the site against a private Redis database on your computer, so nothing you do reaches the real site.
+
 ```bash
+brew install redis   # once
 npm install
-npm run dev
+npm run dev:local
 ```
 
+- The dashboard signs you in as `exec@mit.edu` without Google.
+- Google, Wallet cards, and emails are off. On Membership, press "Start test year" to try signups, events, and check-in.
+- Test data stays in `.local-data/` between runs. Delete that folder to start over.
+
+`npm run dev` runs the site with the values in `.env.local`.
 Copy `.env.example` to `.env.local` and fill in the values from Vercel (Settings > Environment Variables).
+With production values, the local site reads and writes the live database and acts as the club Google account.
+Use it only when a problem needs real data.
 `DASHBOARD_DEV_EMAIL` signs you in to the dashboard without Google, in development only.
-With production values, the local site reads and writes the live database.
 
 ## Where things are
 

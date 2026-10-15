@@ -6,6 +6,7 @@ import { MainNav, MobileNav, ProblemBanner, SaveStatus, SaveStatusProvider, Sign
 import { SECTIONS } from "@/components/dashboard/nav";
 import { hasExecAccess, signedInEmail } from "@/lib/membership/exec-auth";
 import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google/oauth";
+import { localMode } from "@/lib/local-mode";
 import { formatDay } from "@/lib/membership/config";
 import { walletPausedUntil } from "@/lib/membership/wallet";
 import { instrumentSans } from "@/components/membership/font";
@@ -35,6 +36,16 @@ async function ConnectionBanner() {
         <input type="hidden" name="next" value="/dashboard/settings" />
         <button type="submit" className="d-banner-action">Reconnect</button>
       </form>
+    </div>
+  );
+}
+
+// So nobody mistakes the private local database for the live one.
+function LocalBanner() {
+  if (!localMode()) return null;
+  return (
+    <div className="d-banner" role="status">
+      <span>Local mode: this dashboard uses a private test database on this computer. Nothing here changes the real site.</span>
     </div>
   );
 }
@@ -103,6 +114,7 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
             <SignOut label="Sign out" icon />
           </span>
         </header>
+        <LocalBanner />
         <ConnectionBanner />
         <WalletBanner />
         <Suspense>
