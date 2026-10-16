@@ -16,7 +16,7 @@ export default async function EventDesk({ event, back }: { event: EventInfo; bac
     <CheckInDesk
       event={{
         id: event.id, name: event.name, when: [formatDay(event.date), formatHours(event)].filter(Boolean).join(", "), sheet: event.sheetId ? sheetUrl(event.sheetId) : null,
-        hours: { date: event.date, starts: event.starts ?? null, ends: event.ends ?? null, checkIn: event.checkIn ?? null },
+        hours: { date: event.date, starts: event.starts ?? null, ends: event.ends ?? null, checkIn: event.checkIn ?? null, checkInAt: event.checkInAt ?? null, createdAt: event.createdAt },
       }}
       records={records}
       people={people}

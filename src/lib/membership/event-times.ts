@@ -1,13 +1,21 @@
 import { formatDay, localDate, TIME_ZONE } from "./config";
 
 // An event's hours, which open and close check-in. Times are "HH:MM" on the event's date, in the club's time zone.
-// An event without times takes the whole day, and its check-in stays open from then on. checkIn is an exec's choice, and it wins over the times.
+// An event without times takes the whole day. checkIn is an exec's choice, and it wins over the times.
+// Check-in never stays open for good: see OPEN_FOR_MS.
 export interface EventHours {
   date: string;
   starts?: string | null;
   ends?: string | null;
   checkIn?: "open" | "closed" | null;
+  // When an exec opened check-in by hand.
+  checkInAt?: number | null;
+  createdAt?: number;
 }
+
+// Check-in without an end time closes on its own this long after it opened:
+// check-in an exec opened by hand, and an event without times that was made late on its day.
+export const OPEN_FOR_MS = 12 * 60 * 60 * 1000;
 
 // What the New event form needs to know about other events, to warn about overlaps.
 export type TakenEvent = EventHours & { id: string; name: string };
@@ -54,13 +62,27 @@ export function clashNote(other: EventHours & { name: string }) {
 // toggle names the button that flips it: check-in that has not opened yet is opened, not reopened.
 type CheckInState = { open: boolean; note: string; toggle: "Close check-in" | "Open check-in now" | "Reopen check-in" };
 
+// "at 7:00 AM" for a moment today, or "Oct 14 at 7:00 AM".
+function formatMoment(ms: number, today: string) {
+  const at = localNow(new Date(ms));
+  return `${at.date === today ? "" : `${formatDay(at.date)} `}at ${formatClock(at.time)}`;
+}
+
 // Whether check-in is open now, and a short note for the check-in page.
+// Check-in an exec opened lasts OPEN_FOR_MS. After that, the event's times apply again.
+// An event without times is open all day. One made late on its day stays open OPEN_FOR_MS after it was made.
 export function checkInState(e: EventHours, now: Date): CheckInState {
-  if (e.checkIn === "open") return { open: true, note: "Opened by an exec", toggle: "Close check-in" };
-  if (e.checkIn === "closed") return { open: false, note: "Closed by an exec", toggle: "Reopen check-in" };
+  const ms = now.getTime();
   const today = localNow(now);
+  const openedUntil = (e.checkInAt ?? 0) + OPEN_FOR_MS;
+  if (e.checkIn === "open" && ms < openedUntil) return { open: true, note: `Opened by an exec, closes ${formatMoment(openedUntil, today.date)}`, toggle: "Close check-in" };
+  if (e.checkIn === "closed") return { open: false, note: "Closed by an exec", toggle: "Reopen check-in" };
   if (!e.starts || !e.ends) {
-    return today.date < e.date ? { open: false, note: `Opens ${formatDay(e.date)}`, toggle: "Open check-in now" } : { open: true, note: "Stays open until someone closes it", toggle: "Close check-in" };
+    if (today.date < e.date) return { open: false, note: `Opens ${formatDay(e.date)}`, toggle: "Open check-in now" };
+    const dayEnd = wallTime(nextDay(e.date), "00:00");
+    const closes = Math.max(dayEnd, (e.createdAt ?? 0) + OPEN_FOR_MS);
+    if (ms < closes) return { open: true, note: `Closes ${closes === dayEnd ? "at midnight" : formatMoment(closes, today.date)}`, toggle: "Close check-in" };
+    return { open: false, note: `Closed ${closes === dayEnd ? `at the end of ${formatDay(e.date)}` : formatMoment(closes, today.date)}`, toggle: "Reopen check-in" };
   }
   const day = e.date === today.date ? "" : `${formatDay(e.date)} at `;
   if (today.date < e.date || (today.date === e.date && today.time < e.starts)) return { open: false, note: `Opens ${day || "at "}${formatClock(e.starts)}`, toggle: "Open check-in now" };
@@ -70,8 +92,19 @@ export function checkInState(e: EventHours, now: Date): CheckInState {
 
 // When check-in opens on its own, as a timestamp: the start time, or midnight for an event without times.
 export function opensAt(e: EventHours) {
-  const [y, mo, d] = e.date.split("-").map(Number);
-  const [h, mi] = (e.starts && e.ends ? e.starts : "00:00").split(":").map(Number);
+  return wallTime(e.date, e.starts && e.ends ? e.starts : "00:00");
+}
+
+// "2026-10-13" → "2026-10-14".
+function nextDay(date: string) {
+  const [y, mo, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, mo - 1, d + 1)).toISOString().slice(0, 10);
+}
+
+// A date and "HH:MM" time in the club's time zone, as a timestamp.
+function wallTime(date: string, time: string) {
+  const [y, mo, d] = date.split("-").map(Number);
+  const [h, mi] = time.split(":").map(Number);
   const wall = Date.UTC(y, mo - 1, d, h, mi);
   // Read as UTC, the wall time is off by the time zone's offset. The second pass settles a daylight saving change.
   let at = wall;
@@ -109,6 +142,6 @@ export function homeEvent<T extends EventHours>(events: T[], now: Date): T | nul
   const ms = now.getTime();
   const today = localDate(now);
   const soon = (e: T) => opensAt(e) > ms && opensAt(e) - ms <= SOON_MS;
-  const relevant = events.filter((e) => e.date === today || soon(e) || (e.checkIn === "open" && e.date > today)).sort((a, b) => opensAt(a) - opensAt(b));
+  const relevant = events.filter((e) => e.date === today || soon(e) || (e.date > today && checkInState(e, now).open)).sort((a, b) => opensAt(a) - opensAt(b));
   return relevant.find((e) => checkInState(e, now).open) || relevant.find(soon) || relevant.at(-1) || null;
 }

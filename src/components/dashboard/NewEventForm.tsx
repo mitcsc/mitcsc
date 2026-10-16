@@ -23,7 +23,7 @@ export function EventHoursFields({ starts, ends, onStarts, onEnds, invalid = fal
         <span aria-hidden="true">to</span>
         <input className={input} type="time" aria-label="Event ends" value={ends} aria-invalid={invalid || undefined} onChange={(e) => onEnds(e.target.value)} />
       </div>
-      <span className="d-field-note">Check-in opens and closes on its own at these times. Without them, it opens on the event’s day and stays open until someone closes it.</span>
+      <span className="d-field-note">Check-in opens and closes on its own at these times. Without them, it opens on the event’s date and closes at midnight, or 12 hours after you start it if that is later.</span>
     </div>
   );
 }

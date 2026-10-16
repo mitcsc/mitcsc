@@ -41,7 +41,7 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
   }, []);
   const state = checkInState(event.hours, new Date(now));
   // Within a day of opening, a countdown replaces the opening time, which the line above already shows.
-  const note = !state.open && !event.hours.checkIn && startsSoon(event.hours, now) ? `Opens in ${formatCountdown(opensAt(event.hours) - now)}` : state.note;
+  const note = state.toggle === "Open check-in now" && startsSoon(event.hours, now) ? `Opens in ${formatCountdown(opensAt(event.hours) - now)}` : state.note;
 
   // Other exec check people in at the same time, so reload every few seconds.
   useEffect(() => setRecords(initialRecords), [initialRecords]);

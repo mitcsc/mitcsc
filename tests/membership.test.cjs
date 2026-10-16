@@ -299,9 +299,30 @@ test('event hours: overlaps, open and closed, and an exec choice', () => {
   assert.deepEqual(hours.checkInState(party, at('19:00')), { open: true, note: 'Closes at 9:00 PM', toggle: 'Close check-in' });
   assert.deepEqual(hours.checkInState(party, at('21:00')), { open: false, note: 'Closed at 9:00 PM', toggle: 'Reopen check-in' });
   assert.deepEqual(hours.checkInState(party, new Date('2026-10-12T20:00:00-04:00')), { open: false, note: 'Opens Oct 13 at 7:00 PM', toggle: 'Open check-in now' });
-  assert.equal(hours.checkInState({ date: day }, new Date('2027-01-01T00:00:00Z')).open, true, 'Without times, check-in stays open');
   assert.equal(hours.checkInState({ ...party, checkIn: 'closed' }, at('20:00')).open, false, 'An exec can close it early');
-  assert.equal(hours.checkInState({ ...party, checkIn: 'open' }, at('23:00')).open, true, 'An exec can reopen it late');
+  const midnight = new Date('2026-10-14T00:00:00-04:00');
+
+  // Without times: open all day, and 12 hours after the event was made if that is later.
+  const allDay = { date: day, createdAt: at('09:00').getTime() - 86_400_000 };
+  assert.deepEqual(hours.checkInState(allDay, at('23:59')), { open: true, note: 'Closes at midnight', toggle: 'Close check-in' });
+  assert.deepEqual(hours.checkInState(allDay, midnight), { open: false, note: 'Closed at the end of Oct 13', toggle: 'Reopen check-in' }, 'Made the day before: closes at midnight');
+  assert.equal(hours.checkInState({ date: day }, at('12:00')).open, true, 'Events made before createdAt existed are open all day');
+  assert.equal(hours.checkInState({ date: day }, new Date('2027-01-01T00:00:00Z')).open, false, 'Old events without times do not stay open');
+  const late = { date: day, createdAt: at('20:00').getTime() };
+  assert.deepEqual(hours.checkInState(late, midnight), { open: true, note: 'Closes at 8:00 AM', toggle: 'Close check-in' }, 'Made late on its day: open 12 hours');
+  assert.deepEqual(hours.checkInState(late, at('20:00')), { open: true, note: 'Closes Oct 14 at 8:00 AM', toggle: 'Close check-in' });
+  assert.deepEqual(hours.checkInState(late, new Date('2026-10-14T08:00:00-04:00')), { open: false, note: 'Closed at 8:00 AM', toggle: 'Reopen check-in' });
+
+  // An exec's opening lasts 12 hours, then the times apply again.
+  const reopened = { ...party, checkIn: 'open', checkInAt: at('22:00').getTime() };
+  assert.deepEqual(hours.checkInState(reopened, at('23:00')), { open: true, note: 'Opened by an exec, closes Oct 14 at 10:00 AM', toggle: 'Close check-in' }, 'An exec can reopen it late');
+  assert.deepEqual(hours.checkInState(reopened, new Date('2026-10-14T10:00:00-04:00')), { open: false, note: 'Closed Oct 13 at 9:00 PM', toggle: 'Reopen check-in' });
+  const early = { ...party, checkIn: 'open', checkInAt: new Date('2026-10-12T18:00:00-04:00').getTime() };
+  assert.equal(hours.checkInState(early, new Date('2026-10-12T23:00:00-04:00')).open, true, 'An exec can open it a day early');
+  assert.deepEqual(hours.checkInState(early, at('06:00')), { open: false, note: 'Opens at 7:00 PM', toggle: 'Open check-in now' }, 'Then it waits for the start time');
+  assert.equal(hours.checkInState(early, at('19:00')).open, true);
+  assert.equal(hours.checkInState({ ...party, checkIn: 'open' }, at('23:00')).open, false, 'An opening saved without a time has ended');
+  assert.equal(hours.homeEvent([{ ...early, date: '2026-10-15' }], at('06:00')), null, 'An early opening that ended no longer takes over the Check In tab');
   assert.deepEqual(hours.checkInState({ date: day }, new Date(at('23:59').getTime() - 86_400_000)), { open: false, note: 'Opens Oct 13', toggle: 'Open check-in now' }, 'Without times, check-in opens on the day');
 
   // Starting soon: within a day of opening, with a countdown.
