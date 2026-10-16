@@ -35,7 +35,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
     if (fallback) redirect(fallback.url);
     return <MembershipFlow year={null} member={null} venmo={null} wallet={wallet} />;
   }
-  const member = view === "signup" || problem ? await ownMember(config) : null;
+  const [member, walletOn] = await Promise.all([view === "signup" || problem ? ownMember(config) : null, walletAvailable()]);
   // A Wallet button found no signup in this browser, so offer the email link.
   if (!member && problem === "missing") redirect("/join/pass");
 
@@ -47,7 +47,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
     zelle: config.zelle,
     cashAllowed: config.cashAllowed,
     form: config.form,
-    wallet: await walletAvailable(),
+    wallet: walletOn,
   };
   // The Venmo link and its QR code need the kerb, so they exist only after signup.
   const venmo = member && member.status === "unpaid"

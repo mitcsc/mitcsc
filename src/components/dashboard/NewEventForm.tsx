@@ -58,6 +58,9 @@ export default function NewEventForm({ today, taken, clubFolder, variant = "page
     if (!result.ok) {
       setBusy(false);
       setError(result.error);
+      // Another exec may have just made an event for this day. Reloading shows it: on the Check in tab
+      // it opens in place, and here the overlap warning links to it.
+      router.refresh();
       return;
     }
     // On the Check in tab, today's new event opens in place.

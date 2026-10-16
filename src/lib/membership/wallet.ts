@@ -2,9 +2,9 @@ import { formatDay, shortYear, TIME_ZONE } from "./config";
 import { MembershipError } from "./errors";
 import { keys } from "./keys";
 import { limit } from "./rate-limit";
-import { redis } from "./redis";
+import { redis, withLock } from "./redis";
 import { cardToken } from "./signing";
-import { updateMember } from "./store";
+import { getMember, updateMember } from "./store";
 import type { Member, YearConfig } from "./types";
 
 // Membership cards for Apple Wallet and Google Wallet, made by WalletWallet
@@ -104,22 +104,33 @@ interface MemberPass {
   google: string;
 }
 
+// A member's stored card, or null when there is none yet.
+async function storedPass(config: YearConfig, member: Member): Promise<MemberPass | null> {
+  if (!member.wallet?.googleUrl) return null;
+  const apple = await redis<string | null>("GET", keys.walletPass(config.year, member.kerb));
+  return apple ? { apple: Buffer.from(apple, "base64"), google: member.wallet.googleUrl } : null;
+}
+
 // The member's card, made on first use. Cards made before the Apple and Google buttons existed
 // lack the stored Apple file, so they are made again and the old card is cancelled.
 export async function memberPass(config: YearConfig, member: Member, siteOrigin: string): Promise<MemberPass> {
-  const key = keys.walletPass(config.year, member.kerb);
-  if (member.wallet?.googleUrl) {
-    const apple = await redis<string | null>("GET", key);
-    if (apple) return { apple: Buffer.from(apple, "base64"), google: member.wallet.googleUrl };
-  }
+  const stored = await storedPass(config, member);
+  if (stored) return stored;
   if (!(await walletAvailable())) throw new MembershipError("Wallet cards are unavailable right now. Please try again later.", 503);
-  await limit("wallet", member.kerb, 5, 3600);
-  const old = member.wallet;
-  const made = await createPass(config, member, siteOrigin);
-  await redis("SET", key, made.applePass);
-  await updateMember(config.year, member.kerb, (m) => ({ ...m, wallet: made.wallet }));
-  if (old) await revokePass(old.serial).catch(() => undefined);
-  return { apple: Buffer.from(made.applePass, "base64"), google: made.wallet.googleUrl };
+  // Phones often open the card link twice, or the member taps both buttons. One request makes the card,
+  // and the other then uses it, so no second card counts against the monthly limit.
+  return withLock(keys.lock(`wallet:${config.year}:${member.kerb}`), "Your card is still being made. Please try again in a moment.", async () => {
+    const current = (await getMember(config.year, member.kerb)) || member;
+    const madeMeanwhile = await storedPass(config, current);
+    if (madeMeanwhile) return madeMeanwhile;
+    await limit("wallet", member.kerb, 5, 3600);
+    const old = current.wallet;
+    const made = await createPass(config, current, siteOrigin);
+    await redis("SET", keys.walletPass(config.year, member.kerb), made.applePass);
+    await updateMember(config.year, member.kerb, (m) => ({ ...m, wallet: made.wallet }));
+    if (old) await revokePass(old.serial).catch(() => undefined);
+    return { apple: Buffer.from(made.applePass, "base64"), google: made.wallet.googleUrl };
+  }, 25_000);
 }
 
 export type WalletProblem = "missing" | "limit" | "off";

@@ -156,6 +156,8 @@ For how to use it, point the user to the **Dashboard** tab of the maintenance gu
 Only dig into the code if something is broken or they want a change.
 
 - **Sign-in**: Google sign-in. Access = Owner/Editor on the club Drive's "MIT CSC" folder (individual emails only), cached 5 minutes.
+  After 5 minutes, the next request still uses the saved list and refreshes it in the background (`after()` in `src/lib/membership/exec-auth.ts`).
+  A list older than an hour is refreshed before the request continues.
   The club account can always sign in.
   A sign-in lasts 30 days from the last visit (`src/lib/membership/session.ts`, renewed by `src/middleware.ts`).
   Local mode (`npm run dev`) signs in as `exec@mit.edu` without Google.
@@ -177,6 +179,11 @@ Only dig into the code if something is broken or they want a change.
 - **Club Google connection**: Dashboard > Settings > Club Google account.
   If it breaks (e.g. after a password change), a banner appears, and Venmo checks, sheet updates, and card emails stop.
   They start again when someone presses **Reconnect** and signs in as mitcsc@gmail.com with every permission.
+- **Many exec at once**: changes that two people could make at the same moment must stay safe.
+  Records that are edited in place (links, the exec roster, a school year, a member) use compare-and-set (`updateJson` in `src/lib/membership/redis.ts`).
+  Steps that check first and then create (a new event, saving event hours, starting a school year, making a Wallet card) run inside `withLock` from the same file.
+  Check-ins use `HSETNX`, and signups use `SET NX`, so a double tap counts once.
+  Keep Redis round trips few: read independent things with `Promise.all`, and read many keys with one `MGET` (`getManyJson`).
 - Code: `src/app/dashboard/`, `src/components/dashboard/`, `src/lib/membership/`, `src/lib/links.ts`, `src/lib/home-photos.ts`, `src/lib/exec.ts`, `src/app/join/`.
 
 ## 6. Yearly maintenance checklist
@@ -196,7 +203,7 @@ Only dig into the code if something is broken or they want a change.
   That one account signs in to Gmail, GitHub, Vercel, and the club Google Drive.
 - Upstash opens from Vercel (Storage), so it needs no separate login.
 - Dashboard access: share the "MIT CSC" Drive folder with each new exec as Editor (by email), and unshare graduated exec.
-  Changes apply within 5 minutes, or press **Check again** in Dashboard > Settings.
+  Changes apply about 5 minutes later, or press **Check again** in Dashboard > Settings to apply them now.
 - If the club account password changes, reconnect it in Dashboard > Settings (Club Google account).
 
 ## 8. Voting platform (delibs)

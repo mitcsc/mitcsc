@@ -3,12 +3,13 @@ import { formatDay } from "@/lib/membership/config";
 import { formatHours } from "@/lib/membership/event-times";
 import { sheetUrl } from "@/lib/membership/google/drive";
 import { listAttendance, listMembers } from "@/lib/membership/store";
-import type { EventInfo } from "@/lib/membership/types";
+import type { EventInfo, Member } from "@/lib/membership/types";
 import CheckInDesk from "./CheckInDesk";
 
 // The check-in page for one event, on the Check in tab or opened from the Events tab.
-export default async function EventDesk({ event, back }: { event: EventInfo; back: { href: string; label: string } | null }) {
-  const [records, members] = await Promise.all([listAttendance(event.id), listMembers(event.year)]);
+// members is the event year's members when the caller already loaded them.
+export default async function EventDesk({ event, members: loaded, back }: { event: EventInfo; members?: Member[]; back: { href: string; label: string } | null }) {
+  const [records, members] = await Promise.all([listAttendance(event.id), loaded ?? listMembers(event.year)]);
   const people: Person[] = members.map((m) => ({
     kerb: m.kerb, name: m.name, classYear: m.classYear, price: m.price, method: m.method, paid: m.status === "paid", reportedAt: m.reportedAt,
   }));

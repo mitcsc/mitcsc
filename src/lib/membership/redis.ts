@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { MembershipError } from "./errors";
 
 type Command = (string | number)[];
@@ -51,10 +52,30 @@ export async function getJson<T>(key: string): Promise<T | null> {
 
 export async function getManyJson<T>(keys: string[]): Promise<(T | null)[]> {
   if (!keys.length) return [];
-  const values: (string | null)[] = [];
-  // Keep each request small enough for the REST endpoint.
-  for (let i = 0; i < keys.length; i += 200) values.push(...(await redis<(string | null)[]>("MGET", ...keys.slice(i, i + 200))));
+  // Keep each request small enough for the REST endpoint. The requests run at the same time.
+  const chunks: string[][] = [];
+  for (let i = 0; i < keys.length; i += 200) chunks.push(keys.slice(i, i + 200));
+  const values = (await Promise.all(chunks.map((chunk) => redis<(string | null)[]>("MGET", ...chunk)))).flat();
   return values.map((raw) => (raw ? (JSON.parse(raw) as T) : null));
+}
+
+const RELEASE = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
+
+// Runs work while holding a lock, so two requests never run it at the same time.
+// A second request waits up to waitMs for the first to finish, then fails with busyMessage.
+// The lock expires after a minute, so a crashed request cannot hold it for good.
+export async function withLock<T>(key: string, busyMessage: string, work: () => Promise<T>, waitMs = 15_000): Promise<T> {
+  const owner = randomUUID();
+  const giveUpAt = Date.now() + waitMs;
+  while ((await redis<string | null>("SET", key, owner, "NX", "PX", 60_000)) !== "OK") {
+    if (Date.now() > giveUpAt) throw new MembershipError(busyMessage, 409);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  try {
+    return await work();
+  } finally {
+    await redis("EVAL", RELEASE, 1, key, owner).catch(() => undefined);
+  }
 }
 
 const COMPARE_AND_SET = "if redis.call('GET', KEYS[1]) == ARGV[1] then redis.call('SET', KEYS[1], ARGV[2]) return 1 else return 0 end";

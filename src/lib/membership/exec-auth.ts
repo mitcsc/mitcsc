@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { MembershipError } from "./errors";
 import { CLUB_DRIVE_FOLDER } from "./config";
-import { findFolder, folderEditors } from "./google/drive";
+import { clubFolder, findFolder, folderEditors, FOLDER } from "./google/drive";
 import { ClubNotConnected, clubConnection, clubEmail } from "./google/oauth";
 import { keys } from "./keys";
 import { getJson, redis } from "./redis";
@@ -10,6 +11,9 @@ import { readSession, SESSION_COOKIE } from "./session";
 export { SESSION_COOKIE, sessionCookie } from "./session";
 
 const ACCESS_CACHE_SECONDS = 300;
+// A list older than ACCESS_CACHE_SECONDS but younger than this is still used, while Google is read again after the response.
+// So nobody waits on Google while the dashboard is in use. An older list is read again first.
+const ACCESS_STALE_SECONDS = 3600;
 
 export interface ExecAccess {
   folderId: string | null;
@@ -28,7 +32,12 @@ export function devEmail() {
 // `stored` is the cached list when the caller already read keys.execAccess, to save a Redis read.
 export async function execAccess(fresh = false, stored?: ExecAccess | null): Promise<ExecAccess> {
   const cached = stored !== undefined ? stored : await getJson<ExecAccess>(keys.execAccess);
-  if (!fresh && cached && Date.now() - cached.checkedAt < ACCESS_CACHE_SECONDS * 1000) return cached;
+  const age = cached ? Date.now() - cached.checkedAt : Infinity;
+  if (!fresh && age < ACCESS_CACHE_SECONDS * 1000) return cached!;
+  if (!fresh && age < ACCESS_STALE_SECONDS * 1000) {
+    refreshAccessLater();
+    return cached!;
+  }
   const connection = await clubConnection();
   if (!connection) return { folderId: null, people: [], checkedAt: Date.now() };
   try {
@@ -42,6 +51,24 @@ export async function execAccess(fresh = false, stored?: ExecAccess | null): Pro
     if (cached) return cached;
     throw error;
   }
+}
+
+// Reads the list from Google after the response. One request at a time does it.
+function refreshAccessLater() {
+  try {
+    after(async () => {
+      if ((await redis("SET", keys.lock("exec-access"), "1", "NX", "EX", 60)) !== "OK") return;
+      await execAccess(true).catch((error) => console.error(error));
+    });
+  } catch {
+    // Outside a request there is no "after". The next request reads it.
+  }
+}
+
+// The club's "MIT CSC" folder. The exec list already knows it, so most pages skip a Drive request.
+export async function knownClubFolder() {
+  const access = await execAccess().catch(() => null);
+  return access?.folderId ? { id: access.folderId, name: CLUB_DRIVE_FOLDER, mimeType: FOLDER } : clubFolder();
 }
 
 export async function clearExecAccessCache() {

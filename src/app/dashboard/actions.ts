@@ -6,12 +6,14 @@ import { HOME_PHOTOS_TAG, photoLibrary, refreshPhotoLibrary, setPhotosShown, sho
 import { localMode } from "@/lib/local-mode";
 import { canStartNextYear, formatDay, isKerb, isSchoolYear, newYearConfig, nextYearOpens, normalizeKerb, schoolYearOn } from "@/lib/membership/config";
 import { MembershipError } from "@/lib/membership/errors";
-import { execAccess, requireExec } from "@/lib/membership/exec-auth";
+import { execAccess, knownClubFolder, requireExec } from "@/lib/membership/exec-auth";
 import { GoogleApiError } from "@/lib/membership/google/api";
-import { clubFolder, clubPath, createFolder, getItem, listChildren, renameFile, trashFile, FOLDER } from "@/lib/membership/google/drive";
+import { clubPath, createFolder, getItem, listChildren, renameFile, trashFile, FOLDER } from "@/lib/membership/google/drive";
 import { clubEmail } from "@/lib/membership/google/oauth";
 import { createSheet } from "@/lib/membership/google/sheets";
 import { cleanForm, text } from "@/lib/membership/form";
+import { keys } from "@/lib/membership/keys";
+import { withLock } from "@/lib/membership/redis";
 import { attempt, type Result } from "@/lib/membership/result";
 import { readCardToken } from "@/lib/membership/signing";
 import {
@@ -19,7 +21,7 @@ import {
   requireCurrentYear, unmarkPaidEver, updateEvent, updateMember, updateYear,
 } from "@/lib/membership/store";
 import { syncEventLater, syncMembersLater, syncMembersNow } from "@/lib/membership/sync";
-import type { Attendance, FormConfig, Member, PaymentMethod, YearConfig } from "@/lib/membership/types";
+import type { Attendance, EventInfo, FormConfig, Member, PaymentMethod, YearConfig } from "@/lib/membership/types";
 import { checkInState, clashes, clashNote, CLOCK_TIME, type EventHours } from "@/lib/membership/event-times";
 import { priceFor } from "@/lib/membership/members";
 import { checkVenmo } from "@/lib/membership/venmo";
@@ -201,7 +203,7 @@ export interface DriveListing {
 export async function browseDrive(folderId: string, includeSheets: boolean): Promise<Result<DriveListing>> {
   return attempt(async () => {
     await requireExec();
-    const root = await clubFolder();
+    const root = await knownClubFolder();
     const path = await clubPath(folderId || root.id, root);
     const children = await listChildren(path.at(-1)!.id, includeSheets);
     return {
@@ -216,7 +218,7 @@ export async function makeFolder(name: string, parentId: string): Promise<Result
     await requireExec();
     const clean = text(name, 100);
     if (!clean) throw new MembershipError("Name the folder.");
-    const root = await clubFolder();
+    const root = await knownClubFolder();
     const parent = (await clubPath(parentId || root.id, root)).at(-1)!;
     const folder = await createFolder(clean, parent.id);
     return { id: folder.id, name: folder.name };
@@ -228,28 +230,31 @@ export async function createSchoolYear(input: { year: string; folderId: string; 
   return attempt(async () => {
     const by = await requireExec();
     if (!isSchoolYear(input.year)) throw new MembershipError("Pick a school year like 2027-2028.");
-    if (await getYear(input.year)) throw new MembershipError(`${input.year} already exists.`, 409);
-    const previous = await currentYear();
-    if (previous && !canStartNextYear(previous.year)) {
-      throw new MembershipError(`You can start the next school year from ${formatDay(nextYearOpens(previous.year), true)}.`);
-    }
-    const sheetName = text(input.sheetName, 100) || `CSC ${input.year} Membership`;
-    if (!input.folderId) throw new MembershipError("Pick the folder for the membership sheet.");
-    await clubPath(input.folderId);
-    const folder = await getItem(input.folderId);
-    if (folder.mimeType !== FOLDER) throw new MembershipError("Pick the folder for the membership sheet.");
-    const sheetId = await createSheet(sheetName, folder.id, "Members", clubEmail());
-    const config: YearConfig = {
-      ...newYearConfig(input.year, previous),
-      prices: { new: price(input.prices.new, "new member"), returning: price(input.prices.returning, "returning member") },
-      folderId: folder.id,
-      sheetId,
-      sheetName,
-    };
-    await createYear(config);
-    syncMembersLater(config.year);
-    console.info(`Membership year ${config.year} created by ${by}`);
-    return config.year;
+    // One at a time, so two exec starting the year together do not each make a sheet.
+    return withLock(keys.lock(`year:${input.year}`), "Someone else is starting this school year. Try again in a moment.", async () => {
+      if (await getYear(input.year)) throw new MembershipError(`${input.year} already exists.`, 409);
+      const previous = await currentYear();
+      if (previous && !canStartNextYear(previous.year)) {
+        throw new MembershipError(`You can start the next school year from ${formatDay(nextYearOpens(previous.year), true)}.`);
+      }
+      const sheetName = text(input.sheetName, 100) || `CSC ${input.year} Membership`;
+      if (!input.folderId) throw new MembershipError("Pick the folder for the membership sheet.");
+      await clubPath(input.folderId, await knownClubFolder());
+      const folder = await getItem(input.folderId);
+      if (folder.mimeType !== FOLDER) throw new MembershipError("Pick the folder for the membership sheet.");
+      const sheetId = await createSheet(sheetName, folder.id, "Members", clubEmail());
+      const config: YearConfig = {
+        ...newYearConfig(input.year, previous),
+        prices: { new: price(input.prices.new, "new member"), returning: price(input.prices.returning, "returning member") },
+        folderId: folder.id,
+        sheetId,
+        sheetName,
+      };
+      await createYear(config);
+      syncMembersLater(config.year);
+      console.info(`Membership year ${config.year} created by ${by}`);
+      return config.year;
+    });
   });
 }
 
@@ -273,7 +278,12 @@ function eventHours(starts: unknown, ends: unknown) {
   return { starts: from, ends: to };
 }
 
-// Events on the same day cannot overlap.
+// Events on the same day cannot overlap. Changes to one day's events run one at a time,
+// so two exec creating an event together get one event, not two.
+function lockDay<T>(year: string, date: string, work: () => Promise<T>) {
+  return withLock(keys.lock(`events:${year}:${date}`), "Someone else is saving an event on this day. Try again in a moment.", work);
+}
+
 async function refuseClash(year: string, hours: EventHours, exceptId?: string) {
   const clash = (await eventsOn(year, hours.date)).find((e) => e.id !== exceptId && clashes(e, hours));
   if (clash) throw new MembershipError(clashNote(clash), 409);
@@ -288,15 +298,17 @@ export async function createEventAction(input: { name: string; date: string; sta
     if (!name) throw new MembershipError("Name the event.");
     if (!ISO_DATE.test(input.date)) throw new MembershipError("Pick the event date.");
     const hours = eventHours(input.starts, input.ends);
-    // Checked before the Google Sheet is made, so a refused event leaves nothing in Drive.
-    await refuseClash(config.year, { date: input.date, ...hours });
-    let sheetId: string | null = null;
-    const sheetTab = "Attendance";
-    if (input.folderId) {
-      const { id: folderId } = (await clubPath(input.folderId)).at(-1)!;
-      sheetId = await createSheet(name, folderId, sheetTab, clubEmail());
-    }
-    const event = await createEvent({ year: config.year, name, date: input.date, ...hours, checkIn: null, sheetId, sheetTab, createdBy: by });
+    const event = await lockDay(config.year, input.date, async () => {
+      // Checked before the Google Sheet is made, so a refused event leaves nothing in Drive.
+      await refuseClash(config.year, { date: input.date, ...hours });
+      let sheetId: string | null = null;
+      const sheetTab = "Attendance";
+      if (input.folderId) {
+        const { id: folderId } = (await clubPath(input.folderId, await knownClubFolder())).at(-1)!;
+        sheetId = await createSheet(name, folderId, sheetTab, clubEmail());
+      }
+      return createEvent({ year: config.year, name, date: input.date, ...hours, checkIn: null, sheetId, sheetTab, createdBy: by });
+    });
     syncEventLater(event.id);
     return event.id;
   });
@@ -311,9 +323,11 @@ export async function saveEvent(id: string, input: { name: string; starts: strin
     const hours = eventHours(input.starts, input.ends);
     const current = await getEvent(String(id));
     if (!current) throw new MembershipError("This event does not exist.", 404);
-    await refuseClash(current.year, { date: current.date, ...hours }, current.id);
     const moved = (current.starts || null) !== hours.starts || (current.ends || null) !== hours.ends;
-    const event = await updateEvent(id, (e) => ({ ...e, name: clean, ...hours, checkIn: moved ? null : e.checkIn, checkInAt: moved ? null : e.checkInAt }));
+    const event = await lockDay(current.year, current.date, async () => {
+      await refuseClash(current.year, { date: current.date, ...hours }, current.id);
+      return updateEvent(id, (e) => ({ ...e, name: clean, ...hours, checkIn: moved ? null : e.checkIn, checkInAt: moved ? null : e.checkInAt }));
+    });
     // The sheet keeps the event's name. A sheet someone already removed from Drive needs nothing.
     if (event.sheetId && clean !== current.name) {
       await renameFile(event.sheetId, clean).catch((error) => {
@@ -377,38 +391,38 @@ function person(m: Member): Person {
 }
 
 // "check-in" stops at unpaid members; "confirm" marks them paid first; "anyway" lets them in unpaid.
-async function admit(eventId: string, kerb: string, mode: "check-in" | "confirm" | "anyway", by: string): Promise<CheckInResult> {
-  const event = await getEvent(eventId);
+// Each step reads what it can at the same time, since exec wait on this at the door.
+async function admit(event: EventInfo | null, kerb: string, mode: "check-in" | "confirm" | "anyway", by: string): Promise<CheckInResult> {
   if (!event) throw new MembershipError("This event does not exist.", 404);
   if (!checkInState(event, new Date()).open) throw new MembershipError(`Check-in for “${event.name}” is closed. Reopen it to check people in.`, 409);
-  const config = await getYear(event.year);
-  let member = await getMember(event.year, kerb);
+  const [config, found] = await Promise.all([getYear(event.year), getMember(event.year, kerb)]);
+  let member = found;
   if (!config || !member) return { kind: "unknown", message: `${kerb} is not signed up for ${event.year}.` };
   if (member.status !== "paid" && mode === "confirm") member = await setPaid(config, kerb, member.method, by);
   if (member.status !== "paid" && mode === "check-in") {
-    const earlier = await getAttendance(eventId, kerb);
-    const count = await attendanceCount(eventId);
-    return earlier ? { kind: "already", person: person(member), record: earlier, count } : { kind: "unpaid", person: person(member), count };
+    const { record, count } = await getAttendance(event.id, kerb);
+    return record ? { kind: "already", person: person(member), record, count } : { kind: "unpaid", person: person(member), count };
   }
-  const result = await checkIn(eventId, { kerb, name: member.name, classYear: member.classYear, paid: member.status === "paid", at: Date.now(), by });
-  if (result.added) syncEventLater(eventId);
-  return { kind: result.added ? "checked-in" : "already", person: person(member), record: result.record, count: await attendanceCount(eventId) };
+  const result = await checkIn(event.id, { kerb, name: member.name, classYear: member.classYear, paid: member.status === "paid", at: Date.now(), by });
+  if (result.added) syncEventLater(event.id);
+  return { kind: result.added ? "checked-in" : "already", person: person(member), record: result.record, count: result.count };
 }
 
 export async function checkInPerson(eventId: string, kerb: string, mode: "check-in" | "confirm" | "anyway"): Promise<Result<CheckInResult>> {
   return attempt(async () => {
-    const by = await requireExec();
     const clean = normalizeKerb(kerb);
     if (!isKerb(clean)) throw new MembershipError("That is not a kerb.");
-    return admit(eventId, clean, mode, by);
+    // The event is only used once the sign-in checks out.
+    const [by, event] = await Promise.all([requireExec(), getEvent(eventId)]);
+    return admit(event, clean, mode, by);
   });
 }
 
 // Takes a person off the event's attendance, for a check-in made by mistake.
 export async function undoCheckInPerson(eventId: string, kerb: string): Promise<Result<{ count: number }>> {
   return attempt(async () => {
-    await requireExec();
-    if (!(await getEvent(eventId))) throw new MembershipError("This event does not exist.", 404);
+    const [, event] = await Promise.all([requireExec(), getEvent(eventId)]);
+    if (!event) throw new MembershipError("This event does not exist.", 404);
     if (await undoCheckIn(eventId, normalizeKerb(kerb))) syncEventLater(eventId);
     return { count: await attendanceCount(eventId) };
   });
@@ -416,13 +430,12 @@ export async function undoCheckInPerson(eventId: string, kerb: string): Promise<
 
 export async function scanCard(eventId: string, value: string): Promise<Result<CheckInResult>> {
   return attempt(async () => {
-    const by = await requireExec();
+    const [by, event] = await Promise.all([requireExec(), getEvent(eventId)]);
     const card = readCardToken(value);
     if (!card) return { kind: "unknown", message: "That QR code is not a CSC membership card." };
-    const event = await getEvent(eventId);
     if (!event) throw new MembershipError("This event does not exist.", 404);
     if (!event.year.startsWith(`${card.startYear}-`)) return { kind: "unknown", message: `This card is for ${card.startYear}-${Number(card.startYear) + 1}, not ${event.year}.` };
-    return admit(eventId, card.kerb, "check-in", by);
+    return admit(event, card.kerb, "check-in", by);
   });
 }
 

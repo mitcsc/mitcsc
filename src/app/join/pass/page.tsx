@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 };
 
 export default async function CardPage({ searchParams }: { searchParams: Promise<{ link?: string; kerb?: string }> }) {
-  // Without Wallet cards (not set up, or paused at the monthly limit) there is nothing to get here.
-  if (!(await walletAvailable())) redirect("/join");
   const { link, kerb } = await searchParams;
-  const config = await currentYear();
-  const live = typeof link === "string" && config && (await cardLinkIsLive(link)) ? link : null;
+  const [available, config, linkLive] = await Promise.all([walletAvailable(), currentYear(), typeof link === "string" ? cardLinkIsLive(link) : false]);
+  // Without Wallet cards (not set up, or paused at the monthly limit) there is nothing to get here.
+  if (!available) redirect("/join");
+  const live = typeof link === "string" && config && linkLive ? link : null;
   return (
     <CardClaim
       year={config?.year || null}

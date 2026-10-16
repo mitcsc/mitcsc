@@ -39,12 +39,14 @@ export async function getMember(year: string, kerb: string) {
   return getJson<Member>(keys.member(year, kerb));
 }
 
-// Claims the kerb for this year. Fails when someone already signed up with it.
+// Claims the kerb for this year, in one request. Fails when someone already signed up with it.
+// ZADD NX leaves an earlier signup's place in the list alone.
 export async function claimMember(member: Member) {
-  const claimed = await redis<string | null>("SET", keys.member(member.year, member.kerb), JSON.stringify(member), "NX");
-  if (claimed !== "OK") return false;
-  await redis("ZADD", keys.members(member.year), member.createdAt, member.kerb);
-  return true;
+  const [claimed] = await pipeline<[string | null, number]>([
+    ["SET", keys.member(member.year, member.kerb), JSON.stringify(member), "NX"],
+    ["ZADD", keys.members(member.year), "NX", member.createdAt, member.kerb],
+  ]);
+  return claimed === "OK";
 }
 
 export async function updateMember(year: string, kerb: string, change: (member: Member) => Member) {
@@ -115,7 +117,6 @@ export async function updateEvent(id: string, change: (event: EventInfo) => Even
   return event;
 }
 
-// Newest first, with check-in counts.
 // Deletes the event and its check-ins. The caller handles its Google Sheet.
 export async function deleteEvent(event: EventInfo) {
   const sync = keys.sync(`event:${event.id}`);
@@ -125,19 +126,27 @@ export async function deleteEvent(event: EventInfo) {
   ]);
 }
 
+// Newest first. With a date, only the events on that date and later.
+export async function eventsFrom(year: string, date?: string) {
+  const ids = await redis<string[]>("ZRANGE", keys.events(year), "+inf", date ? dayScore(date) : "-inf", "BYSCORE", "REV");
+  return (await getManyJson<EventInfo>(ids.map(keys.event))).filter((e): e is EventInfo => !!e);
+}
+
+// Newest first, with check-in counts.
 export async function listEvents(year: string) {
-  const ids = await redis<string[]>("ZRANGE", keys.events(year), 0, -1, "REV");
-  const events = (await getManyJson<EventInfo>(ids.map(keys.event))).filter((e): e is EventInfo => !!e);
+  const events = await eventsFrom(year);
   const counts = await pipeline<number[]>(events.map((e) => ["HLEN", keys.attendance(e.id)]));
   return events.map((event, i) => ({ event, count: counts[i] }));
 }
 
-// Records a check-in once. Returns the earlier record when the person is already checked in.
+// Records a check-in once, in one request. Returns the earlier record when the person is already checked in,
+// and the event's check-in count after it.
 export async function checkIn(eventId: string, record: Attendance) {
-  const added = await redis<number>("HSETNX", keys.attendance(eventId), record.kerb, JSON.stringify(record));
-  if (added === 1) return { added: true as const, record };
-  const earlier = await redis<string>("HGET", keys.attendance(eventId), record.kerb);
-  return { added: false as const, record: JSON.parse(earlier) as Attendance };
+  const key = keys.attendance(eventId);
+  const [added, stored, count] = await pipeline<[number, string, number]>([
+    ["HSETNX", key, record.kerb, JSON.stringify(record)], ["HGET", key, record.kerb], ["HLEN", key],
+  ]);
+  return added === 1 ? { added: true as const, record, count } : { added: false as const, record: JSON.parse(stored) as Attendance, count };
 }
 
 // Takes back a check-in, for example a tap on the wrong person. Returns false if they were not checked in.
@@ -145,9 +154,10 @@ export async function undoCheckIn(eventId: string, kerb: string) {
   return (await redis<number>("HDEL", keys.attendance(eventId), kerb)) === 1;
 }
 
+// A person's check-in, or null, and the event's check-in count, in one request.
 export async function getAttendance(eventId: string, kerb: string) {
-  const raw = await redis<string | null>("HGET", keys.attendance(eventId), kerb);
-  return raw ? (JSON.parse(raw) as Attendance) : null;
+  const [raw, count] = await pipeline<[string | null, number]>([["HGET", keys.attendance(eventId), kerb], ["HLEN", keys.attendance(eventId)]]);
+  return { record: raw ? (JSON.parse(raw) as Attendance) : null, count };
 }
 
 // Oldest first.

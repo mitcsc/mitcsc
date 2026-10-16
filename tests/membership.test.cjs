@@ -19,6 +19,7 @@ const { cleanForm } = require('../src/lib/membership/form.ts');
 const { newYearConfig, canStartNextYear, formTitle, carryForm } = require('../src/lib/membership/config.ts');
 const { keys } = require('../src/lib/membership/keys.ts');
 const store = require('../src/lib/membership/store.ts');
+const { withLock } = require('../src/lib/membership/redis.ts');
 const hours = require('../src/lib/membership/event-times.ts');
 const { walletButtons, walletAvailable, walletPausedUntil, memberPass } = require('../src/lib/membership/wallet.ts');
 const { renameFile, trashFile } = require('../src/lib/membership/google/drive.ts');
@@ -47,7 +48,9 @@ function run([name, ...args]) {
     case 'GETDEL': { const value = db.has(args[0]) ? db.get(args[0]) : null; db.delete(args[0]); return value; }
     case 'EXISTS': return args.filter((k) => db.has(k)).length;
     case 'EVAL': {
-      const [, , key, before, after] = args;
+      const [script, , key, before, after] = args;
+      // Releasing a lock: delete the key only while this owner holds it.
+      if (script.includes("'DEL'")) return db.get(key) === before && db.delete(key) ? 1 : 0;
       if (db.get(key) !== before) return 0;
       db.set(key, after);
       return 1;
@@ -57,9 +60,22 @@ function run([name, ...args]) {
     case 'SISMEMBER': return set(args[0]).has(args[1]) ? 1 : 0;
     case 'SCARD': return set(args[0]).size;
     case 'SUNION': return [...new Set(args.flatMap((k) => [...set(k)]))];
-    case 'ZADD': hash(args[0]).set(args[2], Number(args[1])); return 1;
+    case 'ZADD': {
+      // NX only adds a member that is not there yet.
+      const [key, ...rest] = args;
+      const nx = rest[0] === 'NX';
+      const [score, member] = nx ? rest.slice(1) : rest;
+      if (nx && hash(key).has(member)) return 0;
+      hash(key).set(member, Number(score));
+      return 1;
+    }
     case 'ZREM': return hash(args[0]).delete(args[1]) ? 1 : 0;
-    case 'ZRANGE': return [...hash(args[0]).entries()].filter(([, score]) => args[3] !== 'BYSCORE' || (score >= Number(args[1]) && score <= Number(args[2]))).sort((a, b) => b[1] - a[1]).map(([member]) => member);
+    case 'ZRANGE': {
+      const score = (v) => (v === '+inf' ? Infinity : v === '-inf' ? -Infinity : Number(v));
+      // With REV, the range comes highest first.
+      const [min, max] = args.includes('REV') ? [score(args[2]), score(args[1])] : [score(args[1]), score(args[2])];
+      return [...hash(args[0]).entries()].filter(([, s]) => args[3] !== 'BYSCORE' || (s >= min && s <= max)).sort((a, b) => b[1] - a[1]).map(([member]) => member);
+    }
     case 'HSETNX': if (hash(args[0]).has(args[1])) return 0; hash(args[0]).set(args[1], args[2]); return 1;
     case 'HSET': hash(args[0]).set(args[1], args[2]); return 1;
     case 'HGET': return hash(args[0]).get(args[1]) ?? null;
@@ -70,6 +86,8 @@ function run([name, ...args]) {
   }
 }
 
+// How many requests reached the fake Redis and fetched one Gmail message.
+const requests = { redis: 0, gmailMessages: 0 };
 // Gmail messages by id, served to the Venmo check, and the Drive changes the dashboard asked for.
 const gmail = new Map();
 const driveChanges = [];
@@ -84,6 +102,7 @@ global.fetch = async (url, options = {}) => {
     return Response.json(reply.body, { status: reply.status });
   }
   if (target.hostname === 'redis.test.invalid') {
+    requests.redis++;
     const body = JSON.parse(options.body);
     if (target.pathname === '/pipeline') return Response.json(body.map((command) => ({ result: run(command) })));
     return Response.json({ result: run(body) });
@@ -91,6 +110,7 @@ global.fetch = async (url, options = {}) => {
   if (target.hostname === 'gmail.googleapis.com') {
     assert.equal(options.headers.Authorization, 'Bearer test-access-token');
     const id = target.pathname.split('/messages/')[1];
+    if (id) requests.gmailMessages++;
     if (!id) return Response.json({ messages: [...gmail.keys()].map((messageId) => ({ id: messageId })) });
     return Response.json(gmail.get(id));
   }
@@ -246,12 +266,17 @@ test('a kerb can sign up once, and check-in records the first scan', async () =>
   assert.equal((await store.getMember(YEAR, 'jchen')).name, 'jchen');
   await store.claimMember(member('plau', { createdAt: Date.now() + 1 }));
   assert.deepEqual((await store.listMembers(YEAR)).map((m) => m.kerb), ['plau', 'jchen']);
+  await store.claimMember(member('jchen', { createdAt: Date.now() + 5 }));
+  assert.deepEqual((await store.listMembers(YEAR)).map((m) => m.kerb), ['plau', 'jchen'], 'A refused signup keeps the first one in its place');
 
   const first = { kerb: 'jchen', name: 'Jamie', classYear: '2029', paid: true, at: 1, by: 'a@mit.edu' };
   assert.equal((await store.checkIn('e1', first)).added, true);
   const second = await store.checkIn('e1', { ...first, at: 2, by: 'b@mit.edu' });
   assert.equal(second.added, false);
   assert.equal(second.record.by, 'a@mit.edu');
+  assert.equal(second.count, 1);
+  assert.deepEqual(await store.getAttendance('e1', 'jchen'), { record: first, count: 1 });
+  assert.deepEqual(await store.getAttendance('e1', 'plau'), { record: null, count: 1 });
   assert.equal(await store.attendanceCount('e1'), 1);
   assert.equal(await store.undoCheckIn('e1', 'jchen'), true, 'A mistaken check-in can be taken back');
   assert.equal(await store.undoCheckIn('e1', 'jchen'), false);
@@ -281,6 +306,29 @@ test('Deleting an event removes it and its check-ins only', async () => {
   assert.equal(db.has(`${keys.sync(`event:${gone.id}`)}:status`), false);
   assert.deepEqual((await store.listEvents(YEAR)).map((e) => [e.event.name, e.count]), [['Keep', 1]]);
   assert.deepEqual(await store.eventsOn(YEAR, '2026-10-14'), [], 'A deleted event frees its day');
+
+  await make('Next', '2026-10-20');
+  assert.deepEqual((await store.eventsFrom(YEAR)).map((e) => e.name), ['Next', 'Keep'], 'Newest first');
+  assert.deepEqual((await store.eventsFrom(YEAR, '2026-10-14')).map((e) => e.name), ['Next'], 'Only that date and later');
+  assert.deepEqual((await store.eventsFrom(YEAR, '2026-10-13')).map((e) => e.name), ['Next', 'Keep']);
+});
+
+test('a lock runs one request at a time, and a busy lock gives up', async () => {
+  const order = [];
+  const step = (name, ms) => withLock('lock:test', 'Busy', async () => {
+    order.push(`${name} starts`);
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    order.push(`${name} ends`);
+    return name;
+  });
+  assert.deepEqual(await Promise.all([step('first', 300), step('second', 0)]), ['first', 'second']);
+  assert.deepEqual(order, ['first starts', 'first ends', 'second starts', 'second ends'], 'The second waits for the first');
+  assert.equal(db.has('lock:test'), false, 'The lock is released');
+
+  db.set('lock:test', 'someone else');
+  await assert.rejects(withLock('lock:test', 'Busy', async () => 'never', 300), (e) => e.message === 'Busy' && e.status === 409);
+  await assert.rejects(withLock('lock:other', 'Busy', async () => { throw new Error('fails'); }), /fails/);
+  assert.equal(db.has('lock:other'), false, 'A failed run releases the lock');
 });
 
 test('event hours: overlaps, open and closed, and an exec choice', () => {
@@ -362,6 +410,34 @@ test('the Venmo check confirms each payment once and only for the right amount',
   assert.equal(db.get(keys.venmoMessage('d')), '-');
 
   assert.deepEqual(await checkVenmo(config), { ran: false, confirmed: [] }, 'Checks closer than the minimum gap do nothing');
+
+  // A year of handled emails costs one Redis request, and Gmail is asked only for new ones.
+  for (let i = 0; i < 150; i++) {
+    gmail.set(`old${i}`, venmoEmail(`old${i}`, { note: 'CSC-2026-2027-someone' }));
+    db.set(keys.venmoMessage(`old${i}`), 'someone');
+  }
+  db.delete(keys.venmoCheck(YEAR));
+  const before = { ...requests };
+  assert.deepEqual(await checkVenmo(config), { ran: true, confirmed: [] });
+  assert.equal(requests.gmailMessages - before.gmailMessages, 2, 'Only the two emails left for later are read again');
+  assert.ok(requests.redis - before.redis <= 10, `The check made ${requests.redis - before.redis} Redis requests, not one per handled email`);
+});
+
+test('two requests for the same new Wallet card make one card', async () => {
+  process.env.WALLETWALLET_API_KEY = 'test-wallet-key';
+  try {
+    const config = newYearConfig(YEAR, null);
+    await store.claimMember(member('jchen'));
+    walletReplies.push({ status: 200, body: { serialNumber: 'one', shareUrl: 'https://example.invalid/s', googleSaveUrl: 'https://pay.google.com/one', applePass: Buffer.from('pkpass').toString('base64') } });
+    const jamie = await store.getMember(YEAR, 'jchen');
+    const [first, second] = await Promise.all([memberPass(config, jamie, 'https://csc.mit.edu'), memberPass(config, jamie, 'https://csc.mit.edu')]);
+    assert.deepEqual(walletCalls, ['POST /api/passes'], 'WalletWallet made one card');
+    assert.equal(first.google, 'https://pay.google.com/one');
+    assert.equal(second.google, 'https://pay.google.com/one');
+    assert.equal((await store.getMember(YEAR, 'jchen')).wallet.serial, 'one');
+  } finally {
+    delete process.env.WALLETWALLET_API_KEY;
+  }
 });
 
 test('a used-up WalletWallet month hides new Wallet cards until the reset day', async () => {
