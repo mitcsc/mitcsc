@@ -81,7 +81,7 @@ export default function LinksView({ links, clicks, origin, today }: { links: Sho
                     ) : <span className="is-faint">None</span>}
                   </td>
                   <td className="is-soft is-number is-wide">{link.slug ? clicks[link.id] || 0 : ""}</td>
-                  <td className="is-wide"><LinkStatus link={link} active={active} /></td>
+                  <td className="is-wide"><LinkStatus link={link} active={active} today={today} /></td>
                   <td className="is-action">
                     <button type="button" className="d-more-btn" aria-label={`Edit ${link.title}`} onClick={() => setEditing(link)}><Icon name="more" size={18} /></button>
                   </td>
@@ -105,14 +105,15 @@ export default function LinksView({ links, clicks, origin, today }: { links: Sho
   );
 }
 
-function LinkStatus({ link, active }: { link: ShortLink; active: boolean }) {
+function LinkStatus({ link, active, today }: { link: ShortLink; active: boolean; today: string }) {
   if (!active) return <span className="m-pill is-yellow">Expired {formatDay(link.expiresOn!)}</span>;
-  return (
-    <span className="d-link-status">
-      {link.shown ? <span className="m-pill is-green" data-tip="Listed on the Links page">Active</span> : <span className="m-tag" data-tip="Not listed on the Links page">Inactive</span>}
-      {link.expiresOn && <span className="is-faint">Until {formatDay(link.expiresOn)}</span>}
-    </span>
-  );
+  // A link works through the end of its last day, so a timer marks it and the tooltip says when it stops.
+  // Non-breaking spaces keep the date and the time each on one line.
+  const expires = link.expiresOn ? ` Expires ${formatDay(link.expiresOn, link.expiresOn.slice(0, 4) !== today.slice(0, 4))} at 11:59 PM.`.replace(/ (?=\d|PM)/g, "\u00a0") : "";
+  const timer = expires && <Icon name="timer" size={12} className="d-pill-icon" />;
+  return link.shown
+    ? <span className="m-pill is-green" data-tip={`Listed on the Links page.${expires}`}>{timer}Active</span>
+    : <span className="m-tag d-tag-icon" data-tip={`Not listed on the Links page.${expires}`}>{timer}Inactive</span>;
 }
 
 function LinkDialog({ link, host, taken, onClose, onDone }: { link: ShortLink | null; host: string; taken: string[]; onClose: () => void; onDone: (message: string) => void }) {
