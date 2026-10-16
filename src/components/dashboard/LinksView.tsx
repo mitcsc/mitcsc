@@ -112,8 +112,8 @@ function LinkStatus({ link, active, today }: { link: ShortLink; active: boolean;
   const expires = link.expiresOn && `Expires ${formatDay(link.expiresOn, link.expiresOn.slice(0, 4) !== today.slice(0, 4))} at 11:59 PM`.replace(/ (?=\d|PM)/g, "\u00a0");
   const timer = expires && <Icon name="timer" size={12} className="d-pill-icon" />;
   return link.shown
-    ? <span className="m-pill is-green" data-tip={expires || "Listed on the Links page"}>{timer}Active</span>
-    : <span className="m-tag d-tag-icon" data-tip={expires || "Not listed on the Links page"}>{timer}Hidden</span>;
+    ? <span className="m-pill is-green" data-tip={expires || undefined}>{timer}Active</span>
+    : <span className="m-tag d-tag-icon" data-tip={expires || undefined}>{timer}Hidden</span>;
 }
 
 function LinkDialog({ link, host, taken, onClose, onDone }: { link: ShortLink | null; host: string; taken: string[]; onClose: () => void; onDone: (message: string) => void }) {
