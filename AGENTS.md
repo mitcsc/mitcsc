@@ -172,6 +172,8 @@ Only dig into the code if something is broken or they want a change.
   The site then saves the reset day (`wallet-paused` key), hides every Wallet option from members until then, and shows exec a banner.
   Settings shows this month's count.
 - **Events**: each event gets its own Google Sheet with an "Attendance" tab. Check-in opens and closes on its own at the event hours.
+  An event without hours is open on its date until midnight, or 12 hours after it was made if that is later.
+  Check-in an exec opens by hand closes 12 hours later; then the event hours apply again (`OPEN_FOR_MS` in `src/lib/membership/event-times.ts`).
 - **Club Google connection**: Dashboard > Settings > Club Google account.
   If it breaks (e.g. after a password change), a banner appears, and Venmo checks, sheet updates, and card emails stop.
   They start again when someone presses **Reconnect** and signs in as mitcsc@gmail.com with every permission.

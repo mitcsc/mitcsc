@@ -71,7 +71,9 @@ export interface EventInfo {
   starts?: string | null;
   ends?: string | null;
   // An exec closed or reopened check-in by hand. It wins over the hours until the hours change.
+  // An exec's opening lasts 12 hours from checkInAt (OPEN_FOR_MS in event-times.ts).
   checkIn?: "open" | "closed" | null;
+  checkInAt?: number | null;
   sheetId: string | null;
   sheetTab: string;
   createdBy: string;

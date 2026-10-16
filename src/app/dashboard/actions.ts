@@ -313,7 +313,7 @@ export async function saveEvent(id: string, input: { name: string; starts: strin
     if (!current) throw new MembershipError("This event does not exist.", 404);
     await refuseClash(current.year, { date: current.date, ...hours }, current.id);
     const moved = (current.starts || null) !== hours.starts || (current.ends || null) !== hours.ends;
-    const event = await updateEvent(id, (e) => ({ ...e, name: clean, ...hours, checkIn: moved ? null : e.checkIn }));
+    const event = await updateEvent(id, (e) => ({ ...e, name: clean, ...hours, checkIn: moved ? null : e.checkIn, checkInAt: moved ? null : e.checkInAt }));
     // The sheet keeps the event's name. A sheet someone already removed from Drive needs nothing.
     if (event.sheetId && clean !== current.name) {
       await renameFile(event.sheetId, clean).catch((error) => {
@@ -326,12 +326,15 @@ export async function saveEvent(id: string, input: { name: string; starts: strin
 }
 
 // Closes or reopens check-in by hand. A choice that matches the hours is dropped, so the hours apply again.
+// Opening by hand lasts 12 hours from now.
 export async function setEventCheckIn(id: string, open: boolean): Promise<Result<null>> {
   return attempt(async () => {
     await requireExec();
     await updateEvent(String(id), (e) => {
-      const scheduled = checkInState({ ...e, checkIn: null }, new Date()).open;
-      return { ...e, checkIn: open === scheduled ? null : open ? "open" : "closed" };
+      const now = new Date();
+      const scheduled = checkInState({ ...e, checkIn: null }, now).open;
+      const checkIn = open === scheduled ? null : open ? "open" : "closed";
+      return { ...e, checkIn, checkInAt: checkIn === "open" ? now.getTime() : null };
     });
     return null;
   });
