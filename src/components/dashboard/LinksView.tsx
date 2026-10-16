@@ -113,7 +113,7 @@ function LinkStatus({ link, active, today }: { link: ShortLink; active: boolean;
   const timer = expires && <Icon name="timer" size={12} className="d-pill-icon" />;
   return link.shown
     ? <span className="m-pill is-green" data-tip={expires || "Listed on the Links page"}>{timer}Active</span>
-    : <span className="m-tag d-tag-icon" data-tip={expires || "Not listed on the Links page"}>{timer}Inactive</span>;
+    : <span className="m-tag d-tag-icon" data-tip={expires || "Not listed on the Links page"}>{timer}Hidden</span>;
 }
 
 function LinkDialog({ link, host, taken, onClose, onDone }: { link: ShortLink | null; host: string; taken: string[]; onClose: () => void; onDone: (message: string) => void }) {
