@@ -45,6 +45,8 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/delibs", destination: "/dashboard/delibs/live", permanent: false },
       { source: "/dashboard/website", destination: "/dashboard/website/links", permanent: false },
       { source: "/vote/:path*", destination: "/dashboard/delibs/live", permanent: true },
+      // The old membership short link. Signup now happens on this site.
+      { source: "/membership", destination: "/join", permanent: false },
       {
         source: "/link",
         destination: "/links",

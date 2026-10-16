@@ -31,8 +31,6 @@ export default function Join() {
       <div className="flex flex-col w-full xl:max-w-7xl items-center justify-center">
         <motion.a
           href={membership}
-          target="_blank"
-          rel="noopener noreferrer"
           className="relative w-96 h-96 flex group items-center justify-center md:w-[500px] md:h-[500px] lg:w-[600px] lg:h-[600px]"
           initial="hidden"
           whileInView="visible"

@@ -125,7 +125,7 @@ The Exec and Alumni pages come from the dashboard, not code. Send the user to Da
 
 Edit this file directly for the fixed links on the site and footer:
 
-- `membership` - where the home page "Join" button goes
+- `membership` - where the home page "Join" button goes (`/join`, the signup page on this site)
 - `calendarLink` - the CSC Google Calendar (also the default calendar link on the signup form)
 - `email` - contact email
 - `instagramLink`
@@ -140,7 +140,7 @@ Each link has:
 
 - **Title** - what shows on the `/links` page
 - **Goes to** - the destination URL
-- **Short link** (optional) - the redirect name (e.g. `membership` → csc.mit.edu/membership)
+- **Short link** (optional) - the redirect name (e.g. `formal` → csc.mit.edu/formal)
 - **Expires** (optional) - the link works through the end of that day (Boston time), then both the listing and the short link stop working.
   Use for event RSVPs, care-package signups, anything to auto-clean after a date.
 - **Show on the Links page** - off keeps the short link working but hides it from `/links`.
@@ -148,6 +148,7 @@ Each link has:
 
 Short links use lowercase letters, numbers, and hyphens.
 Names that are site pages (join, links, dashboard, exec, alumni, vote, api, ...) are reserved; see `RESERVED_SLUGS` in `src/lib/link-rules.ts`.
+csc.mit.edu/membership is also reserved: it always goes to `/join` (a redirect in `next.config.ts`).
 Do not attempt to edit shortlinks through the code - there is nothing to edit there.
 
 ## 5. The exec dashboard (csc.mit.edu/dashboard)
@@ -189,7 +190,6 @@ Only dig into the code if something is broken or they want a change.
 ## 6. Yearly maintenance checklist
 
 - Start the new school year in Dashboard > Membership > Settings (available from June 1), then turn on **Accepting signups** when ready
-- Check where the home page "Join" button goes (`membership` in `src/config/links.ts`)
 - Move graduating exec to alumni in Dashboard > Website > Exec
 - Add the new exec in Dashboard > Website > Exec, in role order (section 3)
 - Refresh home page photos in the Drive folder and Dashboard > Website > Home

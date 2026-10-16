@@ -17,7 +17,7 @@ export interface ShortLink {
 // tests/links.test.cjs checks that every folder in src/app and public is here.
 export const RESERVED_SLUGS = [
   "_next", "alumni", "api", "dashboard", "deliberations", "exec", "favicon.ico", "font", "img",
-  "join", "link", "links", "manifest.webmanifest", "vote",
+  "join", "link", "links", "manifest.webmanifest", "membership", "vote",
 ];
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/;
