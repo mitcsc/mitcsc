@@ -109,11 +109,11 @@ function LinkStatus({ link, active, today }: { link: ShortLink; active: boolean;
   if (!active) return <span className="m-pill is-yellow">Expired {formatDay(link.expiresOn!)}</span>;
   // A link works through the end of its last day, so a timer marks it and the tooltip says when it stops.
   // Non-breaking spaces keep the date and the time each on one line.
-  const expires = link.expiresOn ? ` Expires ${formatDay(link.expiresOn, link.expiresOn.slice(0, 4) !== today.slice(0, 4))} at 11:59 PM.`.replace(/ (?=\d|PM)/g, "\u00a0") : "";
+  const expires = link.expiresOn && `Expires ${formatDay(link.expiresOn, link.expiresOn.slice(0, 4) !== today.slice(0, 4))} at 11:59 PM`.replace(/ (?=\d|PM)/g, "\u00a0");
   const timer = expires && <Icon name="timer" size={12} className="d-pill-icon" />;
   return link.shown
-    ? <span className="m-pill is-green" data-tip={`Listed on the Links page.${expires}`}>{timer}Active</span>
-    : <span className="m-tag d-tag-icon" data-tip={`Not listed on the Links page.${expires}`}>{timer}Inactive</span>;
+    ? <span className="m-pill is-green" data-tip={expires || "Listed on the Links page"}>{timer}Active</span>
+    : <span className="m-tag d-tag-icon" data-tip={expires || "Not listed on the Links page"}>{timer}Inactive</span>;
 }
 
 function LinkDialog({ link, host, taken, onClose, onDone }: { link: ShortLink | null; host: string; taken: string[]; onClose: () => void; onDone: (message: string) => void }) {
