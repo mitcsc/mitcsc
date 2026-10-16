@@ -170,7 +170,8 @@ button.d-aside-link:hover:not(:disabled), a.d-aside-link:hover { background: #ff
 .m-root .d-slug a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
 .d-slug-copy { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); }
 .d-slug-copy:hover { background: #ffffff14; color: var(--text); }
-.d-link-status { display: inline-flex; align-items: center; gap: 8px; }
+.d-pill-icon { flex: none; margin-left: -2px; }
+.d-tag-icon { display: inline-flex; align-items: center; gap: 5px; }
 .d-table .d-drag-cell { width: 1%; padding-right: 4px; }
 /* The table scrolls sideways on small screens, which would clip a handle that reaches past the row. */
 .d-table .d-drag-handle { margin-left: 0; }
