@@ -5,9 +5,9 @@ import { canSendEmail, clubConnection, clubEmail } from "@/lib/membership/google
 import { walletEnabled, walletPausedUntil, walletUsage } from "@/lib/membership/wallet";
 
 export default async function DashboardSettingsPage() {
-  const connection = await clubConnection();
-  const access = await execAccess().catch(() => null);
-  const [usage, pausedUntil] = await Promise.all([walletUsage(), walletPausedUntil().catch(() => null)]);
+  const [connection, access, usage, pausedUntil] = await Promise.all([
+    clubConnection(), execAccess().catch(() => null), walletUsage(), walletPausedUntil().catch(() => null),
+  ]);
   return (
     <DashboardSettings
       folder={access?.folderId ? folderUrl(access.folderId) : null}

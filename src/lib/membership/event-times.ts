@@ -25,10 +25,12 @@ export function takenEvent(e: TakenEvent): TakenEvent {
 
 export const CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+const CLOCK = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const WALL = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" });
+
 // The date and "HH:MM" time now, in the club's time zone.
 function localNow(now: Date) {
-  const time = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
-  return { date: localDate(now), time };
+  return { date: localDate(now), time: CLOCK.format(now) };
 }
 
 // Two events clash when they are on the same day and their hours overlap. An event without times takes the whole day.
@@ -114,7 +116,7 @@ function wallTime(date: string, time: string) {
 
 // How far the club's wall clock is ahead of UTC at a moment, in ms (negative in Boston).
 function zoneOffset(at: number) {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" }).formatToParts(at);
+  const parts = WALL.formatToParts(at);
   const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
   return Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute")) - Math.floor(at / 60_000) * 60_000;
 }

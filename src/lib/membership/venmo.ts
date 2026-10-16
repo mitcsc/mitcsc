@@ -72,8 +72,11 @@ export async function checkVenmo(config: YearConfig, options: { minGapSeconds?: 
   const query = `from:venmo@venmo.com "CSC-${config.year}" newer_than:400d`;
   const list = await google<{ messages?: { id: string }[] }>(`${GMAIL}/messages`, { query: { q: query, maxResults: 200 } });
   const confirmed: string[] = [];
-  for (const { id } of list.messages || []) {
-    if (await redis<number>("EXISTS", keys.venmoMessage(id))) continue;
+  const ids = (list.messages || []).map((m) => m.id);
+  // Every email handled before has a marker. One request reads them all, since the list holds the whole year's emails.
+  const handled = ids.length ? await redis<(string | null)[]>("MGET", ...ids.map(keys.venmoMessage)) : [];
+  for (const [index, id] of ids.entries()) {
+    if (handled[index] !== null) continue;
     const message = await google<Message>(`${GMAIL}/messages/${id}`, { query: { format: "full" } });
     const payment = parseVenmoEmail(message);
     if (!payment || payment.year !== config.year) {

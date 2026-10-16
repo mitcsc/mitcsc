@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState, type FormEvent } from "react";
 import { addMember, checkVenmoNow, confirmPayment, lookUpNewMember, markUnpaid, removeSignup, syncSheetNow, updateSettings, type NewMemberKerb } from "@/app/dashboard/actions";
 import { formatDay, formatFullStamp, formatStamp, money, venmoNote } from "@/lib/membership/config";
 import type { SyncStatus } from "@/lib/membership/sync";
@@ -87,11 +87,10 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
   // People who said they paid come first.
   const pending = members.filter((m) => m.status === "unpaid").sort((a, b) => (b.reportedAt ? 1 : 0) - (a.reportedAt ? 1 : 0));
   const collected = paid.reduce((sum, m) => sum + m.price, 0);
-  const shown = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return members.filter((m) => (filter === "all" || (filter === "paid" ? m.status === "paid" : m.status === "unpaid"))
-      && (!query || m.name.toLowerCase().includes(query) || m.kerb.includes(query)));
-  }, [members, filter, search]);
+  // The search box updates at once, and the table catches up when the browser is free, so typing never waits on hundreds of rows.
+  const query = useDeferredValue(search.trim().toLowerCase());
+  const shown = useMemo(() => members.filter((m) => (filter === "all" || (filter === "paid" ? m.status === "paid" : m.status === "unpaid"))
+    && (!query || m.name.toLowerCase().includes(query) || m.kerb.includes(query))), [members, filter, query]);
   const selected = members.find((m) => m.kerb === open) || null;
 
   async function run(key: string, work: () => Promise<{ ok: true } | { ok: false; error: string }>, done?: string) {
@@ -261,20 +260,7 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
                 <tr><th>Name</th><th className="is-wide">Kerb</th><th className="is-wide">Year</th><th className="is-wide">Type</th><th>Payment</th><th className="is-wide">Signed up</th><th className="is-action" aria-label="Actions" /></tr>
               </thead>
               <tbody>
-                {shown.map((m) => (
-                  <tr key={m.kerb}>
-                    <td>
-                      <button type="button" className="d-name-btn" onClick={() => setOpen(m.kerb)}>{m.name}</button>
-                      <span className="d-member-meta">{m.kerb}</span>
-                    </td>
-                    <td className="is-soft is-wide">{m.kerb}</td>
-                    <td className="is-soft is-wide">{m.classYear}</td>
-                    <td className="is-soft is-wide">{m.type === "returning" ? "Returning" : "New"}</td>
-                    <td><StatusPill member={m} /></td>
-                    <td className="is-faint is-wide"><Stamp ms={m.createdAt} /></td>
-                    <td className="is-action"><MoreButton name={m.name} onClick={() => setOpen(m.kerb)} /></td>
-                  </tr>
-                ))}
+                {shown.map((m) => <MemberTableRow key={m.kerb} member={m} onOpen={setOpen} />)}
               </tbody>
             </table>
             {shown.length === 0 && <p className="d-empty-row">{members.length ? "No members match." : "Nobody has signed up yet."}</p>}
@@ -294,6 +280,24 @@ export default function MembersView({ year, members, sheet, venmoCheckedAt, sign
     </div>
   );
 }
+
+// Memoized, so a search or a dialog redraws only the rows that changed.
+const MemberTableRow = memo(function MemberTableRow({ member: m, onOpen }: { member: MemberRow; onOpen: (kerb: string) => void }) {
+  return (
+    <tr>
+      <td>
+        <button type="button" className="d-name-btn" onClick={() => onOpen(m.kerb)}>{m.name}</button>
+        <span className="d-member-meta">{m.kerb}</span>
+      </td>
+      <td className="is-soft is-wide">{m.kerb}</td>
+      <td className="is-soft is-wide">{m.classYear}</td>
+      <td className="is-soft is-wide">{m.type === "returning" ? "Returning" : "New"}</td>
+      <td><StatusPill member={m} /></td>
+      <td className="is-faint is-wide"><Stamp ms={m.createdAt} /></td>
+      <td className="is-action"><MoreButton name={m.name} onClick={() => onOpen(m.kerb)} /></td>
+    </tr>
+  );
+});
 
 function MoreButton({ name, onClick }: { name: string; onClick: () => void }) {
   return (

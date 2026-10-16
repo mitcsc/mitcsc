@@ -115,27 +115,34 @@ export function signupsAreOpen(config: YearConfig, now = new Date()) {
   return localDate(now) <= config.closesOn;
 }
 
+// Made once: lists of members and check-ins format hundreds of dates on each render.
+const DATE = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE });
+const DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const DAY_WITH_YEAR = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const TIME = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: TIME_ZONE });
+const STAMP = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: TIME_ZONE });
+const FULL_STAMP = new Intl.DateTimeFormat("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: TIME_ZONE });
+
 export function localDate(date: Date) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(date);
+  return DATE.format(date);
 }
 
 export function formatDay(isoDate: string, withYear = false) {
   const [y, m, d] = isoDate.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", ...(withYear ? { year: "numeric" } : {}), timeZone: "UTC" })
-    .format(new Date(Date.UTC(y, m - 1, d)));
+  return (withYear ? DAY_WITH_YEAR : DAY).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
 export function formatTime(ms: number) {
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: TIME_ZONE }).format(ms);
+  return TIME.format(ms);
 }
 
 export function formatStamp(ms: number) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: TIME_ZONE }).format(ms);
+  return STAMP.format(ms);
 }
 
 // The full time for a tooltip, like "Wed, Oct 14, 2026, 9:22:07 AM".
 export function formatFullStamp(ms: number) {
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: TIME_ZONE }).format(ms);
+  return FULL_STAMP.format(ms);
 }
 
 export function money(amount: number) {

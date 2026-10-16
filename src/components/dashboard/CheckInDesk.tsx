@@ -16,6 +16,14 @@ import Scanner from "./Scanner";
 const REFRESH_MS = 15_000;
 const MAX_RESULTS = 25;
 
+// Whether check-in is open at a time, with the note under it.
+// Within a day of opening, a countdown replaces the opening time, which the line above already shows.
+function stateAt(hours: EventHours, at: number) {
+  const state = checkInState(hours, new Date(at));
+  const note = state.toggle === "Open check-in now" && startsSoon(hours, at) ? `Opens in ${formatCountdown(opensAt(hours) - at)}` : state.note;
+  return { ...state, note };
+}
+
 // back is null on the Check in tab, where the sub-tabs already lead elsewhere.
 export default function CheckInDesk({ event, records: initialRecords, people: initialPeople, renderedAt, back }: {
   event: { id: string; name: string; when: string; sheet: string | null; hours: EventHours };
@@ -33,15 +41,20 @@ export default function CheckInDesk({ event, records: initialRecords, people: in
   const [scanning, setScanning] = useState(false);
   const [toggling, setToggling] = useState(false);
   // Check-in opens and closes on its own, so the state follows the clock. It starts from the server's time to match its render.
-  // It ticks every second for the countdown to opening.
+  // The clock is checked every second for the countdown, but the page only renders again when what it shows changes,
+  // so a long list of check-ins is not redrawn every second.
   const [now, setNow] = useState(renderedAt);
+  const hours = event.hours;
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    const timer = window.setInterval(() => setNow((before) => {
+      const at = Date.now();
+      const [was, is] = [stateAt(hours, before), stateAt(hours, at)];
+      return was.open === is.open && was.note === is.note && was.toggle === is.toggle ? before : at;
+    }), 1_000);
     return () => window.clearInterval(timer);
-  }, []);
-  const state = checkInState(event.hours, new Date(now));
-  // Within a day of opening, a countdown replaces the opening time, which the line above already shows.
-  const note = state.toggle === "Open check-in now" && startsSoon(event.hours, now) ? `Opens in ${formatCountdown(opensAt(event.hours) - now)}` : state.note;
+  }, [hours]);
+  const state = stateAt(hours, now);
+  const note = state.note;
 
   // Other exec check people in at the same time, so reload every few seconds.
   useEffect(() => setRecords(initialRecords), [initialRecords]);

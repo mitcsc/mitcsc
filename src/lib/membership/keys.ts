@@ -34,5 +34,7 @@ export const keys = {
   // The image files in Drive's "Exec Photos" folder, as last listed.
   execPhotos: `${PREFIX}:exec-photos`,
   sync: (target: string) => `${PREFIX}:sync:${target}`,
+  // Held while someone creates or changes something that must not be made twice at once.
+  lock: (target: string) => `${PREFIX}:lock:${target}`,
   rateLimit: (scope: string, id: string) => `${PREFIX}:limit:${scope}:${id}`,
 };
